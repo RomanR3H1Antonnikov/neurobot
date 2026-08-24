@@ -20,6 +20,8 @@ tasks:
     models:
       - id: nano-banana-2
         label: "Nano Banana 2"
+        group: nano-banana
+        group_label: "Nano Banana"
         description: ""
         model_id: nano-banana-2
         provider: kie
@@ -29,6 +31,8 @@ tasks:
 
       - id: nano-banana-pro
         label: "Nano Banana Pro"
+        group: nano-banana
+        group_label: "Nano Banana"
         description: ""
         model_id: gemini-3-pro-image
         provider: aitunnel
@@ -56,6 +60,8 @@ tasks:
 
       - id: flux-2-flex
         label: "Flux 2 Flex"
+        group: flux-2
+        group_label: "Flux 2"
         description: ""
         model_id: flux-2-flex
         provider: kie
@@ -65,6 +71,8 @@ tasks:
 
       - id: flux-2-pro
         label: "Flux 2 Pro"
+        group: flux-2
+        group_label: "Flux 2"
         description: ""
         model_id: flux-2-pro
         provider: kie
@@ -105,6 +113,8 @@ tasks:
 
       - id: kling-3
         label: "Kling 3.0"
+        group: kling-3
+        group_label: "Kling 3.0"
         description: ""
         model_id: kling-v3
         provider: kie
@@ -114,6 +124,8 @@ tasks:
 
       - id: kling-3-turbo
         label: "Kling 3.0 Turbo"
+        group: kling-3
+        group_label: "Kling 3.0"
         description: ""
         model_id: kling-v3-turbo
         provider: kie
@@ -132,6 +144,8 @@ tasks:
 
       - id: sora-2-pro
         label: "Sora 2 Pro"
+        group: sora-2
+        group_label: "Sora 2"
         description: ""
         model_id: openai/sora-2-pro
         provider: routerai
@@ -169,12 +183,14 @@ tasks:
 
       - id: sora-2
         label: "Sora 2"
+        group: sora-2
+        group_label: "Sora 2"
         description: ""
         model_id: sora-2
         provider: bratuha
         cost_credits: 120
         cost_usd: 0.20
-        enabled: false
+        enabled: false  # bratuha.ru — нет публичного API
 
   # ─── Генерация аудио ─────────────────────────────────────────────────────────
   audio_generation:

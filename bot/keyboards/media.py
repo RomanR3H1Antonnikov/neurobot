@@ -18,33 +18,79 @@ def media_type_kb() -> InlineKeyboardMarkup:
     return builder.as_markup()
 
 
-# ─── Выбор модели ─────────────────────────────────────────────────────────────
+# ─── Выбор модели (двухуровневый) ────────────────────────────────────────────
 
-def model_select_kb(models: list[dict]) -> InlineKeyboardMarkup:
-    """Клавиатура выбора модели. models — список из get_models_for_task()."""
-    builder = InlineKeyboardBuilder()
+def _top_level_items(models: list[dict]) -> list[dict]:
+    """
+    Строит список первого уровня: группы (→ выбор версии) + одиночные модели.
+    Группы дедуплицируются и идут в порядке первого появления в yaml.
+    """
+    seen_groups: set[str] = set()
+    result = []
     for m in models:
-        builder.row(InlineKeyboardButton(
-            text=f"{m['label']} — {m['cost_credits']} кр.",
-            callback_data=f"media:model:{m['id']}",
-        ))
+        group = m.get("group")
+        if group:
+            if group not in seen_groups:
+                seen_groups.add(group)
+                result.append({
+                    "_type": "group",
+                    "group_id": group,
+                    "label": m.get("group_label", group),
+                })
+        else:
+            result.append({"_type": "model", **m})
+    return result
+
+
+def model_top_kb(models: list[dict]) -> InlineKeyboardMarkup:
+    """Первый уровень выбора: группы со стрелкой + одиночные модели с ценой."""
+    builder = InlineKeyboardBuilder()
+    for item in _top_level_items(models):
+        if item["_type"] == "group":
+            builder.row(InlineKeyboardButton(
+                text=f"{item['label']} ›",
+                callback_data=f"media:group:{item['group_id']}",
+            ))
+        else:
+            builder.row(InlineKeyboardButton(
+                text=f"{item['label']} — {item['cost_credits']} кр.",
+                callback_data=f"media:model:{item['id']}",
+            ))
     builder.row(InlineKeyboardButton(text="◀️ Назад", callback_data="media:back:type"))
     return builder.as_markup()
 
 
+def model_variant_kb(variants: list[dict]) -> InlineKeyboardMarkup:
+    """Второй уровень: конкретные версии модели."""
+    builder = InlineKeyboardBuilder()
+    for m in variants:
+        builder.row(InlineKeyboardButton(
+            text=f"{m['label']} — {m['cost_credits']} кр.",
+            callback_data=f"media:model:{m['id']}",
+        ))
+    builder.row(InlineKeyboardButton(text="◀️ Назад", callback_data="media:back:model"))
+    return builder.as_markup()
+
+
 def model_select_text(type_label: str, models: list[dict]) -> str:
-    """Текст сообщения над клавиатурой выбора модели."""
-    has_desc = any(m.get("description") for m in models)
+    """Текст сообщения над клавиатурой первого уровня."""
+    has_desc = any(m.get("description") and not m.get("group") for m in models)
     if not has_desc:
         return f"<b>Выбери модель ({type_label}):</b>"
     lines = [f"<b>Выбери модель ({type_label}):</b>\n"]
     for m in models:
+        if m.get("group"):
+            continue  # описания групповых моделей — на втором уровне
         desc = m.get("description", "")
         if desc:
             lines.append(f"• <b>{m['label']}</b> — {desc}")
         else:
             lines.append(f"• <b>{m['label']}</b>")
     return "\n".join(lines)
+
+
+def model_variant_text(group_label: str) -> str:
+    return f"<b>Выбери версию ({group_label}):</b>"
 
 
 # ─── Навигация: назад к выбору модели ────────────────────────────────────────

@@ -6,7 +6,8 @@ from aiogram.fsm.state import State, StatesGroup
 
 from bot.keyboards.main_menu import BTN_MEDIA, MENU_BUTTONS, main_menu_kb
 from bot.keyboards.media import (
-    media_type_kb, model_select_kb, model_select_text, back_to_model_kb,
+    media_type_kb, model_top_kb, model_variant_kb,
+    model_select_text, model_variant_text, back_to_model_kb,
     image_confirm_kb, video_confirm_kb, audio_confirm_kb, edit_confirm_kb,
     after_generation_kb,
 )
@@ -124,7 +125,7 @@ async def select_type(callback: CallbackQuery, state: FSMContext) -> None:
     await callback.message.edit_text(
         model_select_text(type_label, models),
         parse_mode="HTML",
-        reply_markup=model_select_kb(models),
+        reply_markup=model_top_kb(models),
     )
     await state.set_state(MediaStates.select_model)
     await callback.answer()
@@ -171,6 +172,29 @@ async def select_model(callback: CallbackQuery, state: FSMContext) -> None:
     await callback.answer()
 
 
+# ─── Выбор группы (раскрывает версии) ───────────────────────────────────────
+
+@router.callback_query(MediaStates.select_model, F.data.startswith("media:group:"))
+async def select_group(callback: CallbackQuery, state: FSMContext) -> None:
+    group_id = callback.data[len("media:group:"):]
+    data = await state.get_data()
+    task_type = _TYPE_TO_TASK.get(data.get("media_type", ""))
+    all_models = get_models_for_task(task_type) if task_type else []
+    variants = [m for m in all_models if m.get("group") == group_id]
+
+    if not variants:
+        await callback.answer("Нет доступных версий", show_alert=True)
+        return
+
+    group_label = variants[0].get("group_label", group_id)
+    await callback.message.edit_text(
+        model_variant_text(group_label),
+        parse_mode="HTML",
+        reply_markup=model_variant_kb(variants),
+    )
+    await callback.answer()
+
+
 # ─── Навигация назад ──────────────────────────────────────────────────────────
 
 @router.callback_query(F.data == "media:back:type")
@@ -192,7 +216,7 @@ async def back_to_model(callback: CallbackQuery, state: FSMContext) -> None:
     await callback.message.edit_text(
         model_select_text(type_label, models),
         parse_mode="HTML",
-        reply_markup=model_select_kb(models),
+        reply_markup=model_top_kb(models),
     )
     await callback.answer()
 
