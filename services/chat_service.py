@@ -1,5 +1,5 @@
 from providers.base import TaskType, ChatResult
-from providers.router import get_provider, get_task_cost, get_task_rate_limit
+from providers.router import get_provider, get_provider_by_model_id, get_task_rate_limit
 from db.queries import (
     get_or_create_user, deduct_credits,
     get_chat_history, add_chat_message, clear_chat_history,
@@ -13,8 +13,9 @@ SYSTEM_PROMPT = (
 )
 
 
-async def send_message(telegram_id: int, username: str, text: str) -> str:
-    """Отправляет сообщение в чат, возвращает ответ ИИ."""
+async def send_message(
+    telegram_id: int, username: str, text: str, model_slug: str | None = None
+) -> str:
     user = await get_or_create_user(telegram_id, username)
     user_id = user["id"]
 
@@ -23,7 +24,12 @@ async def send_message(telegram_id: int, username: str, text: str) -> str:
     if not ok:
         raise RateLimitError(f"Превышен лимит сообщений ({rate_limit} в час)")
 
-    cost = get_task_cost(TaskType.CHAT)
+    if model_slug:
+        provider, model_cfg = get_provider_by_model_id(TaskType.CHAT, model_slug)
+    else:
+        provider, model_cfg = get_provider(TaskType.CHAT)
+
+    cost = model_cfg["cost_credits"]
     if user["balance"] < cost:
         raise InsufficientCreditsError(
             f"Недостаточно кредитов. Нужно: {cost}, у вас: {user['balance']}"
@@ -32,8 +38,9 @@ async def send_message(telegram_id: int, username: str, text: str) -> str:
     history = await get_chat_history(user_id)
     history.append({"role": "user", "content": text})
 
-    provider, _ = get_provider(TaskType.CHAT)
-    result: ChatResult = await provider.chat(history, system=SYSTEM_PROMPT)
+    result: ChatResult = await provider.chat(
+        history, system=SYSTEM_PROMPT, model=model_cfg["model_id"]
+    )
 
     await add_chat_message(user_id, "user", text)
     await add_chat_message(user_id, "assistant", result.text)

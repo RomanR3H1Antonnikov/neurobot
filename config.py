@@ -15,6 +15,10 @@ class Config:
     aitunnel_api_key: str
     routerai_api_key: str
     kie_api_key: str
+    genapi_api_key: str
+    polzaai_api_key: str
+    bratuha_api_key: str
+    ranvikapi_api_key: str
 
     models: dict = field(default_factory=dict)
 
@@ -37,6 +41,10 @@ def load_config() -> Config:
         aitunnel_api_key=os.getenv("AITUNNEL_API_KEY", ""),
         routerai_api_key=os.getenv("ROUTERAI_API_KEY", ""),
         kie_api_key=os.getenv("KIE_API_KEY", ""),
+        genapi_api_key=os.getenv("GENAPI_API_KEY", ""),
+        polzaai_api_key=os.getenv("POLZAAI_API_KEY", ""),
+        bratuha_api_key=os.getenv("BRATUHA_API_KEY", ""),
+        ranvikapi_api_key=os.getenv("RANVIKAPI_API_KEY", ""),
         models=models.get("tasks", {}),
     )
 

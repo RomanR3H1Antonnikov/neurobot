@@ -1,72 +1,297 @@
-# Конфигурация маршрутизации моделей
-# Редактируй этот файл для смены моделей и агрегаторов.
+# Конфигурация моделей нейросети
+# Редактируй этот файл для управления моделями — перезапустить бота после правок.
 #
-# cost_credits — сколько кредитов списывается с пользователя за одну генерацию
-# cost_usd     — реальная стоимость у агрегатора (нужна для выбора самого дешёвого)
-# provider     — id адаптера: aitunnel | routerai | kie
-# enabled      — false чтобы временно отключить модель без удаления из конфига
-#
-# Бот автоматически выбирает модель с минимальным cost_usd среди enabled: true
+# Поля модели:
+#   id            — уникальный slug (латиница, дефисы). Используется внутри бота.
+#   label         — название, которое видит пользователь в меню
+#   description   — краткое описание (оставь пустым "", чтобы не показывать)
+#   model_id      — реальное имя модели, передаваемое в API агрегатора
+#   provider      — адаптер: aitunnel | routerai | kie | genapi | polzaai | bratuha | ranvikapi
+#   cost_credits  — сколько кредитов списывается с пользователя за один запрос
+#   cost_usd      — реальная стоимость у агрегатора (справочно, для сортировки)
+#   enabled       — false чтобы временно отключить модель без удаления строки
+#   audio_type    — (только для аудио) voice | music
 
 tasks:
+
+  # ─── Генерация фото ─────────────────────────────────────────────────────────
   image_generation:
-    cost_credits: 10
     rate_limit_per_hour: 20
     models:
-      - id: flux-1-schnell
-        provider: aitunnel
-        cost_usd: 0.003
+      - id: nano-banana-2
+        label: "Nano Banana 2"
+        description: ""
+        model_id: nano-banana-2
+        provider: kie
+        cost_credits: 15
+        cost_usd: 0.01
         enabled: true
-      - id: sdxl-turbo
-        provider: routerai
-        cost_usd: 0.002
-        enabled: false  # включи после получения ключей routerai
 
+      - id: nano-banana-pro
+        label: "Nano Banana Pro"
+        description: ""
+        model_id: gemini-3-pro-image
+        provider: aitunnel
+        cost_credits: 20
+        cost_usd: 0.02
+        enabled: true
+
+      - id: seedream-5
+        label: "Seedream 5.0"
+        description: ""
+        model_id: seedream-v5
+        provider: kie
+        cost_credits: 15
+        cost_usd: 0.01
+        enabled: true
+
+      - id: midjourney
+        label: "Midjourney"
+        description: ""
+        model_id: midjourney
+        provider: genapi
+        cost_credits: 25
+        cost_usd: 0.04
+        enabled: true
+
+      - id: flux-2-flex
+        label: "Flux 2 Flex"
+        description: ""
+        model_id: flux-2-flex
+        provider: kie
+        cost_credits: 10
+        cost_usd: 0.005
+        enabled: true
+
+      - id: flux-2-pro
+        label: "Flux 2 Pro"
+        description: ""
+        model_id: flux-2-pro
+        provider: kie
+        cost_credits: 15
+        cost_usd: 0.01
+        enabled: true
+
+      - id: gpt-image-2
+        label: "GPT Image 2"
+        description: ""
+        model_id: gpt-image-2
+        provider: aitunnel
+        cost_credits: 30
+        cost_usd: 0.04
+        enabled: true
+
+  # ─── Генерация видео ─────────────────────────────────────────────────────────
   video_generation:
-    cost_credits: 50
     rate_limit_per_hour: 5
     models:
-      - id: wan2.1-t2v-14b
-        provider: aitunnel
+      - id: seedance-2-5
+        label: "Seedance 2.5"
+        description: ""
+        model_id: seedance-2.5
+        provider: kie
+        cost_credits: 80
+        cost_usd: 0.08
+        enabled: true
+
+      - id: seedance-2
+        label: "Seedance 2"
+        description: ""
+        model_id: seedance-2.0
+        provider: kie
+        cost_credits: 60
+        cost_usd: 0.06
+        enabled: true
+
+      - id: kling-3
+        label: "Kling 3.0"
+        description: ""
+        model_id: kling-v3
+        provider: kie
+        cost_credits: 80
+        cost_usd: 0.08
+        enabled: true
+
+      - id: kling-3-turbo
+        label: "Kling 3.0 Turbo"
+        description: ""
+        model_id: kling-v3-turbo
+        provider: kie
+        cost_credits: 60
         cost_usd: 0.05
         enabled: true
-      - id: kling-v1
-        provider: kie
-        cost_usd: 0.04
-        enabled: false  # включи после получения ключей kie
 
+      - id: minimax-h3
+        label: "MiniMax H3"
+        description: ""
+        model_id: minimax-h3
+        provider: kie
+        cost_credits: 70
+        cost_usd: 0.07
+        enabled: true
+
+      - id: sora-2-pro
+        label: "Sora 2 Pro"
+        description: ""
+        model_id: openai/sora-2-pro
+        provider: routerai
+        cost_credits: 150
+        cost_usd: 0.30
+        enabled: true
+
+      - id: pixverse-6
+        label: "Pixverse 6.0"
+        description: ""
+        model_id: pixverse-v6
+        provider: kie
+        cost_credits: 70
+        cost_usd: 0.07
+        enabled: true
+
+      # bratuha.ru — нет публичного API, ожидаем подтверждения от клиента
+      - id: gemini-omni-flash
+        label: "Gemini Omni Flash"
+        description: ""
+        model_id: gemini-omni-flash
+        provider: bratuha
+        cost_credits: 50
+        cost_usd: 0.05
+        enabled: false
+
+      - id: veo-3-1
+        label: "Veo 3.1"
+        description: ""
+        model_id: veo-3.1
+        provider: bratuha
+        cost_credits: 100
+        cost_usd: 0.15
+        enabled: false
+
+      - id: sora-2
+        label: "Sora 2"
+        description: ""
+        model_id: sora-2
+        provider: bratuha
+        cost_credits: 120
+        cost_usd: 0.20
+        enabled: false
+
+  # ─── Генерация аудио ─────────────────────────────────────────────────────────
   audio_generation:
-    cost_credits: 15
     rate_limit_per_hour: 10
     models:
-      - id: tts-1
+      - id: elevenlabs-v3
+        label: "ElevenLabs V3"
+        description: "Озвучка текста"
+        model_id: elevenlabs-v3
+        provider: kie
+        audio_type: voice
+        cost_credits: 15
+        cost_usd: 0.02
+        enabled: true
+
+      - id: udio
+        label: "Udio"
+        description: "Генерация музыки"
+        model_id: udio
+        provider: genapi
+        audio_type: music
+        cost_credits: 20
+        cost_usd: 0.04
+        enabled: true
+
+      - id: elevenlabs-music
+        label: "ElevenLabs Music"
+        description: "Музыкальное сопровождение"
+        model_id: elevenlabs-music
+        provider: genapi
+        audio_type: music
+        cost_credits: 20
+        cost_usd: 0.04
+        enabled: true
+
+      # bratuha.ru — нет публичного API, ожидаем подтверждения от клиента
+      - id: suno
+        label: "Suno"
+        description: "Генерация музыки"
+        model_id: suno
+        provider: bratuha
+        audio_type: music
+        cost_credits: 25
+        cost_usd: 0.05
+        enabled: false
+
+  # ─── Редактирование медиа ────────────────────────────────────────────────────
+  image_edit:
+    rate_limit_per_hour: 15
+    models:
+      - id: gpt-image-2-edit
+        label: "GPT Image 2"
+        description: ""
+        model_id: gpt-image-2
         provider: aitunnel
+        cost_credits: 30
+        cost_usd: 0.04
+        enabled: true
+
+      - id: flux-2-pro-edit
+        label: "Flux 2 Pro"
+        description: ""
+        model_id: flux-2-pro
+        provider: kie
+        cost_credits: 15
+        cost_usd: 0.01
+        enabled: true
+
+  # ─── Чат с ИИ ────────────────────────────────────────────────────────────────
+  chat:
+    rate_limit_per_hour: 100
+    models:
+      - id: gpt-5-5
+        label: "GPT-5.5"
+        description: ""
+        model_id: gpt-5.5
+        provider: kie
+        cost_credits: 3
+        cost_usd: 0.002
+        enabled: true
+
+      - id: claude-opus-4-8
+        label: "Claude Opus 4.8"
+        description: ""
+        model_id: anthropic/claude-opus-4.8
+        provider: routerai
+        cost_credits: 5
         cost_usd: 0.015
         enabled: true
 
-  image_edit:
-    cost_credits: 12
-    rate_limit_per_hour: 15
-    models:
-      - id: gpt-image-1
-        provider: aitunnel
-        cost_usd: 0.04
+      - id: deepseek-v4
+        label: "Deepseek V4"
+        description: ""
+        model_id: deepseek/deepseek-v4-flash-vision-exp
+        provider: routerai
+        cost_credits: 2
+        cost_usd: 0.001
         enabled: true
 
-  chat:
-    cost_credits: 1
-    rate_limit_per_hour: 100
-    models:
-      - id: gpt-4o-mini
-        provider: aitunnel
-        cost_usd: 0.0002
-        enabled: true
-
+  # ─── Работа с документами (авто-выбор, пользователь не выбирает) ─────────────
   document:
-    cost_credits: 5
     rate_limit_per_hour: 30
     models:
-      - id: gpt-4o-mini
-        provider: aitunnel
+      - id: gpt-5-5-docs
+        label: "GPT-5.5"
+        description: ""
+        model_id: gpt-5.5
+        provider: kie
+        cost_credits: 5
+        cost_usd: 0.002
+        enabled: true
+
+      - id: deepseek-v4-docs
+        label: "Deepseek V4"
+        description: ""
+        model_id: deepseek/deepseek-v4-flash-vision-exp
+        provider: routerai
+        cost_credits: 3
         cost_usd: 0.001
         enabled: true

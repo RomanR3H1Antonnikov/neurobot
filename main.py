@@ -7,7 +7,7 @@ from aiogram.enums import ParseMode
 from config import config
 from db.database import get_db, close_db
 from bot.middlewares.user_middleware import UserMiddleware
-from bot.handlers import start, media, chat, documents, billing
+from bot.handlers import start, media, chat, documents, billing, fallback
 
 logging.basicConfig(
     level=logging.INFO,
@@ -30,6 +30,7 @@ async def main() -> None:
     dp.include_router(media.router)
     dp.include_router(chat.router)
     dp.include_router(documents.router)
+    dp.include_router(fallback.router)  # должен быть последним
 
     await get_db()  # инициализация БД при старте
     logger.info("Бот запущен")

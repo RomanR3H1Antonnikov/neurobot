@@ -1,10 +1,12 @@
 from aiogram import Router, F
-from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton
+from aiogram.types import Message, CallbackQuery, ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 
-from bot.keyboards.main_menu import BTN_CHAT, main_menu_kb
-from providers.base import ProviderError
+from bot.keyboards.main_menu import BTN_CHAT, MENU_BUTTONS, main_menu_kb
+from providers.base import ProviderError, TaskType
+from providers.router import get_models_for_task
 from services import chat_service
 from services.media_service import InsufficientCreditsError, RateLimitError
 
@@ -12,6 +14,7 @@ router = Router()
 
 
 class ChatStates(StatesGroup):
+    select_model = State()
     active = State()
 
 
@@ -22,20 +25,64 @@ def chat_kb() -> ReplyKeyboardMarkup:
     )
 
 
+def _chat_model_kb(models: list[dict]) -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    for m in models:
+        builder.row(InlineKeyboardButton(
+            text=f"{m['label']} — {m['cost_credits']} кр./сообщ.",
+            callback_data=f"chat:model:{m['id']}",
+        ))
+    return builder.as_markup()
+
+
 @router.message(F.text == BTN_CHAT)
 async def enter_chat(message: Message, state: FSMContext) -> None:
-    await state.set_state(ChatStates.active)
+    await state.clear()
+    models = get_models_for_task(TaskType.CHAT)
+    if not models:
+        await message.answer("⚠️ Чат временно недоступен. Попробуй позже.")
+        return
+    await state.set_state(ChatStates.select_model)
     await message.answer(
-        "💬 Режим чата активен. Задай любой вопрос.\n"
-        "Я помню контекст разговора в рамках сессии.",
-        reply_markup=chat_kb(),
+        "💬 <b>Выбери модель для чата:</b>",
+        parse_mode="HTML",
+        reply_markup=_chat_model_kb(models),
     )
 
 
+@router.callback_query(ChatStates.select_model, F.data.startswith("chat:model:"))
+async def select_chat_model(callback: CallbackQuery, state: FSMContext) -> None:
+    model_slug = callback.data[len("chat:model:"):]
+    models = get_models_for_task(TaskType.CHAT)
+    model_cfg = next((m for m in models if m["id"] == model_slug), None)
+
+    if not model_cfg:
+        await callback.answer("Модель недоступна", show_alert=True)
+        return
+
+    await state.update_data(
+        chat_model_slug=model_slug,
+        chat_model_id=model_cfg["model_id"],
+        chat_model_label=model_cfg["label"],
+    )
+    await state.set_state(ChatStates.active)
+
+    await callback.message.edit_text(
+        f"💬 <b>{model_cfg['label']}</b>\n"
+        "Режим чата активен. Задай любой вопрос.\n"
+        "Я помню контекст разговора в рамках сессии.",
+        parse_mode="HTML",
+    )
+    await callback.message.answer("Введи сообщение:", reply_markup=chat_kb())
+    await callback.answer()
+
+
 @router.message(ChatStates.active, F.text == "🔄 Новый диалог")
-async def new_chat(message: Message) -> None:
+async def new_chat(message: Message, state: FSMContext) -> None:
     await chat_service.reset_history(message.from_user.id)
-    await message.answer("Диалог сброшен. Начнём сначала!")
+    data = await state.get_data()
+    label = data.get("chat_model_label", "ИИ")
+    await message.answer(f"Диалог сброшен. {label} готов к новому разговору!")
 
 
 @router.message(ChatStates.active, F.text == "🏠 Выйти в меню")
@@ -44,12 +91,15 @@ async def exit_chat(message: Message, state: FSMContext) -> None:
     await message.answer("Главное меню:", reply_markup=main_menu_kb())
 
 
-@router.message(ChatStates.active, F.text)
-async def chat_message(message: Message) -> None:
+@router.message(ChatStates.active, F.text, ~F.text.in_(MENU_BUTTONS))
+async def chat_message(message: Message, state: FSMContext) -> None:
+    data = await state.get_data()
+    model_slug = data.get("chat_model_slug")
+
     thinking = await message.answer("💭 Думаю...")
     try:
         response = await chat_service.send_message(
-            message.from_user.id, message.from_user.username, message.text
+            message.from_user.id, message.from_user.username, message.text, model_slug
         )
         await thinking.delete()
         await message.answer(response)
@@ -66,3 +116,8 @@ async def chat_message(message: Message) -> None:
     except Exception:
         await thinking.delete()
         await message.answer("⚠️ Произошла непредвиденная ошибка. Попробуй позже.")
+
+
+@router.message(ChatStates.active, ~F.text.in_(MENU_BUTTONS))
+async def chat_wrong_input(message: Message) -> None:
+    await message.answer("Напиши текстовое сообщение — я отвечу на него.")

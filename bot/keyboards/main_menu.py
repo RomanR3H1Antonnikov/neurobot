@@ -5,6 +5,8 @@ BTN_CHAT = "💬 Чат с ИИ"
 BTN_DOCS = "📄 Работа с документами"
 BTN_BALANCE = "💳 Мой баланс"
 
+MENU_BUTTONS = {BTN_MEDIA, BTN_CHAT, BTN_DOCS, BTN_BALANCE}
+
 
 def main_menu_kb() -> ReplyKeyboardMarkup:
     return ReplyKeyboardMarkup(

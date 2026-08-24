@@ -9,12 +9,55 @@ def media_type_kb() -> InlineKeyboardMarkup:
     builder.row(
         InlineKeyboardButton(text="🖼 Фото", callback_data="media:type:image"),
         InlineKeyboardButton(text="🎬 Видео", callback_data="media:type:video"),
+        InlineKeyboardButton(text="🎵 Аудио", callback_data="media:type:audio"),
     )
     builder.row(
-        InlineKeyboardButton(text="🎵 Аудио", callback_data="media:type:audio"),
-        InlineKeyboardButton(text="✏️ Редактировать фото", callback_data="media:type:edit"),
+        InlineKeyboardButton(text="✏️ Редактировать медиа", callback_data="media:type:edit"),
     )
     builder.row(InlineKeyboardButton(text="◀️ Назад", callback_data="media:back:menu"))
+    return builder.as_markup()
+
+
+# ─── Выбор модели ─────────────────────────────────────────────────────────────
+
+def model_select_kb(models: list[dict]) -> InlineKeyboardMarkup:
+    """Клавиатура выбора модели. models — список из get_models_for_task()."""
+    builder = InlineKeyboardBuilder()
+    for m in models:
+        builder.row(InlineKeyboardButton(
+            text=f"{m['label']} — {m['cost_credits']} кр.",
+            callback_data=f"media:model:{m['id']}",
+        ))
+    builder.row(InlineKeyboardButton(text="◀️ Назад", callback_data="media:back:type"))
+    return builder.as_markup()
+
+
+def model_select_text(type_label: str, models: list[dict]) -> str:
+    """Текст сообщения над клавиатурой выбора модели."""
+    has_desc = any(m.get("description") for m in models)
+    if not has_desc:
+        return f"<b>Выбери модель ({type_label}):</b>"
+    lines = [f"<b>Выбери модель ({type_label}):</b>\n"]
+    for m in models:
+        desc = m.get("description", "")
+        if desc:
+            lines.append(f"• <b>{m['label']}</b> — {desc}")
+        else:
+            lines.append(f"• <b>{m['label']}</b>")
+    return "\n".join(lines)
+
+
+# ─── Навигация: назад к выбору модели ────────────────────────────────────────
+
+def back_to_model_kb() -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    builder.row(InlineKeyboardButton(text="◀️ Назад", callback_data="media:back:model"))
+    return builder.as_markup()
+
+
+def back_to_type_kb() -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    builder.row(InlineKeyboardButton(text="◀️ Назад", callback_data="media:back:type"))
     return builder.as_markup()
 
 
@@ -23,7 +66,6 @@ def media_type_kb() -> InlineKeyboardMarkup:
 def image_confirm_kb(aspect_ratio: str) -> InlineKeyboardMarkup:
     ratios = {"1:1": "Квадрат", "16:9": "Пейзаж", "9:16": "Портрет"}
     builder = InlineKeyboardBuilder()
-    # кнопки выбора формата
     for ratio, label in ratios.items():
         prefix = "✅ " if ratio == aspect_ratio else ""
         builder.add(InlineKeyboardButton(
@@ -32,8 +74,8 @@ def image_confirm_kb(aspect_ratio: str) -> InlineKeyboardMarkup:
         ))
     builder.adjust(3)
     builder.row(
-        InlineKeyboardButton(text="✏️ Изменить промпт", callback_data="media:edit_prompt"),
-        InlineKeyboardButton(text="◀️ Назад", callback_data="media:back:type"),
+        InlineKeyboardButton(text="✏️ Изменить описание", callback_data="media:edit_prompt"),
+        InlineKeyboardButton(text="◀️ Назад", callback_data="media:back:model"),
     )
     builder.row(InlineKeyboardButton(text="🚀 Начать генерацию", callback_data="media:start"))
     return builder.as_markup()
@@ -51,8 +93,8 @@ def video_confirm_kb(duration: int) -> InlineKeyboardMarkup:
         ))
     builder.adjust(2)
     builder.row(
-        InlineKeyboardButton(text="✏️ Изменить промпт", callback_data="media:edit_prompt"),
-        InlineKeyboardButton(text="◀️ Назад", callback_data="media:back:type"),
+        InlineKeyboardButton(text="✏️ Изменить описание", callback_data="media:edit_prompt"),
+        InlineKeyboardButton(text="◀️ Назад", callback_data="media:back:model"),
     )
     builder.row(InlineKeyboardButton(text="🚀 Начать генерацию", callback_data="media:start"))
     return builder.as_markup()
@@ -60,18 +102,11 @@ def video_confirm_kb(duration: int) -> InlineKeyboardMarkup:
 
 # ─── Карточка подтверждения: аудио ───────────────────────────────────────────
 
-def audio_confirm_kb(audio_type: str) -> InlineKeyboardMarkup:
+def audio_confirm_kb() -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
-    for t, label in [("voice", "🗣 Озвучка"), ("music", "🎸 Музыка")]:
-        prefix = "✅ " if t == audio_type else ""
-        builder.add(InlineKeyboardButton(
-            text=f"{prefix}{label}",
-            callback_data=f"media:audio_type:{t}",
-        ))
-    builder.adjust(2)
     builder.row(
-        InlineKeyboardButton(text="✏️ Изменить текст", callback_data="media:edit_prompt"),
-        InlineKeyboardButton(text="◀️ Назад", callback_data="media:back:type"),
+        InlineKeyboardButton(text="✏️ Изменить описание", callback_data="media:edit_prompt"),
+        InlineKeyboardButton(text="◀️ Назад", callback_data="media:back:model"),
     )
     builder.row(InlineKeyboardButton(text="🚀 Начать генерацию", callback_data="media:start"))
     return builder.as_markup()
@@ -83,9 +118,9 @@ def edit_confirm_kb() -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     builder.row(
         InlineKeyboardButton(text="✏️ Изменить инструкцию", callback_data="media:edit_prompt"),
-        InlineKeyboardButton(text="◀️ Назад", callback_data="media:back:type"),
+        InlineKeyboardButton(text="◀️ Назад", callback_data="media:back:model"),
     )
-    builder.row(InlineKeyboardButton(text="🚀 Начать генерацию", callback_data="media:start"))
+    builder.row(InlineKeyboardButton(text="🚀 Начать обработку", callback_data="media:start"))
     return builder.as_markup()
 
 

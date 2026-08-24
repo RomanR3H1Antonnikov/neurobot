@@ -13,7 +13,8 @@ router = Router()
 
 @router.message(F.text == BTN_BALANCE)
 @router.message(Command("balance"))
-async def show_balance(message: Message, db_user: dict) -> None:
+async def show_balance(message: Message, state: FSMContext, db_user: dict) -> None:
+    await state.clear()
     await message.answer(
         f"💳 <b>Твой баланс:</b> {db_user['balance']} кредитов\n\n"
         "Выбери пакет для пополнения:",

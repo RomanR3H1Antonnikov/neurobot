@@ -1,9 +1,9 @@
 from providers.openai_compat import OpenAICompatProvider
 
 
-class AitunnelProvider(OpenAICompatProvider):
-    provider_id = "aitunnel"
-    base_url = "https://api.aitunnel.ru/v1"
+class GenApiProvider(OpenAICompatProvider):
+    provider_id = "genapi"
+    base_url = "https://api.gen-api.ru/v1"
     image_model = "flux-1-schnell"
     video_model = "wan2.1-t2v-14b"
     audio_model = "tts-1"

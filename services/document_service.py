@@ -4,7 +4,7 @@
 """
 import io
 from providers.base import TaskType
-from providers.router import get_provider, get_task_cost, get_task_rate_limit
+from providers.router import get_provider, get_task_rate_limit
 from db.queries import (
     get_or_create_user, deduct_credits, check_and_increment_rate_limit,
 )
@@ -23,7 +23,6 @@ def extract_text(filename: str, file_bytes: bytes) -> str:
     elif ext in ("xlsx", "xls"):
         return _extract_xlsx(file_bytes)
     else:
-        # txt, csv и всё остальное — читаем как текст
         return file_bytes.decode("utf-8", errors="replace")
 
 
@@ -66,7 +65,9 @@ async def process_document(
     if not ok:
         raise RateLimitError(f"Превышен лимит запросов ({rate_limit} в час)")
 
-    cost = get_task_cost(TaskType.DOCUMENT)
+    provider, model_cfg = get_provider(TaskType.DOCUMENT)
+    cost = model_cfg["cost_credits"]
+
     if user["balance"] < cost:
         raise InsufficientCreditsError(
             f"Недостаточно кредитов. Нужно: {cost}, у вас: {user['balance']}"
@@ -84,7 +85,6 @@ async def process_document(
         ),
     }]
 
-    provider, _ = get_provider(TaskType.DOCUMENT)
-    result = await provider.chat(messages)
+    result = await provider.chat(messages, model=model_cfg["model_id"])
     await deduct_credits(user_id, cost, TaskType.DOCUMENT.value)
     return result.text
