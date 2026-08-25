@@ -32,6 +32,7 @@ def _chat_model_kb(models: list[dict]) -> InlineKeyboardMarkup:
             text=f"{m['label']} — {m['cost_credits']} кр./сообщ.",
             callback_data=f"chat:model:{m['id']}",
         ))
+    builder.row(InlineKeyboardButton(text="◀️ Назад", callback_data="chat:back:menu"))
     return builder.as_markup()
 
 
@@ -48,6 +49,14 @@ async def enter_chat(message: Message, state: FSMContext) -> None:
         parse_mode="HTML",
         reply_markup=_chat_model_kb(models),
     )
+
+
+@router.callback_query(ChatStates.select_model, F.data == "chat:back:menu")
+async def chat_back_to_menu(callback: CallbackQuery, state: FSMContext) -> None:
+    await state.clear()
+    await callback.message.delete()
+    await callback.message.answer("Главное меню:", reply_markup=main_menu_kb())
+    await callback.answer()
 
 
 @router.callback_query(ChatStates.select_model, F.data.startswith("chat:model:"))

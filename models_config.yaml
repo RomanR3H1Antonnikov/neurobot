@@ -270,6 +270,28 @@ tasks:
   image_edit:
     rate_limit_per_hour: 15
     models:
+      - id: nano-banana-2-edit
+        label: "Nano Banana 2"
+        group: nano-banana-edit
+        group_label: "Nano Banana AI"
+        description: ""
+        model_id: nano-banana-2
+        provider: kie
+        cost_credits: 15
+        cost_usd: 0.01
+        enabled: true
+
+      - id: nano-banana-pro-edit
+        label: "Nano Banana Pro"
+        group: nano-banana-edit
+        group_label: "Nano Banana AI"
+        description: ""
+        model_id: gemini-3-pro-image
+        provider: aitunnel
+        cost_credits: 20
+        cost_usd: 0.02
+        enabled: true
+
       - id: gpt-image-2-edit
         label: "GPT Image 2"
         description: ""

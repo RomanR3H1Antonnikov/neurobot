@@ -50,3 +50,10 @@ def load_config() -> Config:
 
 
 config = load_config()
+
+
+def reload_models() -> None:
+    """Перечитывает models_config.yaml без перезапуска бота."""
+    with open("models_config.yaml", encoding="utf-8") as f:
+        data = yaml.safe_load(f)
+    config.models = data.get("tasks", {})
