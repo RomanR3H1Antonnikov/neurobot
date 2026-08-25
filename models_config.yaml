@@ -21,7 +21,7 @@ tasks:
       - id: nano-banana-2
         label: "Nano Banana 2"
         group: nano-banana
-        group_label: "Nano Banana"
+        group_label: "Nano Banana AI"
         description: ""
         model_id: nano-banana-2
         provider: kie
@@ -32,7 +32,7 @@ tasks:
       - id: nano-banana-pro
         label: "Nano Banana Pro"
         group: nano-banana
-        group_label: "Nano Banana"
+        group_label: "Nano Banana AI"
         description: ""
         model_id: gemini-3-pro-image
         provider: aitunnel
@@ -133,6 +133,17 @@ tasks:
         cost_usd: 0.05
         enabled: true
 
+      - id: kling-3-motion
+        label: "Kling 3.0 Motion Control"
+        group: kling-3
+        group_label: "Kling 3.0"
+        description: ""
+        model_id: kling-v3-motion-control
+        provider: kie
+        cost_credits: 80
+        cost_usd: 0.08
+        enabled: true
+
       - id: minimax-h3
         label: "MiniMax H3"
         description: ""
@@ -142,15 +153,35 @@ tasks:
         cost_usd: 0.07
         enabled: true
 
-      - id: sora-2-pro
-        label: "Sora 2 Pro"
-        group: sora-2
-        group_label: "Sora 2"
+      - id: wan-3-0
+        label: "Wan 3.0"
+        group: wan
+        group_label: "Wan"
         description: ""
-        model_id: openai/sora-2-pro
+        model_id: wan-3.0
+        provider: kie
+        cost_credits: 80
+        cost_usd: 0.08
+        enabled: true
+
+      - id: wan-2-7
+        label: "Wan 2.7"
+        group: wan
+        group_label: "Wan"
+        description: ""
+        model_id: wan-2.7
+        provider: kie
+        cost_credits: 70
+        cost_usd: 0.07
+        enabled: true
+
+      - id: happyhorse-1-1
+        label: "HappyHorse 1.1"
+        description: ""
+        model_id: alibaba/happyhorse-1.1
         provider: routerai
-        cost_credits: 150
-        cost_usd: 0.30
+        cost_credits: 70
+        cost_usd: 0.07
         enabled: true
 
       - id: pixverse-6
@@ -183,8 +214,6 @@ tasks:
 
       - id: sora-2
         label: "Sora 2"
-        group: sora-2
-        group_label: "Sora 2"
         description: ""
         model_id: sora-2
         provider: bratuha
