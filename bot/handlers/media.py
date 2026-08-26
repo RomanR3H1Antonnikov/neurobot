@@ -361,10 +361,27 @@ async def receive_prompt(message: Message, state: FSMContext) -> None:
 @router.message(MediaStates.enter_prompt, ~F.text.in_(MENU_BUTTONS))
 async def enter_prompt_wrong_input(message: Message, state: FSMContext) -> None:
     data = await state.get_data()
-    await message.answer(
-        _PROMPT_HINTS.get(data.get("media_type", ""), "Введи текстовое описание:"),
-        reply_markup=back_to_model_kb(),
-    )
+    media_type = data.get("media_type", "")
+
+    if message.photo and media_type == "image":
+        await message.answer(
+            "Этот раздел создаёт фото с нуля по текстовому описанию. "
+            "Если хочешь изменить готовое фото — используй раздел «✏️ Редактировать фото».\n\n"
+            + _PROMPT_HINTS["image"],
+            reply_markup=back_to_model_kb(),
+        )
+    elif (message.video or message.video_note) and media_type == "video":
+        await message.answer(
+            "Этот раздел создаёт видео с нуля по описанию. "
+            "Если хочешь изменить готовое видео — используй раздел «✏️ Редактировать видео».\n\n"
+            + _PROMPT_HINTS["video"],
+            reply_markup=back_to_model_kb(),
+        )
+    else:
+        await message.answer(
+            _PROMPT_HINTS.get(media_type, "Введи текстовое описание:"),
+            reply_markup=back_to_model_kb(),
+        )
 
 
 # ─── Ввод/изменение описания прямо из confirm карточки ───────────────────────
@@ -377,9 +394,24 @@ async def update_prompt_in_confirm(message: Message, state: FSMContext) -> None:
 
 @router.message(MediaStates.confirm, ~F.text)
 async def confirm_unknown_input(message: Message, state: FSMContext) -> None:
-    """Нетекстовый ввод в confirm state — повторяем карточку с настройками."""
-    await message.answer("Не понял запроса.")
+    """Нетекстовый ввод в confirm state — поясняем и повторяем карточку."""
     data = await state.get_data()
+    media_type = data.get("media_type", "")
+
+    if message.photo and media_type == "image":
+        hint = (
+            "Этот раздел создаёт фото с нуля по текстовому описанию. "
+            "Если хочешь изменить готовое фото — используй раздел «✏️ Редактировать фото»."
+        )
+    elif (message.video or message.video_note) and media_type == "video":
+        hint = (
+            "Этот раздел создаёт видео с нуля по описанию. "
+            "Если хочешь изменить готовое видео — используй раздел «✏️ Редактировать видео»."
+        )
+    else:
+        hint = "Не понял запроса. Введи текстовое описание или воспользуйся кнопками."
+
+    await message.answer(hint)
     sent = await message.answer(
         _confirm_card_text(data),
         parse_mode="HTML",
