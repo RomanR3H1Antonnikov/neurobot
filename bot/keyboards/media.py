@@ -80,7 +80,7 @@ def model_select_text(type_label: str, models: list[dict]) -> str:
 def model_variant_text(group_label: str, description: str = "") -> str:
     header = f"<b>Выбери версию ({group_label}):</b>"
     if description:
-        return f"{header}\n\n{description}"
+        return f"{header}\n<blockquote expandable>{description}</blockquote>"
     return header
 
 

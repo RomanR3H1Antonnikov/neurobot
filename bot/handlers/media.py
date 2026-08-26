@@ -58,7 +58,7 @@ def _confirm_card_text(data: dict) -> str:
     lines = []
     # для сгруппированных моделей описание уже было показано на экране выбора версии
     if model_description and not data.get("model_has_group"):
-        lines.append(f"<b>{model_label}</b>\n\n{model_description}\n")
+        lines.append(f"<b>{model_label}</b>\n<blockquote expandable>{model_description}</blockquote>")
     else:
         lines.append(f"<b>Модель:</b> {model_label}")
 
