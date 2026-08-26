@@ -8,6 +8,7 @@ class TaskType(str, Enum):
     VIDEO_GENERATION = "video_generation"
     AUDIO_GENERATION = "audio_generation"
     IMAGE_EDIT = "image_edit"
+    VIDEO_EDIT = "video_edit"
     CHAT = "chat"
     DOCUMENT = "document"
 
@@ -55,6 +56,10 @@ class AbstractProvider(ABC):
 
     @abstractmethod
     async def edit_image(self, image_bytes: bytes, prompt: str) -> GenerationResult:
+        ...
+
+    @abstractmethod
+    async def edit_video(self, video_bytes: bytes, prompt: str) -> GenerationResult:
         ...
 
     @abstractmethod

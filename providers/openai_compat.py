@@ -18,6 +18,7 @@ class OpenAICompatProvider(AbstractProvider):
     audio_model: str = "tts-1"
     audio_voice: str = "alloy"
     image_edit_model: str = "gpt-image-1"
+    video_edit_model: str = ""
     chat_model: str = "gpt-4o-mini"
 
     def __init__(self, api_key: str) -> None:
@@ -135,6 +136,31 @@ class OpenAICompatProvider(AbstractProvider):
 
         image_out = base64.b64decode(data["data"][0]["b64_json"])
         return GenerationResult(data=image_out, mime_type="image/png", filename="edited.png")
+
+    async def edit_video(
+        self, video_bytes: bytes, prompt: str, model: str | None = None
+    ) -> GenerationResult:
+        actual_model = model or self.video_edit_model
+
+        form = aiohttp.FormData()
+        form.add_field("model", actual_model)
+        form.add_field("prompt", prompt)
+        form.add_field("video", video_bytes, filename="video.mp4", content_type="video/mp4")
+
+        headers = {"Authorization": f"Bearer {self._api_key}"}
+        async with aiohttp.ClientSession(headers=headers, timeout=aiohttp.ClientTimeout(total=300)) as session:
+            async with session.post(f"{self.base_url}/video/edits", data=form) as resp:
+                data = await self._handle_response(resp)
+
+        item = data.get("data", [{}])[0]
+        if "url" in item:
+            async with aiohttp.ClientSession() as s:
+                async with s.get(item["url"]) as vresp:
+                    video_out = await vresp.read()
+        else:
+            video_out = base64.b64decode(item.get("b64_video", ""))
+
+        return GenerationResult(data=video_out, mime_type="video/mp4", filename="edited.mp4")
 
     async def chat(
         self, messages: list[dict], system: str = "", model: str | None = None

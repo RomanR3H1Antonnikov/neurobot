@@ -31,21 +31,24 @@ _TYPE_LABELS = {
     "image": "Фото",
     "video": "Видео",
     "audio": "Аудио",
-    "edit": "Редактирование медиа",
+    "photo_edit": "Редактирование фото",
+    "video_edit": "Редактирование видео",
 }
 
 _TYPE_TO_TASK = {
     "image": TaskType.IMAGE_GENERATION,
     "video": TaskType.VIDEO_GENERATION,
     "audio": TaskType.AUDIO_GENERATION,
-    "edit": TaskType.IMAGE_EDIT,
+    "photo_edit": TaskType.IMAGE_EDIT,
+    "video_edit": TaskType.VIDEO_EDIT,
 }
 
 _PROMPT_HINTS = {
     "image": "Опиши изображение, которое хочешь получить:",
     "video": "Опиши видео (действие, сцена, стиль):",
     "audio": "Введи текст для озвучки или описание музыки:",
-    "edit": "Опиши, что нужно изменить:",
+    "photo_edit": "Опиши, что нужно изменить на фото:",
+    "video_edit": "Опиши, что нужно изменить в видео:",
 }
 
 
@@ -69,7 +72,7 @@ def _confirm_card_text(data: dict) -> str:
     elif media_type == "audio":
         t = "Озвучка" if data.get("audio_type", "voice") == "voice" else "Музыка"
         lines.append(f"<b>Тип аудио:</b> {t}")
-    elif media_type == "edit":
+    elif media_type in ("photo_edit", "video_edit"):
         ref_type = data.get("reference_type")
         if ref_type:
             label = "Видео" if "video" in ref_type else "Фото"
@@ -88,8 +91,9 @@ def _confirm_kb(data: dict):
         return video_confirm_kb(data.get("duration", 5), has_prompt=has_prompt)
     elif media_type == "audio":
         return audio_confirm_kb(has_prompt=has_prompt)
-    else:
+    elif media_type in ("photo_edit", "video_edit"):
         return edit_confirm_kb(has_prompt=has_prompt)
+    return edit_confirm_kb(has_prompt=has_prompt)
 
 
 # ─── Вход в раздел ───────────────────────────────────────────────────────────
@@ -168,9 +172,15 @@ async def select_model(callback: CallbackQuery, state: FSMContext) -> None:
     await state.update_data(**update)
     data = await state.get_data()
 
-    if media_type == "edit":
+    if media_type == "photo_edit":
         await callback.message.edit_text(
-            "Пришли фото или видео, которое нужно отредактировать:",
+            "Пришли фото, которое нужно отредактировать:",
+            reply_markup=back_to_model_kb(),
+        )
+        await state.set_state(MediaStates.enter_reference)
+    elif media_type == "video_edit":
+        await callback.message.edit_text(
+            "Пришли видео, которое нужно отредактировать:",
             reply_markup=back_to_model_kb(),
         )
         await state.set_state(MediaStates.enter_reference)
@@ -267,6 +277,10 @@ async def _show_confirm_after_reference(message: Message, state: FSMContext) -> 
 
 @router.message(MediaStates.enter_reference, F.photo)
 async def receive_reference_photo(message: Message, state: FSMContext) -> None:
+    data = await state.get_data()
+    if data.get("media_type") == "video_edit":
+        await message.answer("Для редактирования видео пришли видеофайл, а не фото.", reply_markup=back_to_model_kb())
+        return
     photo = message.photo[-1]
     await state.update_data(reference_file_id=photo.file_id, reference_type="photo")
     await _show_confirm_after_reference(message, state)
@@ -274,19 +288,33 @@ async def receive_reference_photo(message: Message, state: FSMContext) -> None:
 
 @router.message(MediaStates.enter_reference, F.video)
 async def receive_reference_video(message: Message, state: FSMContext) -> None:
+    data = await state.get_data()
+    if data.get("media_type") == "photo_edit":
+        await message.answer("Для редактирования фото пришли изображение, а не видео.", reply_markup=back_to_model_kb())
+        return
     await state.update_data(reference_file_id=message.video.file_id, reference_type="video")
     await _show_confirm_after_reference(message, state)
 
 
 @router.message(MediaStates.enter_reference, F.document)
 async def receive_reference_document(message: Message, state: FSMContext) -> None:
+    data = await state.get_data()
     mime = message.document.mime_type or ""
     if mime.startswith("video/"):
+        if data.get("media_type") == "photo_edit":
+            await message.answer("Для редактирования фото пришли изображение, а не видео.", reply_markup=back_to_model_kb())
+            return
         await state.update_data(reference_file_id=message.document.file_id, reference_type="video")
+        await _show_confirm_after_reference(message, state)
+    elif mime.startswith("image/"):
+        if data.get("media_type") == "video_edit":
+            await message.answer("Для редактирования видео пришли видеофайл, а не фото.", reply_markup=back_to_model_kb())
+            return
+        await state.update_data(reference_file_id=message.document.file_id, reference_type="photo")
         await _show_confirm_after_reference(message, state)
     else:
         await message.answer(
-            "Пожалуйста, пришли фото или видео для редактирования.",
+            "Пожалуйста, пришли подходящий файл для редактирования.",
             reply_markup=back_to_model_kb(),
         )
 
@@ -430,7 +458,7 @@ async def start_generation(callback: CallbackQuery, state: FSMContext) -> None:
             file = BufferedInputFile(result.data, filename=result.filename)
             await callback.message.answer_audio(file, reply_markup=after_generation_kb())
 
-        elif media_type == "edit":
+        elif media_type == "photo_edit":
             file_info = await callback.bot.get_file(data["reference_file_id"])
             file_bytes = await callback.bot.download_file(file_info.file_path)
             media_bytes = file_bytes.read()
@@ -438,10 +466,17 @@ async def start_generation(callback: CallbackQuery, state: FSMContext) -> None:
                 tg_user.id, tg_user.username, media_bytes, prompt, model_slug
             )
             file = BufferedInputFile(result.data, filename=result.filename)
-            if result.mime_type.startswith("video"):
-                await callback.message.answer_video(file, reply_markup=after_generation_kb())
-            else:
-                await callback.message.answer_photo(file, reply_markup=after_generation_kb())
+            await callback.message.answer_photo(file, reply_markup=after_generation_kb())
+
+        elif media_type == "video_edit":
+            file_info = await callback.bot.get_file(data["reference_file_id"])
+            file_bytes = await callback.bot.download_file(file_info.file_path)
+            media_bytes = file_bytes.read()
+            result = await media_service.edit_video(
+                tg_user.id, tg_user.username, media_bytes, prompt, model_slug
+            )
+            file = BufferedInputFile(result.data, filename=result.filename)
+            await callback.message.answer_video(file, reply_markup=after_generation_kb())
 
         await callback.message.delete()
         await state.clear()
