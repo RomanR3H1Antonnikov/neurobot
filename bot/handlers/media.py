@@ -56,7 +56,8 @@ def _confirm_card_text(data: dict) -> str:
     model_description = data.get("model_description", "")
 
     lines = []
-    if model_description:
+    # для сгруппированных моделей описание уже было показано на экране выбора версии
+    if model_description and not data.get("model_has_group"):
         lines.append(f"<b>{model_label}</b>\n\n{model_description}\n")
     else:
         lines.append(f"<b>Модель:</b> {model_label}")
@@ -157,6 +158,7 @@ async def select_model(callback: CallbackQuery, state: FSMContext) -> None:
         "model_slug": model_slug,
         "model_label": model_cfg["label"],
         "model_description": model_cfg.get("description", ""),
+        "model_has_group": bool(model_cfg.get("group")),
         "model_actual_id": model_cfg["model_id"],
     }
     # для аудио — тип (voice/music) берём из конфига модели
@@ -199,8 +201,9 @@ async def select_group(callback: CallbackQuery, state: FSMContext) -> None:
         return
 
     group_label = variants[0].get("group_label", group_id)
+    description = variants[0].get("description", "")
     await callback.message.edit_text(
-        model_variant_text(group_label),
+        model_variant_text(group_label, description),
         parse_mode="HTML",
         reply_markup=model_variant_kb(variants),
     )
