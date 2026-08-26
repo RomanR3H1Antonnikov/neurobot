@@ -80,7 +80,7 @@ def _confirm_card_text(data: dict) -> str:
         else:
             lines.append("<b>Загружено:</b> не добавлено")
 
-    lines.append(f"<b>Промпт:</b> {prompt}")
+    lines.append(f"<b>Описание:</b> {prompt}")
     return "\n".join(lines)
 
 
