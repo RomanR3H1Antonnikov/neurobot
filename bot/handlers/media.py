@@ -74,15 +74,16 @@ def _confirm_card_text(data: dict) -> str:
 
 
 def _confirm_kb(data: dict):
+    has_prompt = bool(data.get("prompt"))
     media_type = data.get("media_type")
     if media_type == "image":
-        return image_confirm_kb(data.get("aspect_ratio", "1:1"))
+        return image_confirm_kb(data.get("aspect_ratio", "1:1"), has_prompt=has_prompt)
     elif media_type == "video":
-        return video_confirm_kb(data.get("duration", 5))
+        return video_confirm_kb(data.get("duration", 5), has_prompt=has_prompt)
     elif media_type == "audio":
-        return audio_confirm_kb()
+        return audio_confirm_kb(has_prompt=has_prompt)
     else:
-        return edit_confirm_kb()
+        return edit_confirm_kb(has_prompt=has_prompt)
 
 
 # ─── Вход в раздел ───────────────────────────────────────────────────────────
@@ -157,6 +158,7 @@ async def select_model(callback: CallbackQuery, state: FSMContext) -> None:
         update["audio_type"] = model_cfg.get("audio_type", "voice")
 
     await state.update_data(**update)
+    data = await state.get_data()
 
     if media_type == "edit":
         await callback.message.edit_text(
@@ -165,9 +167,13 @@ async def select_model(callback: CallbackQuery, state: FSMContext) -> None:
         )
         await state.set_state(MediaStates.enter_reference)
     else:
-        hint = _PROMPT_HINTS.get(media_type, "Опиши, что хочешь получить:")
-        await callback.message.edit_text(hint, reply_markup=back_to_model_kb())
-        await state.set_state(MediaStates.enter_prompt)
+        await state.set_state(MediaStates.confirm)
+        await state.update_data(confirm_msg_id=callback.message.message_id)
+        await callback.message.edit_text(
+            _confirm_card_text(data),
+            parse_mode="HTML",
+            reply_markup=_confirm_kb(data),
+        )
 
     await callback.answer()
 
@@ -238,19 +244,29 @@ async def generate_again(callback: CallbackQuery, state: FSMContext) -> None:
 
 # ─── Загрузка референса (только для edit) ────────────────────────────────────
 
+async def _show_confirm_after_reference(message: Message, state: FSMContext) -> None:
+    """Переходит в confirm state и показывает карточку после загрузки референса."""
+    data = await state.get_data()
+    await state.set_state(MediaStates.confirm)
+    sent = await message.answer(
+        _confirm_card_text(data),
+        parse_mode="HTML",
+        reply_markup=_confirm_kb(data),
+    )
+    await state.update_data(confirm_msg_id=sent.message_id)
+
+
 @router.message(MediaStates.enter_reference, F.photo)
 async def receive_reference_photo(message: Message, state: FSMContext) -> None:
     photo = message.photo[-1]
     await state.update_data(reference_file_id=photo.file_id, reference_type="photo")
-    await state.set_state(MediaStates.enter_prompt)
-    await message.answer("Опиши, что нужно изменить:", reply_markup=back_to_model_kb())
+    await _show_confirm_after_reference(message, state)
 
 
 @router.message(MediaStates.enter_reference, F.video)
 async def receive_reference_video(message: Message, state: FSMContext) -> None:
     await state.update_data(reference_file_id=message.video.file_id, reference_type="video")
-    await state.set_state(MediaStates.enter_prompt)
-    await message.answer("Опиши, что нужно изменить:", reply_markup=back_to_model_kb())
+    await _show_confirm_after_reference(message, state)
 
 
 @router.message(MediaStates.enter_reference, F.document)
@@ -258,8 +274,7 @@ async def receive_reference_document(message: Message, state: FSMContext) -> Non
     mime = message.document.mime_type or ""
     if mime.startswith("video/"):
         await state.update_data(reference_file_id=message.document.file_id, reference_type="video")
-        await state.set_state(MediaStates.enter_prompt)
-        await message.answer("Опиши, что нужно изменить:", reply_markup=back_to_model_kb())
+        await _show_confirm_after_reference(message, state)
     else:
         await message.answer(
             "Пожалуйста, пришли фото или видео для редактирования.",
@@ -277,16 +292,33 @@ async def reference_wrong_type(message: Message) -> None:
 
 # ─── Ввод описания ───────────────────────────────────────────────────────────
 
+async def _update_confirm_card(message: Message, state: FSMContext) -> None:
+    """Обновляет карточку: редактирует существующее сообщение или отправляет новое."""
+    data = await state.get_data()
+    confirm_msg_id = data.get("confirm_msg_id")
+    text = _confirm_card_text(data)
+    kb = _confirm_kb(data)
+    if confirm_msg_id:
+        try:
+            await message.bot.edit_message_text(
+                chat_id=message.chat.id,
+                message_id=confirm_msg_id,
+                text=text,
+                parse_mode="HTML",
+                reply_markup=kb,
+            )
+            return
+        except Exception:
+            pass
+    sent = await message.answer(text, parse_mode="HTML", reply_markup=kb)
+    await state.update_data(confirm_msg_id=sent.message_id)
+
+
 @router.message(MediaStates.enter_prompt, F.text, ~F.text.in_(MENU_BUTTONS))
 async def receive_prompt(message: Message, state: FSMContext) -> None:
     await state.update_data(prompt=message.text)
-    data = await state.get_data()
     await state.set_state(MediaStates.confirm)
-    await message.answer(
-        _confirm_card_text(data),
-        parse_mode="HTML",
-        reply_markup=_confirm_kb(data),
-    )
+    await _update_confirm_card(message, state)
 
 
 @router.message(MediaStates.enter_prompt, ~F.text.in_(MENU_BUTTONS))
@@ -296,6 +328,14 @@ async def enter_prompt_wrong_input(message: Message, state: FSMContext) -> None:
         _PROMPT_HINTS.get(data.get("media_type", ""), "Введи текстовое описание:"),
         reply_markup=back_to_model_kb(),
     )
+
+
+# ─── Ввод/изменение описания прямо из confirm карточки ───────────────────────
+
+@router.message(MediaStates.confirm, F.text, ~F.text.in_(MENU_BUTTONS))
+async def update_prompt_in_confirm(message: Message, state: FSMContext) -> None:
+    await state.update_data(prompt=message.text)
+    await _update_confirm_card(message, state)
 
 
 # ─── Изменение параметров в карточке ─────────────────────────────────────────
@@ -336,7 +376,11 @@ async def start_generation(callback: CallbackQuery, state: FSMContext) -> None:
     data = await state.get_data()
     tg_user = callback.from_user
     media_type = data["media_type"]
-    prompt = data.get("prompt", "")
+    prompt = (data.get("prompt") or "").strip()
+
+    if not prompt:
+        await callback.answer("Сначала введи описание ✏️", show_alert=True)
+        return
     model_slug = data.get("model_slug", "")
 
     await callback.message.edit_text("⏳ Генерирую, подожди немного...")

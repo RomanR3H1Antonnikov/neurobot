@@ -109,7 +109,7 @@ def back_to_type_kb() -> InlineKeyboardMarkup:
 
 # ─── Карточка подтверждения: фото ────────────────────────────────────────────
 
-def image_confirm_kb(aspect_ratio: str) -> InlineKeyboardMarkup:
+def image_confirm_kb(aspect_ratio: str, has_prompt: bool = False) -> InlineKeyboardMarkup:
     ratios = {"1:1": "Квадрат", "16:9": "Пейзаж", "9:16": "Портрет"}
     builder = InlineKeyboardBuilder()
     for ratio, label in ratios.items():
@@ -119,8 +119,9 @@ def image_confirm_kb(aspect_ratio: str) -> InlineKeyboardMarkup:
             callback_data=f"media:ratio:{ratio}",
         ))
     builder.adjust(3)
+    edit_text = "✏️ Изменить описание" if has_prompt else "✏️ Ввести описание"
     builder.row(
-        InlineKeyboardButton(text="✏️ Изменить описание", callback_data="media:edit_prompt"),
+        InlineKeyboardButton(text=edit_text, callback_data="media:edit_prompt"),
         InlineKeyboardButton(text="◀️ Назад", callback_data="media:back:model"),
     )
     builder.row(InlineKeyboardButton(text="🚀 Начать генерацию", callback_data="media:start"))
@@ -129,7 +130,7 @@ def image_confirm_kb(aspect_ratio: str) -> InlineKeyboardMarkup:
 
 # ─── Карточка подтверждения: видео ───────────────────────────────────────────
 
-def video_confirm_kb(duration: int) -> InlineKeyboardMarkup:
+def video_confirm_kb(duration: int, has_prompt: bool = False) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     for d, label in [(5, "5 сек"), (10, "10 сек")]:
         prefix = "✅ " if d == duration else ""
@@ -138,8 +139,9 @@ def video_confirm_kb(duration: int) -> InlineKeyboardMarkup:
             callback_data=f"media:duration:{d}",
         ))
     builder.adjust(2)
+    edit_text = "✏️ Изменить описание" if has_prompt else "✏️ Ввести описание"
     builder.row(
-        InlineKeyboardButton(text="✏️ Изменить описание", callback_data="media:edit_prompt"),
+        InlineKeyboardButton(text=edit_text, callback_data="media:edit_prompt"),
         InlineKeyboardButton(text="◀️ Назад", callback_data="media:back:model"),
     )
     builder.row(InlineKeyboardButton(text="🚀 Начать генерацию", callback_data="media:start"))
@@ -148,10 +150,11 @@ def video_confirm_kb(duration: int) -> InlineKeyboardMarkup:
 
 # ─── Карточка подтверждения: аудио ───────────────────────────────────────────
 
-def audio_confirm_kb() -> InlineKeyboardMarkup:
+def audio_confirm_kb(has_prompt: bool = False) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
+    edit_text = "✏️ Изменить описание" if has_prompt else "✏️ Ввести описание"
     builder.row(
-        InlineKeyboardButton(text="✏️ Изменить описание", callback_data="media:edit_prompt"),
+        InlineKeyboardButton(text=edit_text, callback_data="media:edit_prompt"),
         InlineKeyboardButton(text="◀️ Назад", callback_data="media:back:model"),
     )
     builder.row(InlineKeyboardButton(text="🚀 Начать генерацию", callback_data="media:start"))
@@ -160,10 +163,11 @@ def audio_confirm_kb() -> InlineKeyboardMarkup:
 
 # ─── Карточка подтверждения: редактирование ──────────────────────────────────
 
-def edit_confirm_kb() -> InlineKeyboardMarkup:
+def edit_confirm_kb(has_prompt: bool = False) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
+    edit_text = "✏️ Изменить инструкцию" if has_prompt else "✏️ Ввести инструкцию"
     builder.row(
-        InlineKeyboardButton(text="✏️ Изменить инструкцию", callback_data="media:edit_prompt"),
+        InlineKeyboardButton(text=edit_text, callback_data="media:edit_prompt"),
         InlineKeyboardButton(text="◀️ Назад", callback_data="media:back:model"),
     )
     builder.row(InlineKeyboardButton(text="🚀 Начать обработку", callback_data="media:start"))
