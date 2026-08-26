@@ -347,6 +347,19 @@ async def update_prompt_in_confirm(message: Message, state: FSMContext) -> None:
     await _update_confirm_card(message, state)
 
 
+@router.message(MediaStates.confirm, ~F.text)
+async def confirm_unknown_input(message: Message, state: FSMContext) -> None:
+    """Нетекстовый ввод в confirm state — повторяем карточку с настройками."""
+    await message.answer("Не понял запроса.")
+    data = await state.get_data()
+    sent = await message.answer(
+        _confirm_card_text(data),
+        parse_mode="HTML",
+        reply_markup=_confirm_kb(data),
+    )
+    await state.update_data(confirm_msg_id=sent.message_id)
+
+
 # ─── Изменение параметров в карточке ─────────────────────────────────────────
 
 @router.callback_query(MediaStates.confirm, F.data.startswith("media:ratio:"))
