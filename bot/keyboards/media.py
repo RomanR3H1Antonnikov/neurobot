@@ -74,19 +74,7 @@ def model_variant_kb(variants: list[dict]) -> InlineKeyboardMarkup:
 
 def model_select_text(type_label: str, models: list[dict]) -> str:
     """Текст сообщения над клавиатурой первого уровня."""
-    has_desc = any(m.get("description") and not m.get("group") for m in models)
-    if not has_desc:
-        return f"<b>Выбери модель ({type_label}):</b>"
-    lines = [f"<b>Выбери модель ({type_label}):</b>\n"]
-    for m in models:
-        if m.get("group"):
-            continue  # описания групповых моделей — на втором уровне
-        desc = m.get("description", "")
-        if desc:
-            lines.append(f"• <b>{m['label']}</b> — {desc}")
-        else:
-            lines.append(f"• <b>{m['label']}</b>")
-    return "\n".join(lines)
+    return f"<b>Выбери модель ({type_label}):</b>"
 
 
 def model_variant_text(group_label: str, description: str = "") -> str:
