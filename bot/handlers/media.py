@@ -256,8 +256,24 @@ async def back_to_menu(callback: CallbackQuery, state: FSMContext) -> None:
 
 @router.callback_query(F.data == "media:again")
 async def generate_again(callback: CallbackQuery, state: FSMContext) -> None:
+    await state.clear()
     await state.set_state(MediaStates.select_type)
-    await callback.message.edit_text(MEDIA_MENU_TEXT, parse_mode="HTML", reply_markup=media_type_kb())
+    await callback.message.delete()
+    await callback.message.answer(MEDIA_MENU_TEXT, parse_mode="HTML", reply_markup=media_type_kb())
+    await callback.answer()
+
+
+@router.callback_query(F.data == "media:back:confirm")
+async def back_to_confirm(callback: CallbackQuery, state: FSMContext) -> None:
+    data = await state.get_data()
+    await state.set_state(MediaStates.confirm)
+    await callback.message.edit_reply_markup(reply_markup=None)
+    sent = await callback.message.answer(
+        _confirm_card_text(data),
+        parse_mode="HTML",
+        reply_markup=_confirm_kb(data),
+    )
+    await state.update_data(confirm_msg_id=sent.message_id)
     await callback.answer()
 
 
@@ -511,7 +527,7 @@ async def start_generation(callback: CallbackQuery, state: FSMContext) -> None:
             await callback.message.answer_video(file, reply_markup=after_generation_kb())
 
         await callback.message.delete()
-        await state.clear()
+        # state не очищаем — данные нужны для кнопки "Назад"
 
     except InsufficientCreditsError as e:
         await callback.message.edit_text(

@@ -174,4 +174,5 @@ def after_generation_kb() -> InlineKeyboardMarkup:
         InlineKeyboardButton(text="🔄 Сгенерировать ещё", callback_data="media:again"),
         InlineKeyboardButton(text="🏠 Главное меню", callback_data="media:back:menu"),
     )
+    builder.row(InlineKeyboardButton(text="◀️ Назад", callback_data="media:back:confirm"))
     return builder.as_markup()
