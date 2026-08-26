@@ -53,11 +53,14 @@ def _confirm_card_text(data: dict) -> str:
     media_type = data.get("media_type", "")
     prompt = data.get("prompt") or "не задан"
     model_label = data.get("model_label", "—")
-    lines = [
-        f"<b>Тип:</b> {_TYPE_LABELS.get(media_type, media_type)}",
-        f"<b>Модель:</b> {model_label}",
-        f"<b>Описание:</b> {prompt}",
-    ]
+    model_description = data.get("model_description", "")
+
+    lines = []
+    if model_description:
+        lines.append(f"<b>{model_label}</b>\n\n{model_description}\n")
+    else:
+        lines.append(f"<b>Модель:</b> {model_label}")
+
     if media_type == "image":
         lines.append(f"<b>Формат:</b> {data.get('aspect_ratio', '1:1')}")
     elif media_type == "video":
@@ -70,6 +73,8 @@ def _confirm_card_text(data: dict) -> str:
         if ref_type:
             label = "Видео" if "video" in ref_type else "Фото"
             lines.append(f"<b>Загружено:</b> {label} ✅")
+
+    lines.append(f"<b>Промпт:</b> {prompt}")
     return "\n".join(lines)
 
 
@@ -151,6 +156,7 @@ async def select_model(callback: CallbackQuery, state: FSMContext) -> None:
     update = {
         "model_slug": model_slug,
         "model_label": model_cfg["label"],
+        "model_description": model_cfg.get("description", ""),
         "model_actual_id": model_cfg["model_id"],
     }
     # для аудио — тип (voice/music) берём из конфига модели
