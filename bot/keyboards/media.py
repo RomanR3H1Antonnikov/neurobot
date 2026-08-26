@@ -155,14 +155,29 @@ def audio_confirm_kb(has_prompt: bool = False) -> InlineKeyboardMarkup:
 
 # ─── Карточка подтверждения: редактирование ──────────────────────────────────
 
-def edit_confirm_kb(has_prompt: bool = False) -> InlineKeyboardMarkup:
+def edit_confirm_kb(
+    has_prompt: bool = False,
+    has_reference: bool = False,
+    media_type: str = "photo_edit",
+) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
-    edit_text = "✏️ Изменить инструкцию" if has_prompt else "✏️ Ввести инструкцию"
+    if media_type == "photo_edit":
+        ref_text = "📎 Изменить фото" if has_reference else "📎 Добавить фото"
+    else:
+        ref_text = "📎 Изменить видео" if has_reference else "📎 Добавить видео"
+    builder.row(InlineKeyboardButton(text=ref_text, callback_data="media:add_reference"))
+    prompt_text = "✏️ Изменить инструкцию" if has_prompt else "✏️ Ввести инструкцию"
     builder.row(
-        InlineKeyboardButton(text=edit_text, callback_data="media:edit_prompt"),
+        InlineKeyboardButton(text=prompt_text, callback_data="media:edit_prompt"),
         InlineKeyboardButton(text="◀️ Назад", callback_data="media:back:model"),
     )
     builder.row(InlineKeyboardButton(text="🚀 Начать обработку", callback_data="media:start"))
+    return builder.as_markup()
+
+
+def back_to_confirm_kb() -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    builder.row(InlineKeyboardButton(text="◀️ Назад", callback_data="media:back:confirm"))
     return builder.as_markup()
 
 

@@ -7,7 +7,7 @@ from aiogram.fsm.state import State, StatesGroup
 from bot.keyboards.main_menu import BTN_MEDIA, MENU_BUTTONS, main_menu_kb
 from bot.keyboards.media import (
     media_type_kb, model_top_kb, model_variant_kb,
-    model_select_text, model_variant_text, back_to_model_kb,
+    model_select_text, model_variant_text, back_to_model_kb, back_to_confirm_kb,
     image_confirm_kb, video_confirm_kb, audio_confirm_kb, edit_confirm_kb,
     after_generation_kb,
 )
@@ -77,6 +77,8 @@ def _confirm_card_text(data: dict) -> str:
         if ref_type:
             label = "Видео" if "video" in ref_type else "Фото"
             lines.append(f"<b>Загружено:</b> {label} ✅")
+        else:
+            lines.append("<b>Загружено:</b> не добавлено")
 
     lines.append(f"<b>Промпт:</b> {prompt}")
     return "\n".join(lines)
@@ -92,8 +94,11 @@ def _confirm_kb(data: dict):
     elif media_type == "audio":
         return audio_confirm_kb(has_prompt=has_prompt)
     elif media_type in ("photo_edit", "video_edit"):
-        return edit_confirm_kb(has_prompt=has_prompt)
-    return edit_confirm_kb(has_prompt=has_prompt)
+        return edit_confirm_kb(
+            has_prompt=has_prompt,
+            has_reference=bool(data.get("reference_file_id")),
+            media_type=media_type,
+        )
 
 
 # ─── Вход в раздел ───────────────────────────────────────────────────────────
@@ -172,18 +177,14 @@ async def select_model(callback: CallbackQuery, state: FSMContext) -> None:
     await state.update_data(**update)
     data = await state.get_data()
 
-    if media_type == "photo_edit":
+    if media_type in ("photo_edit", "video_edit"):
+        await state.set_state(MediaStates.confirm)
+        await state.update_data(confirm_msg_id=callback.message.message_id)
         await callback.message.edit_text(
-            "Пришли фото, которое нужно отредактировать:",
-            reply_markup=back_to_model_kb(),
+            _confirm_card_text(data),
+            parse_mode="HTML",
+            reply_markup=_confirm_kb(data),
         )
-        await state.set_state(MediaStates.enter_reference)
-    elif media_type == "video_edit":
-        await callback.message.edit_text(
-            "Пришли видео, которое нужно отредактировать:",
-            reply_markup=back_to_model_kb(),
-        )
-        await state.set_state(MediaStates.enter_reference)
     else:
         await state.set_state(MediaStates.confirm)
         await state.update_data(confirm_msg_id=callback.message.message_id)
@@ -263,17 +264,34 @@ async def generate_again(callback: CallbackQuery, state: FSMContext) -> None:
     await callback.answer()
 
 
+@router.callback_query(MediaStates.confirm, F.data == "media:add_reference")
+async def add_reference_prompt(callback: CallbackQuery, state: FSMContext) -> None:
+    """Кнопка 'Добавить фото/видео' на карточке редактирования."""
+    data = await state.get_data()
+    media_type = data.get("media_type", "")
+    hint = "Отправь фото для редактирования:" if media_type == "photo_edit" else "Отправь видео для редактирования:"
+    await callback.message.edit_text(hint, reply_markup=back_to_confirm_kb())
+    await state.set_state(MediaStates.enter_reference)
+    await callback.answer()
+
+
 @router.callback_query(F.data == "media:back:confirm")
 async def back_to_confirm(callback: CallbackQuery, state: FSMContext) -> None:
+    """Возврат к карточке настроек — работает после генерации и из enter_reference."""
     data = await state.get_data()
     await state.set_state(MediaStates.confirm)
-    await callback.message.edit_reply_markup(reply_markup=None)
-    sent = await callback.message.answer(
-        _confirm_card_text(data),
-        parse_mode="HTML",
-        reply_markup=_confirm_kb(data),
-    )
-    await state.update_data(confirm_msg_id=sent.message_id)
+    text = _confirm_card_text(data)
+    kb = _confirm_kb(data)
+    try:
+        await callback.message.edit_text(text, parse_mode="HTML", reply_markup=kb)
+        await state.update_data(confirm_msg_id=callback.message.message_id)
+    except Exception:
+        try:
+            await callback.message.edit_reply_markup(reply_markup=None)
+        except Exception:
+            pass
+        sent = await callback.message.answer(text, parse_mode="HTML", reply_markup=kb)
+        await state.update_data(confirm_msg_id=sent.message_id)
     await callback.answer()
 
 
@@ -410,10 +428,28 @@ async def update_prompt_in_confirm(message: Message, state: FSMContext) -> None:
 
 @router.message(MediaStates.confirm, ~F.text)
 async def confirm_unknown_input(message: Message, state: FSMContext) -> None:
-    """Нетекстовый ввод в confirm state — поясняем и повторяем карточку."""
+    """Нетекстовый ввод в confirm state."""
     data = await state.get_data()
     media_type = data.get("media_type", "")
 
+    # Для edit-режимов: фото/видео принимаем как загрузку референса
+    if media_type == "photo_edit" and message.photo:
+        photo = message.photo[-1]
+        await state.update_data(reference_file_id=photo.file_id, reference_type="photo")
+        await _update_confirm_card(message, state)
+        return
+    if media_type == "video_edit" and message.video:
+        await state.update_data(reference_file_id=message.video.file_id, reference_type="video")
+        await _update_confirm_card(message, state)
+        return
+    if media_type == "photo_edit" and (message.video or message.video_note):
+        await message.answer("Для редактирования фото пришли изображение, а не видео.")
+        return
+    if media_type == "video_edit" and message.photo:
+        await message.answer("Для редактирования видео пришли видеофайл, а не фото.")
+        return
+
+    # Для генерации: информируем о разнице между генерацией и редактированием
     if message.photo and media_type == "image":
         hint = (
             "Этот раздел создаёт фото с нуля по текстовому описанию. "
@@ -478,6 +514,11 @@ async def start_generation(callback: CallbackQuery, state: FSMContext) -> None:
 
     if not prompt:
         await callback.answer("Сначала введи описание ✏️", show_alert=True)
+        return
+
+    if media_type in ("photo_edit", "video_edit") and not data.get("reference_file_id"):
+        label = "фото" if media_type == "photo_edit" else "видео"
+        await callback.answer(f"Сначала добавь {label} для редактирования 📎", show_alert=True)
         return
     model_slug = data.get("model_slug", "")
 
