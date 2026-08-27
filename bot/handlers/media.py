@@ -248,6 +248,11 @@ async def back_to_model(callback: CallbackQuery, state: FSMContext) -> None:
     models = get_models_for_task(task_type) if task_type else []
     type_label = _TYPE_LABELS.get(media_type, media_type)
 
+    await state.update_data(
+        prompt=None, model_slug=None, model_label=None,
+        model_description=None, model_has_group=None, confirm_msg_id=None,
+        reference_file_id=None, reference_type=None,
+    )
     await state.set_state(MediaStates.select_model)
     await callback.message.edit_text(
         model_select_text(type_label, models),
