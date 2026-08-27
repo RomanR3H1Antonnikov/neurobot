@@ -126,7 +126,9 @@ tasks:
     models:
       - id: seedance-2-5
         label: "Seedance 2.5"
-        description: ""
+        description: >-
+          Создаёт до 30 секунд ролика за один проход в 4K, поддерживает до 50 референсов
+          (изображения, видео, аудио), синхронную генерацию звука и локальное редактирование сцен.
         model_id: seedance-2.5
         provider: kie
         cost_credits: 80
@@ -135,7 +137,10 @@ tasks:
 
       - id: seedance-2
         label: "Seedance 2"
-        description: ""
+        description: >-
+          Нейросеть для генерации кинематографических видео (до 35 секунд, до 4K) по тексту,
+          изображениям, видео- и аудиореференсам с синхронизированным звуком, контролем камеры
+          и сохранением консистентности персонажей.
         model_id: seedance-2.0
         provider: kie
         cost_credits: 60
@@ -146,7 +151,10 @@ tasks:
         label: "Kling 3.0"
         group: kling-3
         group_label: "Kling 3.0"
-        description: ""
+        description: >-
+          Нейросеть от Kuaishou для генерации реалистичных видео (до 15 секунд, 4K) по тексту
+          и изображениям с физически точной анимацией, стабильной идентичностью персонажей,
+          нативным звуком, multi-shot-раскадровкой и Motion Control.
         model_id: kling-v3
         provider: kie
         cost_credits: 80
@@ -157,7 +165,10 @@ tasks:
         label: "Kling 3.0 Turbo"
         group: kling-3
         group_label: "Kling 3.0"
-        description: ""
+        description: >-
+          Нейросеть от Kuaishou для генерации реалистичных видео (до 15 секунд, 4K) по тексту
+          и изображениям с физически точной анимацией, стабильной идентичностью персонажей,
+          нативным звуком, multi-shot-раскадровкой и Motion Control.
         model_id: kling-v3-turbo
         provider: kie
         cost_credits: 60
@@ -168,7 +179,10 @@ tasks:
         label: "Kling 3.0 Motion Control"
         group: kling-3
         group_label: "Kling 3.0"
-        description: ""
+        description: >-
+          Нейросеть от Kuaishou для генерации реалистичных видео (до 15 секунд, 4K) по тексту
+          и изображениям с физически точной анимацией, стабильной идентичностью персонажей,
+          нативным звуком, multi-shot-раскадровкой и Motion Control.
         model_id: kling-v3-motion-control
         provider: kie
         cost_credits: 80
@@ -177,7 +191,10 @@ tasks:
 
       - id: minimax-h3
         label: "MiniMax H3"
-        description: ""
+        description: >-
+          Омнимодальная нейросеть для генерации коротких видео (до 15 сек, 2K) с синхронным
+          стереозвуком по тексту, изображениям, видео- и аудиореференсам; поддерживает
+          мультимодальные входы (до 12 файлов), редактирование и контроль первого/последнего кадра.
         model_id: minimax-h3
         provider: kie
         cost_credits: 70
@@ -188,7 +205,10 @@ tasks:
         label: "Wan 3.0"
         group: wan
         group_label: "Wan"
-        description: ""
+        description: >-
+          Открытая нейросеть от Alibaba Tongyi Lab для генерации реалистичных видео (до 15 сек, 1080p)
+          по тексту, изображениям или видео; поддерживает синхронную генерацию звука, многокадровые
+          сцены и сохранение идентичности персонажей.
         model_id: wan-3.0
         provider: kie
         cost_credits: 80
@@ -199,7 +219,10 @@ tasks:
         label: "Wan 2.7"
         group: wan
         group_label: "Wan"
-        description: ""
+        description: >-
+          Открытая нейросеть от Alibaba Tongyi Lab для генерации реалистичных видео (до 15 сек, 1080p)
+          по тексту, изображениям или видео; поддерживает синхронную генерацию звука, многокадровые
+          сцены и сохранение идентичности персонажей.
         model_id: wan-2.7
         provider: kie
         cost_credits: 70
@@ -208,7 +231,10 @@ tasks:
 
       - id: happyhorse-1-1
         label: "HappyHorse 1.1"
-        description: ""
+        description: >-
+          Нейросеть от Alibaba для генерации коротких видео (до 15 сек, 1080p) по тексту,
+          изображению или референсам с синхронным звуком, стабильной идентичностью персонажей
+          и улучшенной динамикой движений.
         model_id: alibaba/happyhorse-1.1
         provider: routerai
         cost_credits: 70
@@ -217,7 +243,10 @@ tasks:
 
       - id: pixverse-6
         label: "Pixverse 6.0"
-        description: ""
+        description: >-
+          Нейросеть для генерации и редактирования видео (до 15 сек, 4K) по тексту, изображениям
+          и референсам: поддерживает точную проработку движений, сохранение идентичности персонажей,
+          мультисценные переходы и локальную корректировку кадров.
         model_id: pixverse-v6
         provider: kie
         cost_credits: 70
