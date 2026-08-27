@@ -403,19 +403,19 @@ async def enter_prompt_wrong_input(message: Message, state: FSMContext) -> None:
             "Этот раздел создаёт фото с нуля по текстовому описанию. "
             "Если хочешь изменить готовое фото — используй раздел «✏️ Редактировать фото».\n\n"
             + _PROMPT_HINTS["image"],
-            reply_markup=back_to_model_kb(),
+            reply_markup=back_to_confirm_kb(),
         )
     elif (message.video or message.video_note) and media_type == "video":
         await message.answer(
             "Этот раздел создаёт видео с нуля по описанию. "
             "Если хочешь изменить готовое видео — используй раздел «✏️ Редактировать видео».\n\n"
             + _PROMPT_HINTS["video"],
-            reply_markup=back_to_model_kb(),
+            reply_markup=back_to_confirm_kb(),
         )
     else:
         await message.answer(
             _PROMPT_HINTS.get(media_type, "Введи текстовое описание:"),
-            reply_markup=back_to_model_kb(),
+            reply_markup=back_to_confirm_kb(),
         )
 
 
@@ -530,7 +530,7 @@ async def edit_prompt(callback: CallbackQuery, state: FSMContext) -> None:
     await state.set_state(MediaStates.enter_prompt)
     await callback.message.edit_text(
         _PROMPT_HINTS.get(data.get("media_type", "edit"), "Введи новое описание:"),
-        reply_markup=back_to_model_kb(),
+        reply_markup=back_to_confirm_kb(),
     )
     await callback.answer()
 
