@@ -2,7 +2,7 @@ from aiogram import Router
 from aiogram.filters import CommandStart, Command
 from aiogram.types import Message
 from aiogram.fsm.context import FSMContext
-from bot.keyboards.main_menu import main_menu_kb
+from bot.keyboards.main_menu import main_menu_kb, inline_main_menu_kb
 
 router = Router()
 
@@ -17,7 +17,7 @@ async def cmd_start(message: Message, state: FSMContext, db_user: dict) -> None:
         f"Твой баланс: <b>{db_user['balance']} кредитов</b>\n\n"
         "Выбери, что хочешь сделать:",
         parse_mode="HTML",
-        reply_markup=main_menu_kb(),
+        reply_markup=inline_main_menu_kb(),
     )
 
 
