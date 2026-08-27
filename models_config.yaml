@@ -332,13 +332,44 @@ tasks:
         cost_usd: 0.04
         enabled: true
 
+      - id: flux-2-flex-edit
+        label: "Flux 2 Flex"
+        group: flux-2-edit
+        group_label: "Flux 2"
+        description: ""
+        model_id: flux-2-flex
+        provider: kie
+        cost_credits: 10
+        cost_usd: 0.005
+        enabled: true
+
       - id: flux-2-pro-edit
         label: "Flux 2 Pro"
+        group: flux-2-edit
+        group_label: "Flux 2"
         description: ""
         model_id: flux-2-pro
         provider: kie
         cost_credits: 15
         cost_usd: 0.01
+        enabled: true
+
+      - id: seedream-5-edit
+        label: "Seedream 5.0"
+        description: ""
+        model_id: seedream-v5
+        provider: kie
+        cost_credits: 15
+        cost_usd: 0.01
+        enabled: true
+
+      - id: midjourney-edit
+        label: "Midjourney"
+        description: ""
+        model_id: midjourney
+        provider: genapi
+        cost_credits: 25
+        cost_usd: 0.04
         enabled: true
 
   # ─── Редактирование видео ────────────────────────────────────────────────────
