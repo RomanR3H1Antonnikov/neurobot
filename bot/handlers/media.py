@@ -54,7 +54,7 @@ _PROMPT_HINTS = {
 
 def _confirm_card_text(data: dict) -> str:
     media_type = data.get("media_type", "")
-    prompt = data.get("prompt") or "не задан"
+    prompt = data.get("prompt") or "не задано"
     model_label = data.get("model_label", "—")
     model_description = data.get("model_description", "")
 
