@@ -173,13 +173,18 @@ async def select_model(callback: CallbackQuery, state: FSMContext) -> None:
         await callback.answer("Модель недоступна", show_alert=True)
         return
 
+    aspect_ratios = model_cfg.get("aspect_ratios", [])
     update = {
         "model_slug": model_slug,
         "model_label": model_cfg["label"],
         "model_description": model_cfg.get("description", ""),
         "model_has_group": bool(model_cfg.get("group")),
         "model_actual_id": model_cfg["model_id"],
+        "model_aspect_ratios": aspect_ratios,
     }
+    # если текущий ratio недоступен у новой модели — сбрасываем на 1:1
+    if aspect_ratios and data.get("aspect_ratio", "1:1") not in aspect_ratios:
+        update["aspect_ratio"] = "1:1"
     # для аудио — тип (voice/music) берём из конфига модели
     if media_type == "audio":
         update["audio_type"] = model_cfg.get("audio_type", "voice")
@@ -250,8 +255,8 @@ async def back_to_model(callback: CallbackQuery, state: FSMContext) -> None:
 
     await state.update_data(
         prompt=None, model_slug=None, model_label=None,
-        model_description=None, model_has_group=None, confirm_msg_id=None,
-        reference_file_id=None, reference_type=None,
+        model_description=None, model_has_group=None, model_aspect_ratios=None,
+        confirm_msg_id=None, reference_file_id=None, reference_type=None,
     )
     await state.set_state(MediaStates.select_model)
     await callback.message.edit_text(
@@ -506,10 +511,11 @@ async def confirm_unknown_input(message: Message, state: FSMContext) -> None:
 @router.callback_query(MediaStates.confirm, F.data == "media:pick_ratio")
 async def pick_ratio(callback: CallbackQuery, state: FSMContext) -> None:
     data = await state.get_data()
+    allowed = data.get("model_aspect_ratios") or None
     await callback.message.edit_text(
         "<b>Выбери соотношение сторон:</b>",
         parse_mode="HTML",
-        reply_markup=image_ratio_kb(data.get("aspect_ratio", "1:1")),
+        reply_markup=image_ratio_kb(data.get("aspect_ratio", "1:1"), allowed),
     )
     await callback.answer()
 

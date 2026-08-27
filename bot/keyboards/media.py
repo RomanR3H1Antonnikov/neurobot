@@ -127,9 +127,10 @@ def image_confirm_kb(aspect_ratio: str, resolution: str = "1K", has_prompt: bool
     return builder.as_markup()
 
 
-def image_ratio_kb(current: str) -> InlineKeyboardMarkup:
+def image_ratio_kb(current: str, allowed_ratios: list[str] | None = None) -> InlineKeyboardMarkup:
+    ratios = allowed_ratios if allowed_ratios else ALL_RATIOS
     builder = InlineKeyboardBuilder()
-    for ratio in ALL_RATIOS:
+    for ratio in ratios:
         prefix = "✅ " if ratio == current else ""
         builder.add(InlineKeyboardButton(
             text=f"{prefix}{ratio}",
