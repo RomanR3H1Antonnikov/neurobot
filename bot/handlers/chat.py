@@ -4,7 +4,7 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 
-from bot.keyboards.main_menu import BTN_CHAT, MENU_BUTTONS, main_menu_kb
+from bot.keyboards.main_menu import BTN_CHAT, MENU_BUTTONS, main_menu_kb, inline_main_menu_kb
 from providers.base import ProviderError, TaskType
 from providers.router import get_models_for_task
 from services import chat_service
@@ -55,8 +55,26 @@ async def enter_chat(message: Message, state: FSMContext) -> None:
 async def chat_back_to_menu(callback: CallbackQuery, state: FSMContext) -> None:
     await state.clear()
     await callback.message.delete()
+    # main_menu_kb восстанавливает reply-клавиатуру после chat_kb
     await callback.message.answer("Главное меню:", reply_markup=main_menu_kb())
+    await callback.message.answer("Выбери действие:", reply_markup=inline_main_menu_kb())
     await callback.answer()
+
+
+@router.callback_query(F.data == "menu:chat")
+async def menu_to_chat(callback: CallbackQuery, state: FSMContext) -> None:
+    await callback.answer()
+    await state.clear()
+    models = get_models_for_task(TaskType.CHAT)
+    if not models:
+        await callback.message.answer("⚠️ Чат временно недоступен. Попробуй позже.")
+        return
+    await state.set_state(ChatStates.select_model)
+    await callback.message.answer(
+        "💬 <b>Выбери модель для чата:</b>",
+        parse_mode="HTML",
+        reply_markup=_chat_model_kb(models),
+    )
 
 
 @router.callback_query(ChatStates.select_model, F.data.startswith("chat:model:"))
@@ -98,6 +116,7 @@ async def new_chat(message: Message, state: FSMContext) -> None:
 async def exit_chat(message: Message, state: FSMContext) -> None:
     await state.clear()
     await message.answer("Главное меню:", reply_markup=main_menu_kb())
+    await message.answer("Выбери действие:", reply_markup=inline_main_menu_kb())
 
 
 @router.message(ChatStates.active, F.text, ~F.text.in_(MENU_BUTTONS))

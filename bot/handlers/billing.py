@@ -3,7 +3,7 @@ from aiogram.filters import Command
 from aiogram.types import Message, CallbackQuery, PreCheckoutQuery, LabeledPrice
 from aiogram.fsm.context import FSMContext
 
-from bot.keyboards.main_menu import BTN_BALANCE, main_menu_kb
+from bot.keyboards.main_menu import BTN_BALANCE, main_menu_kb, inline_main_menu_kb
 from bot.keyboards.billing import balance_kb
 from config import config, reload_models
 from db.queries import get_or_create_user, add_credits, get_balance
@@ -57,7 +57,7 @@ async def handle_successful_payment(message: Message) -> None:
         f"Зачислено: <b>{credits} кредитов</b>\n"
         f"Текущий баланс: <b>{new_balance} кредитов</b>",
         parse_mode="HTML",
-        reply_markup=main_menu_kb(),
+        reply_markup=inline_main_menu_kb(),
     )
 
 
@@ -65,8 +65,19 @@ async def handle_successful_payment(message: Message) -> None:
 async def billing_back_to_menu(callback: CallbackQuery, state: FSMContext) -> None:
     await state.clear()
     await callback.message.delete()
-    await callback.message.answer("Главное меню:", reply_markup=main_menu_kb())
+    await callback.message.answer("Главное меню:", reply_markup=inline_main_menu_kb())
     await callback.answer()
+
+
+@router.callback_query(F.data == "menu:balance")
+async def menu_to_balance(callback: CallbackQuery, state: FSMContext, db_user: dict) -> None:
+    await callback.answer()
+    await state.clear()
+    await callback.message.answer(
+        f"💳 <b>Твой баланс:</b> {db_user['balance']} кредитов\n\nВыбери пакет для пополнения:",
+        parse_mode="HTML",
+        reply_markup=balance_kb(),
+    )
 
 
 # ─── Админские команды ────────────────────────────────────────────────────────

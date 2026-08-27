@@ -4,7 +4,7 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 
-from bot.keyboards.main_menu import BTN_DOCS, MENU_BUTTONS, main_menu_kb
+from bot.keyboards.main_menu import BTN_DOCS, MENU_BUTTONS, main_menu_kb, inline_main_menu_kb
 from providers.base import ProviderError
 from services import document_service
 from services.media_service import InsufficientCreditsError, RateLimitError
@@ -46,9 +46,16 @@ async def enter_docs(message: Message, state: FSMContext) -> None:
 @router.callback_query(F.data == "docs:back:menu")
 async def docs_back_to_menu(callback: CallbackQuery, state: FSMContext) -> None:
     await state.clear()
-    await callback.message.edit_text("Главное меню:")
-    await callback.message.answer("Главное меню:", reply_markup=main_menu_kb())
+    await callback.message.edit_text("Главное меню:", reply_markup=inline_main_menu_kb())
     await callback.answer()
+
+
+@router.callback_query(F.data == "menu:docs")
+async def menu_to_docs(callback: CallbackQuery, state: FSMContext) -> None:
+    await callback.answer()
+    await state.clear()
+    await state.set_state(DocumentStates.awaiting_file)
+    await callback.message.answer(AWAITING_FILE_TEXT, reply_markup=_file_kb())
 
 
 @router.callback_query(F.data == "docs:back:file")
@@ -117,7 +124,7 @@ async def receive_task(message: Message, state: FSMContext) -> None:
             await message.answer(chunk)
 
         await state.clear()
-        await message.answer("Готово! Что-то ещё?", reply_markup=main_menu_kb())
+        await message.answer("Готово! Что-то ещё?", reply_markup=inline_main_menu_kb())
 
     except InsufficientCreditsError as e:
         await processing_msg.delete()
