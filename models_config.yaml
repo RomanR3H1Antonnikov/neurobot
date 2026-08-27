@@ -260,6 +260,39 @@ tasks:
         cost_usd: 0.07
         enabled: true
 
+      - id: veo-3-1-lite
+        label: "Veo 3.1 Lite"
+        group: veo-3-1
+        group_label: "Veo 3.1"
+        description: ""
+        model_id: veo-3.1-lite
+        provider: kie
+        cost_credits: 60
+        cost_usd: 0.06
+        enabled: true
+
+      - id: veo-3-1-fast
+        label: "Veo 3.1 Fast"
+        group: veo-3-1
+        group_label: "Veo 3.1"
+        description: ""
+        model_id: veo-3.1-fast
+        provider: kie
+        cost_credits: 80
+        cost_usd: 0.08
+        enabled: true
+
+      - id: veo-3-1-quality
+        label: "Veo 3.1 Quality"
+        group: veo-3-1
+        group_label: "Veo 3.1"
+        description: ""
+        model_id: veo-3.1-quality
+        provider: kie
+        cost_credits: 100
+        cost_usd: 0.10
+        enabled: true
+
       # bratuha.ru — нет публичного API, ожидаем подтверждения от клиента
       - id: gemini-omni-flash
         label: "Gemini Omni Flash"
