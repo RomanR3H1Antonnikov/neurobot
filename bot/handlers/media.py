@@ -447,6 +447,7 @@ async def enter_prompt_wrong_input(message: Message, state: FSMContext) -> None:
 @router.message(MediaStates.confirm, F.text, ~F.text.in_(MENU_BUTTONS))
 async def update_prompt_in_confirm(message: Message, state: FSMContext) -> None:
     await state.update_data(prompt=message.text)
+    await message.delete()
     await _update_confirm_card(message, state)
 
 
@@ -455,6 +456,9 @@ async def confirm_unknown_input(message: Message, state: FSMContext) -> None:
     """Нетекстовый ввод в confirm state."""
     data = await state.get_data()
     media_type = data.get("media_type", "")
+
+    # Во всех случаях удаляем сообщение пользователя
+    await message.delete()
 
     # Для edit-режимов: фото/видео принимаем как загрузку референса
     if media_type == "photo_edit" and message.photo:
