@@ -265,8 +265,8 @@ tasks:
         group: veo-3-1
         group_label: "Veo 3.1"
         description: ""
-        model_id: veo-3.1-lite
-        provider: kie
+        model_id: veo3.1-lite
+        provider: bratuha
         cost_credits: 60
         cost_usd: 0.06
         enabled: true
@@ -276,8 +276,8 @@ tasks:
         group: veo-3-1
         group_label: "Veo 3.1"
         description: ""
-        model_id: veo-3.1-fast
-        provider: kie
+        model_id: veo3.1-fast
+        provider: bratuha
         cost_credits: 80
         cost_usd: 0.08
         enabled: true
@@ -287,8 +287,8 @@ tasks:
         group: veo-3-1
         group_label: "Veo 3.1"
         description: ""
-        model_id: veo-3.1-quality
-        provider: kie
+        model_id: veo3.1-quality
+        provider: bratuha
         cost_credits: 100
         cost_usd: 0.10
         enabled: true
