@@ -46,13 +46,16 @@ async def enter_docs(message: Message, state: FSMContext) -> None:
 @router.callback_query(F.data == "docs:back:menu")
 async def docs_back_to_menu(callback: CallbackQuery, state: FSMContext) -> None:
     await state.clear()
-    await callback.message.edit_text("Главное меню:", reply_markup=inline_main_menu_kb())
+    await state.clear()
+    await callback.message.delete()
+    await callback.message.answer("Главное меню:", reply_markup=main_menu_kb())
     await callback.answer()
 
 
 @router.callback_query(F.data == "menu:docs")
 async def menu_to_docs(callback: CallbackQuery, state: FSMContext) -> None:
     await callback.answer()
+    await callback.message.delete()
     await state.clear()
     await state.set_state(DocumentStates.awaiting_file)
     await callback.message.answer(AWAITING_FILE_TEXT, reply_markup=_file_kb())
@@ -124,7 +127,7 @@ async def receive_task(message: Message, state: FSMContext) -> None:
             await message.answer(chunk)
 
         await state.clear()
-        await message.answer("Готово! Что-то ещё?", reply_markup=inline_main_menu_kb())
+        await message.answer("Готово! Что-то ещё?", reply_markup=main_menu_kb())
 
     except InsufficientCreditsError as e:
         await processing_msg.delete()

@@ -57,7 +57,7 @@ async def handle_successful_payment(message: Message) -> None:
         f"Зачислено: <b>{credits} кредитов</b>\n"
         f"Текущий баланс: <b>{new_balance} кредитов</b>",
         parse_mode="HTML",
-        reply_markup=inline_main_menu_kb(),
+        reply_markup=main_menu_kb(),
     )
 
 
@@ -65,13 +65,14 @@ async def handle_successful_payment(message: Message) -> None:
 async def billing_back_to_menu(callback: CallbackQuery, state: FSMContext) -> None:
     await state.clear()
     await callback.message.delete()
-    await callback.message.answer("Главное меню:", reply_markup=inline_main_menu_kb())
+    await callback.message.answer("Главное меню:", reply_markup=main_menu_kb())
     await callback.answer()
 
 
 @router.callback_query(F.data == "menu:balance")
 async def menu_to_balance(callback: CallbackQuery, state: FSMContext, db_user: dict) -> None:
     await callback.answer()
+    await callback.message.delete()
     await state.clear()
     await callback.message.answer(
         f"💳 <b>Твой баланс:</b> {db_user['balance']} кредитов\n\nВыбери пакет для пополнения:",

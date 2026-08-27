@@ -55,15 +55,14 @@ async def enter_chat(message: Message, state: FSMContext) -> None:
 async def chat_back_to_menu(callback: CallbackQuery, state: FSMContext) -> None:
     await state.clear()
     await callback.message.delete()
-    # main_menu_kb восстанавливает reply-клавиатуру после chat_kb
     await callback.message.answer("Главное меню:", reply_markup=main_menu_kb())
-    await callback.message.answer("Выбери действие:", reply_markup=inline_main_menu_kb())
     await callback.answer()
 
 
 @router.callback_query(F.data == "menu:chat")
 async def menu_to_chat(callback: CallbackQuery, state: FSMContext) -> None:
     await callback.answer()
+    await callback.message.delete()
     await state.clear()
     models = get_models_for_task(TaskType.CHAT)
     if not models:
@@ -116,7 +115,6 @@ async def new_chat(message: Message, state: FSMContext) -> None:
 async def exit_chat(message: Message, state: FSMContext) -> None:
     await state.clear()
     await message.answer("Главное меню:", reply_markup=main_menu_kb())
-    await message.answer("Выбери действие:", reply_markup=inline_main_menu_kb())
 
 
 @router.message(ChatStates.active, F.text, ~F.text.in_(MENU_BUTTONS))

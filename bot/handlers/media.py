@@ -266,13 +266,14 @@ async def back_to_model(callback: CallbackQuery, state: FSMContext) -> None:
 async def back_to_menu(callback: CallbackQuery, state: FSMContext) -> None:
     await state.clear()
     await callback.message.delete()
-    await callback.message.answer("Главное меню:", reply_markup=inline_main_menu_kb())
+    await callback.message.answer("Главное меню:", reply_markup=main_menu_kb())
     await callback.answer()
 
 
 @router.callback_query(F.data == "menu:media")
 async def menu_to_media(callback: CallbackQuery, state: FSMContext) -> None:
     await callback.answer()
+    await callback.message.delete()
     await state.clear()
     await state.set_state(MediaStates.select_type)
     await callback.message.answer(MEDIA_MENU_TEXT, parse_mode="HTML", reply_markup=media_type_kb())

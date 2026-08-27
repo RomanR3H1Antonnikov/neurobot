@@ -17,7 +17,7 @@ async def cmd_start(message: Message, state: FSMContext, db_user: dict) -> None:
         f"Твой баланс: <b>{db_user['balance']} кредитов</b>\n\n"
         "Выбери, что хочешь сделать:",
         parse_mode="HTML",
-        reply_markup=inline_main_menu_kb(),
+        reply_markup=main_menu_kb(),
     )
 
 
