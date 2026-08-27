@@ -48,12 +48,27 @@ class OpenAICompatProvider(AbstractProvider):
             raise ProviderUnavailableError(f"Ошибка агрегатора: HTTP {response.status}")
         return await response.json()
 
+    @staticmethod
+    def _compute_size(aspect_ratio: str, resolution: str) -> str:
+        base = {"1K": 1024, "2K": 2048, "4K": 4096}.get(resolution, 1024)
+        try:
+            w_r, h_r = map(int, aspect_ratio.split(":"))
+        except Exception:
+            return f"{base}x{base}"
+        # Short side = base, long side aligned to nearest 64px
+        if w_r >= h_r:
+            h = base
+            w = max(64, round(base * w_r / h_r / 64) * 64)
+        else:
+            w = base
+            h = max(64, round(base * h_r / w_r / 64) * 64)
+        return f"{w}x{h}"
+
     async def generate_image(
-        self, prompt: str, aspect_ratio: str = "1:1", model: str | None = None
+        self, prompt: str, aspect_ratio: str = "1:1", resolution: str = "1K", model: str | None = None
     ) -> GenerationResult:
         actual_model = model or self.image_model
-        size_map = {"1:1": "1024x1024", "16:9": "1792x1024", "9:16": "1024x1792"}
-        size = size_map.get(aspect_ratio, "1024x1024")
+        size = self._compute_size(aspect_ratio, resolution)
 
         async with self._session() as session:
             async with session.post(f"{self.base_url}/images/generations", json={

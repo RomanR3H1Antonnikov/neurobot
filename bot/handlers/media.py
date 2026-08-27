@@ -8,7 +8,8 @@ from bot.keyboards.main_menu import BTN_MEDIA, MENU_BUTTONS, main_menu_kb
 from bot.keyboards.media import (
     media_type_kb, model_top_kb, model_variant_kb,
     model_select_text, model_variant_text, back_to_model_kb, back_to_confirm_kb,
-    image_confirm_kb, video_confirm_kb, audio_confirm_kb, edit_confirm_kb,
+    image_confirm_kb, image_ratio_kb, image_resolution_kb,
+    video_confirm_kb, audio_confirm_kb, edit_confirm_kb,
     after_generation_kb,
 )
 from providers.base import ProviderError, ProviderContentPolicyError, TaskType
@@ -66,7 +67,7 @@ def _confirm_card_text(data: dict) -> str:
         lines.append(f"<b>Модель:</b> {model_label}")
 
     if media_type == "image":
-        lines.append(f"<b>Формат:</b> {data.get('aspect_ratio', '1:1')}")
+        lines.append(f"<b>Масштаб:</b> {data.get('aspect_ratio', '1:1')}  |  <b>Разрешение:</b> {data.get('resolution', '1K')}")
     elif media_type == "video":
         lines.append(f"<b>Длительность:</b> {data.get('duration', 5)} сек")
     elif media_type == "audio":
@@ -88,7 +89,7 @@ def _confirm_kb(data: dict):
     has_prompt = bool(data.get("prompt"))
     media_type = data.get("media_type")
     if media_type == "image":
-        return image_confirm_kb(data.get("aspect_ratio", "1:1"), has_prompt=has_prompt)
+        return image_confirm_kb(data.get("aspect_ratio", "1:1"), data.get("resolution", "1K"), has_prompt=has_prompt)
     elif media_type == "video":
         return video_confirm_kb(data.get("duration", 5), has_prompt=has_prompt)
     elif media_type == "audio":
@@ -123,7 +124,7 @@ async def media_menu(message: Message, state: FSMContext) -> None:
 async def select_type(callback: CallbackQuery, state: FSMContext) -> None:
     media_type = callback.data.split(":")[2]
     defaults = {
-        "image": {"aspect_ratio": "1:1"},
+        "image": {"aspect_ratio": "1:1", "resolution": "1K"},
         "video": {"duration": 5},
         "audio": {"audio_type": "voice"},
         "edit": {},
@@ -474,10 +475,41 @@ async def confirm_unknown_input(message: Message, state: FSMContext) -> None:
 
 # ─── Изменение параметров в карточке ─────────────────────────────────────────
 
+@router.callback_query(MediaStates.confirm, F.data == "media:pick_ratio")
+async def pick_ratio(callback: CallbackQuery, state: FSMContext) -> None:
+    data = await state.get_data()
+    await callback.message.edit_text(
+        "<b>Выбери соотношение сторон:</b>",
+        parse_mode="HTML",
+        reply_markup=image_ratio_kb(data.get("aspect_ratio", "1:1")),
+    )
+    await callback.answer()
+
+
+@router.callback_query(MediaStates.confirm, F.data == "media:pick_resolution")
+async def pick_resolution(callback: CallbackQuery, state: FSMContext) -> None:
+    data = await state.get_data()
+    await callback.message.edit_text(
+        "<b>Выбери разрешение:</b>",
+        parse_mode="HTML",
+        reply_markup=image_resolution_kb(data.get("resolution", "1K")),
+    )
+    await callback.answer()
+
+
 @router.callback_query(MediaStates.confirm, F.data.startswith("media:ratio:"))
 async def set_ratio(callback: CallbackQuery, state: FSMContext) -> None:
     ratio = callback.data.split(":")[2]
     await state.update_data(aspect_ratio=ratio)
+    data = await state.get_data()
+    await callback.message.edit_text(_confirm_card_text(data), parse_mode="HTML", reply_markup=_confirm_kb(data))
+    await callback.answer()
+
+
+@router.callback_query(MediaStates.confirm, F.data.startswith("media:resolution:"))
+async def set_resolution(callback: CallbackQuery, state: FSMContext) -> None:
+    resolution = callback.data.split(":")[2]
+    await state.update_data(resolution=resolution)
     data = await state.get_data()
     await callback.message.edit_text(_confirm_card_text(data), parse_mode="HTML", reply_markup=_confirm_kb(data))
     await callback.answer()
@@ -528,7 +560,8 @@ async def start_generation(callback: CallbackQuery, state: FSMContext) -> None:
     try:
         if media_type == "image":
             result = await media_service.generate_image(
-                tg_user.id, tg_user.username, prompt, data.get("aspect_ratio", "1:1"), model_slug
+                tg_user.id, tg_user.username, prompt,
+                data.get("aspect_ratio", "1:1"), data.get("resolution", "1K"), model_slug
             )
             file = BufferedInputFile(result.data, filename=result.filename)
             await callback.message.answer_photo(file, reply_markup=after_generation_kb())

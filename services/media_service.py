@@ -35,13 +35,13 @@ async def _check_preconditions(
 
 
 async def generate_image(
-    telegram_id: int, username: str, prompt: str, aspect_ratio: str, model_slug: str
+    telegram_id: int, username: str, prompt: str, aspect_ratio: str, resolution: str, model_slug: str
 ) -> GenerationResult:
     task = TaskType.IMAGE_GENERATION
     provider, model_cfg = get_provider_by_model_id(task, model_slug)
     user_id = await _check_preconditions(telegram_id, username, task, model_cfg)
 
-    result = await provider.generate_image(prompt, aspect_ratio=aspect_ratio, model=model_cfg["model_id"])
+    result = await provider.generate_image(prompt, aspect_ratio=aspect_ratio, resolution=resolution, model=model_cfg["model_id"])
     await deduct_credits(user_id, model_cfg["cost_credits"], task.value)
     return result
 

@@ -101,22 +101,45 @@ def back_to_type_kb() -> InlineKeyboardMarkup:
 
 # ─── Карточка подтверждения: фото ────────────────────────────────────────────
 
-def image_confirm_kb(aspect_ratio: str, has_prompt: bool = False) -> InlineKeyboardMarkup:
-    ratios = {"1:1": "Квадрат", "16:9": "Пейзаж", "9:16": "Портрет"}
+ALL_RATIOS = ["1:1", "2:3", "3:2", "1:4", "4:1", "3:4", "4:3", "4:5", "5:4", "1:8", "8:1", "9:16", "16:9"]
+ALL_RESOLUTIONS = ["1K", "2K", "4K"]
+
+
+def image_confirm_kb(aspect_ratio: str, resolution: str = "1K", has_prompt: bool = False) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
-    for ratio, label in ratios.items():
-        prefix = "✅ " if ratio == aspect_ratio else ""
-        builder.add(InlineKeyboardButton(
-            text=f"{prefix}{label}",
-            callback_data=f"media:ratio:{ratio}",
-        ))
-    builder.adjust(3)
+    builder.row(
+        InlineKeyboardButton(text=f"📐 Масштаб: {aspect_ratio}", callback_data="media:pick_ratio"),
+        InlineKeyboardButton(text=f"🖼 Разрешение: {resolution}", callback_data="media:pick_resolution"),
+    )
     edit_text = "✏️ Изменить описание" if has_prompt else "✏️ Ввести описание"
     builder.row(
         InlineKeyboardButton(text=edit_text, callback_data="media:edit_prompt"),
         InlineKeyboardButton(text="◀️ Назад", callback_data="media:back:model"),
     )
     builder.row(InlineKeyboardButton(text="🚀 Начать генерацию", callback_data="media:start"))
+    return builder.as_markup()
+
+
+def image_ratio_kb(current: str) -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    for ratio in ALL_RATIOS:
+        prefix = "✅ " if ratio == current else ""
+        builder.add(InlineKeyboardButton(
+            text=f"{prefix}{ratio}",
+            callback_data=f"media:ratio:{ratio}",
+        ))
+    builder.adjust(3)
+    builder.row(InlineKeyboardButton(text="◀️ Назад", callback_data="media:back:confirm"))
+    return builder.as_markup()
+
+
+def image_resolution_kb(current: str) -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    for res in ALL_RESOLUTIONS:
+        prefix = "✅ " if res == current else ""
+        builder.add(InlineKeyboardButton(text=f"{prefix}{res}", callback_data=f"media:resolution:{res}"))
+    builder.adjust(3)
+    builder.row(InlineKeyboardButton(text="◀️ Назад", callback_data="media:back:confirm"))
     return builder.as_markup()
 
 
