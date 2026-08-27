@@ -116,7 +116,7 @@ def image_confirm_kb(aspect_ratio: str, resolution: str = "1K", has_prompt: bool
     builder = InlineKeyboardBuilder()
     builder.row(
         InlineKeyboardButton(text=f"📐 Масштаб: {aspect_ratio}", callback_data="media:pick_ratio"),
-        InlineKeyboardButton(text=f"🖼 Разрешение: {resolution}", callback_data="media:pick_resolution"),
+        InlineKeyboardButton(text=f"🖼 Качество: {resolution}", callback_data="media:pick_resolution"),
     )
     edit_text = "✏️ Изменить описание" if has_prompt else "✏️ Ввести описание"
     builder.row(

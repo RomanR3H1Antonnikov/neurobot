@@ -67,7 +67,7 @@ def _confirm_card_text(data: dict) -> str:
         lines.append(f"<b>Модель:</b> {model_label}")
 
     if media_type == "image":
-        lines.append(f"<b>Масштаб:</b> {data.get('aspect_ratio', '1:1')}  |  <b>Разрешение:</b> {data.get('resolution', '1K')}")
+        lines.append(f"<b>Масштаб:</b> {data.get('aspect_ratio', '1:1')}  |  <b>Качество:</b> {data.get('resolution', '1K')}")
     elif media_type == "video":
         lines.append(f"<b>Длительность:</b> {data.get('duration', 5)} сек")
     elif media_type == "audio":
@@ -517,7 +517,7 @@ async def pick_ratio(callback: CallbackQuery, state: FSMContext) -> None:
 async def pick_resolution(callback: CallbackQuery, state: FSMContext) -> None:
     data = await state.get_data()
     await callback.message.edit_text(
-        "<b>Выбери разрешение:</b>",
+        "<b>Выбери качество:</b>",
         parse_mode="HTML",
         reply_markup=image_resolution_kb(data.get("resolution", "1K")),
     )
@@ -526,7 +526,7 @@ async def pick_resolution(callback: CallbackQuery, state: FSMContext) -> None:
 
 @router.callback_query(MediaStates.confirm, F.data.startswith("media:ratio:"))
 async def set_ratio(callback: CallbackQuery, state: FSMContext) -> None:
-    ratio = callback.data.split(":")[2]
+    ratio = callback.data[len("media:ratio:"):]
     await state.update_data(aspect_ratio=ratio)
     data = await state.get_data()
     await callback.message.edit_text(_confirm_card_text(data), parse_mode="HTML", reply_markup=_confirm_kb(data))
