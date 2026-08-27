@@ -60,8 +60,12 @@ def _confirm_card_text(data: dict) -> str:
     model_description = data.get("model_description", "")
 
     lines = []
-    # для сгруппированных моделей описание уже было показано на экране выбора версии
-    if model_description and not data.get("model_has_group"):
+    variant_desc = data.get("model_variant_description", "")
+    if variant_desc:
+        # Для варианта из группы — компактное описание именно этого варианта
+        lines.append(f"<b>Модель:</b> {model_label}\n<blockquote expandable>{variant_desc}</blockquote>")
+    elif model_description and not data.get("model_has_group"):
+        # Для одиночных моделей — полное описание с именем как заголовком
         lines.append(f"<b>{model_label}</b>\n<blockquote expandable>{model_description}</blockquote>")
     else:
         lines.append(f"<b>Модель:</b> {model_label}")
@@ -178,6 +182,7 @@ async def select_model(callback: CallbackQuery, state: FSMContext) -> None:
         "model_slug": model_slug,
         "model_label": model_cfg["label"],
         "model_description": model_cfg.get("description", ""),
+        "model_variant_description": model_cfg.get("variant_description", ""),
         "model_has_group": bool(model_cfg.get("group")),
         "model_actual_id": model_cfg["model_id"],
         "model_aspect_ratios": aspect_ratios,
@@ -255,7 +260,8 @@ async def back_to_model(callback: CallbackQuery, state: FSMContext) -> None:
 
     await state.update_data(
         prompt=None, model_slug=None, model_label=None,
-        model_description=None, model_has_group=None, model_aspect_ratios=None,
+        model_description=None, model_variant_description=None,
+        model_has_group=None, model_aspect_ratios=None,
         confirm_msg_id=None, reference_file_id=None, reference_type=None,
     )
     await state.set_state(MediaStates.select_model)
