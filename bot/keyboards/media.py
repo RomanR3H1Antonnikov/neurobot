@@ -11,11 +11,18 @@ def media_type_kb() -> InlineKeyboardMarkup:
         InlineKeyboardButton(text="🎬 Видео", callback_data="media:type:video"),
         InlineKeyboardButton(text="🎵 Аудио", callback_data="media:type:audio"),
     )
-    builder.row(
-        InlineKeyboardButton(text="✏️ Редактировать фото", callback_data="media:type:photo_edit"),
-        InlineKeyboardButton(text="✏️ Редактировать видео", callback_data="media:type:video_edit"),
-    )
+    builder.row(InlineKeyboardButton(text="✏️ Редактировать медиа", callback_data="media:edit_menu"))
     builder.row(InlineKeyboardButton(text="◀️ Назад", callback_data="media:back:menu"))
+    return builder.as_markup()
+
+
+def media_edit_kb() -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    builder.row(
+        InlineKeyboardButton(text="🖼 Изменить фото", callback_data="media:type:photo_edit"),
+        InlineKeyboardButton(text="🎬 Изменить видео", callback_data="media:type:video_edit"),
+    )
+    builder.row(InlineKeyboardButton(text="◀️ Назад", callback_data="media:back:type"))
     return builder.as_markup()
 
 

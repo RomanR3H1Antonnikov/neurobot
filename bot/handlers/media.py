@@ -6,7 +6,7 @@ from aiogram.fsm.state import State, StatesGroup
 
 from bot.keyboards.main_menu import BTN_MEDIA, MENU_BUTTONS, main_menu_kb
 from bot.keyboards.media import (
-    media_type_kb, model_top_kb, model_variant_kb,
+    media_type_kb, media_edit_kb, model_top_kb, model_variant_kb,
     model_select_text, model_variant_text, back_to_model_kb, back_to_confirm_kb,
     image_confirm_kb, image_ratio_kb, image_resolution_kb,
     video_confirm_kb, audio_confirm_kb, edit_confirm_kb,
@@ -32,8 +32,8 @@ _TYPE_LABELS = {
     "image": "Фото",
     "video": "Видео",
     "audio": "Аудио",
-    "photo_edit": "Редактирование фото",
-    "video_edit": "Редактирование видео",
+    "photo_edit": "Изменить фото",
+    "video_edit": "Изменить видео",
 }
 
 _TYPE_TO_TASK = {
@@ -119,6 +119,15 @@ async def media_menu(message: Message, state: FSMContext) -> None:
 
 
 # ─── Выбор типа ──────────────────────────────────────────────────────────────
+
+@router.callback_query(MediaStates.select_type, F.data == "media:edit_menu")
+async def edit_menu(callback: CallbackQuery) -> None:
+    await callback.message.edit_text(
+        "Выбери, что нужно изменить:",
+        reply_markup=media_edit_kb(),
+    )
+    await callback.answer()
+
 
 @router.callback_query(MediaStates.select_type, F.data.startswith("media:type:"))
 async def select_type(callback: CallbackQuery, state: FSMContext) -> None:
