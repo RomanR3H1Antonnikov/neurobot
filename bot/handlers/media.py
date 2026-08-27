@@ -136,9 +136,9 @@ async def select_type(callback: CallbackQuery, state: FSMContext) -> None:
         "image": {"aspect_ratio": "1:1", "resolution": "1K"},
         "video": {"duration": 5},
         "audio": {"audio_type": "voice"},
-        "edit": {},
     }
-    await state.update_data(media_type=media_type, **defaults.get(media_type, {}))
+    # Сбрасываем все данные предыдущего раздела (промпт, модель и т.д.)
+    await state.set_data({"media_type": media_type, **defaults.get(media_type, {})})
 
     task_type = _TYPE_TO_TASK.get(media_type)
     models = get_models_for_task(task_type) if task_type else []
