@@ -399,6 +399,7 @@ async def _update_confirm_card(message: Message, state: FSMContext) -> None:
 async def receive_prompt(message: Message, state: FSMContext) -> None:
     await state.update_data(prompt=message.text)
     await state.set_state(MediaStates.confirm)
+    await message.delete()
     await _update_confirm_card(message, state)
 
 
