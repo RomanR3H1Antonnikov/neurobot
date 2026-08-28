@@ -90,8 +90,8 @@ tasks:
           цифровой живописи. Эффективно работает с анатомией и мелкими деталями, снижая число
           артефактов.
         aspect_ratios: ["1:1", "9:16", "16:9", "3:4", "4:3"]
-        model_id: flux.2-flex
-        provider: aitunnel
+        model_id: flux-2-flex
+        provider: kie
         cost_credits: 10
         cost_usd: 0.005
         enabled: true
@@ -107,8 +107,8 @@ tasks:
           цифровой живописи. Эффективно работает с анатомией и мелкими деталями, снижая число
           артефактов.
         aspect_ratios: ["1:1", "9:16", "16:9", "3:4", "4:3"]
-        model_id: flux.2-pro
-        provider: aitunnel
+        model_id: flux-2-pro
+        provider: kie
         cost_credits: 15
         cost_usd: 0.01
         enabled: true
