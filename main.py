@@ -8,6 +8,7 @@ from config import config
 from db.database import get_db, close_db
 from bot.middlewares.user_middleware import UserMiddleware
 from bot.handlers import start, media, chat, documents, billing, fallback
+from services.kie_webhook import start_webhook_server
 
 logging.basicConfig(
     level=logging.INFO,
@@ -33,11 +34,14 @@ async def main() -> None:
     dp.include_router(fallback.router)  # должен быть последним
 
     await get_db()  # инициализация БД при старте
+
+    webhook_runner = await start_webhook_server(host="0.0.0.0", port=8081)
     logger.info("Бот запущен")
 
     try:
         await dp.start_polling(bot, allowed_updates=dp.resolve_used_update_types())
     finally:
+        await webhook_runner.cleanup()
         await close_db()
         await bot.session.close()
         logger.info("Бот остановлен")

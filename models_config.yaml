@@ -33,7 +33,7 @@ tasks:
         provider: kie
         cost_credits: 15
         cost_usd: 0.01
-        enabled: false  # KIE image API endpoint неизвестен, ожидаем документацию
+        enabled: true
 
       - id: nano-banana-pro
         label: "Nano Banana Pro"

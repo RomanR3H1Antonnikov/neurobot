@@ -15,6 +15,7 @@ class Config:
     aitunnel_api_key: str
     routerai_api_key: str
     kie_api_key: str
+    kie_callback_base_url: str
     genapi_api_key: str
     polzaai_api_key: str
     bratuha_api_key: str
@@ -41,6 +42,7 @@ def load_config() -> Config:
         aitunnel_api_key=os.getenv("AITUNNEL_API_KEY", ""),
         routerai_api_key=os.getenv("ROUTERAI_API_KEY", ""),
         kie_api_key=os.getenv("KIE_API_KEY", ""),
+        kie_callback_base_url=os.getenv("KIE_CALLBACK_BASE_URL", "https://bot.rehy.ru"),
         genapi_api_key=os.getenv("GENAPI_API_KEY", ""),
         polzaai_api_key=os.getenv("POLZAAI_API_KEY", ""),
         bratuha_api_key=os.getenv("BRATUHA_API_KEY", ""),
