@@ -214,8 +214,10 @@ def back_to_confirm_kb() -> InlineKeyboardMarkup:
 
 # ─── После генерации ─────────────────────────────────────────────────────────
 
-def after_generation_kb() -> InlineKeyboardMarkup:
+def after_generation_kb(is_image: bool = False) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
+    if is_image:
+        builder.row(InlineKeyboardButton(text="✏️ Редактировать", callback_data="media:edit_generated"))
     builder.row(
         InlineKeyboardButton(text="🔄 Сгенерировать ещё", callback_data="media:again"),
         InlineKeyboardButton(text="🏠 Главное меню", callback_data="media:back:menu"),

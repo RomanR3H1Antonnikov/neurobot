@@ -299,6 +299,48 @@ async def generate_again(callback: CallbackQuery, state: FSMContext) -> None:
     await callback.answer()
 
 
+@router.callback_query(F.data == "media:edit_generated")
+async def edit_generated_image(callback: CallbackQuery, state: FSMContext) -> None:
+    """Редактировать только что сгенерированное фото — подставляет его как референс."""
+    data = await state.get_data()
+    generated_file_id = data.get("generated_file_id")
+    if not generated_file_id:
+        await callback.answer("Изображение не найдено, попробуй снова.", show_alert=True)
+        return
+
+    # Подбираем модель редактирования: ищем совпадение по model_id, иначе первую доступную
+    from providers.router import get_models_for_task
+    edit_models = get_models_for_task(TaskType.IMAGE_EDIT)
+    gen_model_id = data.get("model_actual_id", "")
+    edit_model = next((m for m in edit_models if m.get("model_id") == gen_model_id), None)
+    if not edit_model:
+        edit_model = edit_models[0] if edit_models else None
+
+    if not edit_model:
+        await callback.answer("Нет доступных моделей для редактирования.", show_alert=True)
+        return
+
+    await state.update_data(
+        media_type="photo_edit",
+        reference_file_id=generated_file_id,
+        reference_type="photo",
+        prompt=None,
+        model_slug=edit_model["id"],
+        model_label=edit_model["label"],
+        model_description=edit_model.get("description", ""),
+        model_variant_description=edit_model.get("variant_description", ""),
+        model_has_group=bool(edit_model.get("group")),
+        model_actual_id=edit_model["model_id"],
+        model_aspect_ratios=None,
+    )
+    await state.set_state(MediaStates.enter_prompt)
+    await callback.message.answer(
+        "Опиши, что нужно изменить на фото:",
+        reply_markup=back_to_confirm_kb(),
+    )
+    await callback.answer()
+
+
 @router.callback_query(MediaStates.confirm, F.data == "media:add_reference")
 async def add_reference_prompt(callback: CallbackQuery, state: FSMContext) -> None:
     """Кнопка 'Добавить фото/видео' на карточке редактирования."""
@@ -604,7 +646,8 @@ async def start_generation(callback: CallbackQuery, state: FSMContext) -> None:
                 data.get("aspect_ratio", "1:1"), data.get("resolution", "1K"), model_slug
             )
             file = BufferedInputFile(result.data, filename=result.filename)
-            await callback.message.answer_photo(file, reply_markup=after_generation_kb())
+            sent = await callback.message.answer_photo(file, reply_markup=after_generation_kb(is_image=True))
+            await state.update_data(generated_file_id=sent.photo[-1].file_id)
 
         elif media_type == "video":
             result = await media_service.generate_video(
