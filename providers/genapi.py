@@ -92,6 +92,7 @@ class GenApiProvider(AbstractProvider):
             unregister_pending(corr_id)
 
         logger.info("GenAPI callback body keys: %s", list(result.keys()))
+        logger.info("GenAPI callback result field: %s", str(result.get("result"))[:500])
 
         if _is_failed(result):
             raise ProviderUnavailableError("GenAPI: задача завершилась с ошибкой")
