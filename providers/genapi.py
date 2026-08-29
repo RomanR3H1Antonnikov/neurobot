@@ -18,14 +18,18 @@ _CALLBACK_TIMEOUT = 600  # 10 минут
 
 def _extract_url(body: dict) -> str | None:
     """Извлекает URL результата из callback-тела GenAPI."""
-    # Пробуем разные варианты вложенности
-    for container in (body.get("result"), body.get("data"), body):
+    result = body.get("result")
+    # GenAPI возвращает result как список URL-строк напрямую
+    if isinstance(result, list) and result:
+        item = result[0]
+        return item if isinstance(item, str) else item.get("url")
+    # Fallback: result как словарь или другие варианты вложенности
+    for container in (result, body.get("data"), body):
         if not isinstance(container, dict):
             continue
         for key in ("url", "image_url", "video_url", "audio_url", "output_url", "file_url"):
             if container.get(key):
                 return container[key]
-        # Массивы: urls / images / videos / files
         for key in ("urls", "images", "videos", "files", "outputs"):
             lst = container.get(key)
             if isinstance(lst, list) and lst:
