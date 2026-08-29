@@ -44,9 +44,28 @@ async def _handle_callback(request: web.Request) -> web.Response:
     return web.json_response({"code": 200, "msg": "ok"})
 
 
+async def _handle_genapi_callback(request: web.Request) -> web.Response:
+    corr_id = request.match_info["corr_id"]
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+
+    logger.info("GenAPI callback received: corr_id=%s, keys=%s", corr_id, list(body.keys()))
+
+    fut = _pending.get(corr_id)
+    if fut and not fut.done():
+        fut.set_result(body)
+    else:
+        logger.warning("GenAPI callback for unknown or already resolved corr_id=%s", corr_id)
+
+    return web.json_response({"ok": True})
+
+
 def create_app() -> web.Application:
     app = web.Application()
     app.router.add_post("/kie/callback/{corr_id}", _handle_callback)
+    app.router.add_post("/genapi/callback/{corr_id}", _handle_genapi_callback)
 
     async def _healthz(request: web.Request) -> web.Response:
         return web.json_response({"status": "ok"})
