@@ -671,8 +671,12 @@ async def start_generation(callback: CallbackQuery, state: FSMContext) -> None:
                     InputMediaPhoto(media=BufferedInputFile(img, filename=f"image_{i+1}.png"))
                     for i, img in enumerate(all_images)
                 ]
+                import logging as _log
+                _log.getLogger(__name__).info("Sending media group: %d images", len(all_images))
                 msgs = await callback.message.answer_media_group(media=media_group)
-                await state.update_data(generated_file_id=msgs[0].photo[-1].file_id)
+                _log.getLogger(__name__).info("Media group sent: %d messages returned", len(msgs))
+                gen_file_id = msgs[0].photo[-1].file_id if msgs and msgs[0].photo else None
+                await state.update_data(generated_file_id=gen_file_id)
                 await callback.message.answer("Выбери действие:", reply_markup=after_generation_kb(is_image=True))
             else:
                 file = BufferedInputFile(result.data, filename=result.filename)
