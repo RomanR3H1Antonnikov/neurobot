@@ -299,32 +299,26 @@ async def generate_again(callback: CallbackQuery, state: FSMContext) -> None:
     await callback.answer()
 
 
-@router.callback_query(F.data == "media:edit_generated")
-async def edit_generated_image(callback: CallbackQuery, state: FSMContext) -> None:
-    """Редактировать только что сгенерированное фото — подставляет его как референс."""
-    data = await state.get_data()
-    generated_file_id = data.get("generated_file_id")
-    if not generated_file_id:
-        await callback.answer("Изображение не найдено, попробуй снова.", show_alert=True)
-        return
-
-    # Подбираем модель редактирования: ищем совпадение по model_id, иначе первую доступную
-    from providers.router import get_models_for_task
+def _find_edit_model(gen_model_id: str) -> dict | None:
+    """Возвращает модель редактирования: сначала ищет совпадение по model_id, иначе первую."""
     edit_models = get_models_for_task(TaskType.IMAGE_EDIT)
-    gen_model_id = data.get("model_actual_id", "")
-    edit_model = next((m for m in edit_models if m.get("model_id") == gen_model_id), None)
-    if not edit_model:
-        edit_model = edit_models[0] if edit_models else None
+    return (
+        next((m for m in edit_models if m.get("model_id") == gen_model_id), None)
+        or (edit_models[0] if edit_models else None)
+    )
 
-    if not edit_model:
-        await callback.answer("Нет доступных моделей для редактирования.", show_alert=True)
-        return
 
+async def _apply_edit_model_to_state(state: FSMContext, edit_prompt: str | None = None) -> dict | None:
+    """Переключает стейт в photo_edit для сгенерированного фото. Возвращает edit_model или None."""
+    data = await state.get_data()
+    edit_model = _find_edit_model(data.get("model_actual_id", ""))
+    if not edit_model:
+        return None
     await state.update_data(
         media_type="photo_edit",
-        reference_file_id=generated_file_id,
+        reference_file_id=data["generated_file_id"],
         reference_type="photo",
-        prompt=None,
+        prompt=edit_prompt,
         model_slug=edit_model["id"],
         model_label=edit_model["label"],
         model_description=edit_model.get("description", ""),
@@ -333,6 +327,22 @@ async def edit_generated_image(callback: CallbackQuery, state: FSMContext) -> No
         model_actual_id=edit_model["model_id"],
         model_aspect_ratios=None,
     )
+    return edit_model
+
+
+@router.callback_query(F.data == "media:edit_generated")
+async def edit_generated_image(callback: CallbackQuery, state: FSMContext) -> None:
+    """Редактировать только что сгенерированное фото — подставляет его как референс."""
+    data = await state.get_data()
+    if not data.get("generated_file_id"):
+        await callback.answer("Изображение не найдено, попробуй снова.", show_alert=True)
+        return
+
+    edit_model = await _apply_edit_model_to_state(state)
+    if not edit_model:
+        await callback.answer("Нет доступных моделей для редактирования.", show_alert=True)
+        return
+
     await state.set_state(MediaStates.enter_prompt)
     await callback.message.answer(
         "Опиши, что нужно изменить на фото:",
@@ -500,6 +510,15 @@ async def enter_prompt_wrong_input(message: Message, state: FSMContext) -> None:
 
 @router.message(MediaStates.confirm, F.text, ~F.text.in_(MENU_BUTTONS))
 async def update_prompt_in_confirm(message: Message, state: FSMContext) -> None:
+    data = await state.get_data()
+    # После генерации фото — текст сразу воспринимаем как инструкцию редактирования
+    if data.get("generated_file_id") and data.get("media_type") == "image":
+        edit_model = await _apply_edit_model_to_state(state, edit_prompt=message.text)
+        if edit_model:
+            await message.delete()
+            await state.set_state(MediaStates.confirm)
+            await _update_confirm_card(message, state)
+            return
     await state.update_data(prompt=message.text)
     await message.delete()
     await _update_confirm_card(message, state)
