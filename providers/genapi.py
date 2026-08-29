@@ -151,7 +151,14 @@ class GenApiProvider(AbstractProvider):
                     raise ProviderUnavailableError("GenAPI: не удалось скачать результат")
                 return await resp.read()
 
-    # ─── Чат (GenAPI вряд ли используется для чата — заглушка) ──────────────
+    async def edit_image(self, image_bytes: bytes, prompt: str, model: str | None = None) -> GenerationResult:
+        raise ProviderUnavailableError("Редактирование фото через GenAPI не поддерживается")
+
+    async def edit_video(self, video_bytes: bytes, prompt: str, model: str | None = None) -> GenerationResult:
+        raise ProviderUnavailableError("Редактирование видео через GenAPI не поддерживается")
+
+    async def generate_video(self, prompt: str, duration: int = 5, model: str | None = None) -> GenerationResult:
+        raise ProviderUnavailableError("Генерация видео через GenAPI не поддерживается")
 
     async def chat(self, messages: list[dict], system: str = "", model: str | None = None) -> ChatResult:
         raise ProviderUnavailableError("Чат через GenAPI не настроен")
