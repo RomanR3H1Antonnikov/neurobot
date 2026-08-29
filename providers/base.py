@@ -30,6 +30,7 @@ class GenerationResult:
     data: bytes          # бинарные данные (изображение, видео, аудио)
     mime_type: str       # например 'image/png', 'video/mp4', 'audio/mpeg'
     filename: str
+    variants: list[bytes] = None  # доп. варианты (например, 4 картинки Midjourney)
 
 
 @dataclass

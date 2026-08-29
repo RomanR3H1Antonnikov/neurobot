@@ -1,6 +1,6 @@
 import asyncio
 from aiogram import Router, F
-from aiogram.types import Message, CallbackQuery, BufferedInputFile
+from aiogram.types import Message, CallbackQuery, BufferedInputFile, InputMediaPhoto
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 
@@ -664,9 +664,20 @@ async def start_generation(callback: CallbackQuery, state: FSMContext) -> None:
                 tg_user.id, tg_user.username, prompt,
                 data.get("aspect_ratio", "1:1"), data.get("resolution", "1K"), model_slug
             )
-            file = BufferedInputFile(result.data, filename=result.filename)
-            sent = await callback.message.answer_photo(file, reply_markup=after_generation_kb(is_image=True))
-            await state.update_data(generated_file_id=sent.photo[-1].file_id)
+            if result.variants:
+                # Несколько вариантов (например, Midjourney) — отправляем карусель
+                all_images = [result.data] + result.variants
+                media_group = [
+                    InputMediaPhoto(media=BufferedInputFile(img, filename=f"image_{i+1}.png"))
+                    for i, img in enumerate(all_images)
+                ]
+                msgs = await callback.message.answer_media_group(media=media_group)
+                await state.update_data(generated_file_id=msgs[0].photo[-1].file_id)
+                await callback.message.answer("Выбери действие:", reply_markup=after_generation_kb(is_image=True))
+            else:
+                file = BufferedInputFile(result.data, filename=result.filename)
+                sent = await callback.message.answer_photo(file, reply_markup=after_generation_kb(is_image=True))
+                await state.update_data(generated_file_id=sent.photo[-1].file_id)
 
         elif media_type == "video":
             result = await media_service.generate_video(

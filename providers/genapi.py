@@ -111,12 +111,23 @@ class GenApiProvider(AbstractProvider):
         actual_model = model or "midjourney"
         data = await self._run(actual_model, prompt)
 
-        url = _extract_url(data)
-        if not url:
-            raise ProviderUnavailableError(f"GenAPI: не получен URL изображения (тело: {str(data)[:200]})")
+        result = data.get("result")
+        # GenAPI возвращает список URL в result — качаем все параллельно
+        if isinstance(result, list) and result:
+            urls = [u for u in result if isinstance(u, str)]
+        else:
+            url = _extract_url(data)
+            if not url:
+                raise ProviderUnavailableError(f"GenAPI: не получен URL изображения (тело: {str(data)[:200]})")
+            urls = [url]
 
-        image_bytes = await self._download(url)
-        return GenerationResult(data=image_bytes, mime_type="image/png", filename="image.png")
+        images = await asyncio.gather(*[self._download(u) for u in urls])
+        return GenerationResult(
+            data=images[0],
+            mime_type="image/png",
+            filename="image.png",
+            variants=list(images[1:]) if len(images) > 1 else None,
+        )
 
     # ─── Генерация аудио ──────────────────────────────────────────────────────
 
