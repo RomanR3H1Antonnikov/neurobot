@@ -4,7 +4,7 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 
-from bot.keyboards.main_menu import BTN_CHAT, MENU_BUTTONS, main_menu_kb, inline_main_menu_kb
+from bot.keyboards.main_menu import BTN_CHAT, BTN_EXIT_CHAT, BTN_NEW_DIALOG, MENU_BUTTONS, main_menu_kb, inline_main_menu_kb
 from providers.base import ProviderError, TaskType
 from providers.router import get_models_for_task
 from services import chat_service
@@ -20,7 +20,7 @@ class ChatStates(StatesGroup):
 
 def chat_kb() -> ReplyKeyboardMarkup:
     return ReplyKeyboardMarkup(
-        keyboard=[[KeyboardButton(text="🔄 Новый диалог"), KeyboardButton(text="🏠 Выйти в меню")]],
+        keyboard=[[KeyboardButton(text=BTN_NEW_DIALOG), KeyboardButton(text=BTN_EXIT_CHAT)]],
         resize_keyboard=True,
     )
 
@@ -103,7 +103,7 @@ async def select_chat_model(callback: CallbackQuery, state: FSMContext) -> None:
     await callback.answer()
 
 
-@router.message(ChatStates.active, F.text == "🔄 Новый диалог")
+@router.message(ChatStates.active, F.text == BTN_NEW_DIALOG)
 async def new_chat(message: Message, state: FSMContext) -> None:
     await chat_service.reset_history(message.from_user.id)
     data = await state.get_data()
@@ -111,7 +111,7 @@ async def new_chat(message: Message, state: FSMContext) -> None:
     await message.answer(f"Диалог сброшен. {label} готов к новому разговору!")
 
 
-@router.message(ChatStates.active, F.text == "🏠 Выйти в меню")
+@router.message(F.text == BTN_EXIT_CHAT)
 async def exit_chat(message: Message, state: FSMContext) -> None:
     await state.clear()
     await message.answer("Главное меню:", reply_markup=main_menu_kb())
