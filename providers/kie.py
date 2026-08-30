@@ -4,11 +4,14 @@
 Callback приходит на наш webhook-сервер (services/kie_webhook.py).
 """
 import asyncio
+import logging
 import uuid
 import aiohttp
 from providers.openai_compat import OpenAICompatProvider
 from providers.base import GenerationResult, ProviderUnavailableError, ProviderContentPolicyError
 from services.kie_webhook import register_pending, unregister_pending
+
+logger = logging.getLogger(__name__)
 
 _KIE_API_BASE = "https://api.kie.ai/api/v1"
 _JOB_TIMEOUT = 600  # секунд ожидания callback'а (10 минут)
@@ -110,8 +113,11 @@ class KieProvider(OpenAICompatProvider):
                 data = await resp.json()
 
         if data.get("code") != 200:
+            logger.error("KIE createTask failed: code=%s msg=%s model=%s", data.get("code"), data.get("msg"), model)
             raise ProviderUnavailableError(f"KIE: {data.get('msg', 'неизвестная ошибка')}")
-        return data["data"]["taskId"]
+        task_id = data["data"]["taskId"]
+        logger.info("KIE task created: model=%s taskId=%s", model, task_id)
+        return task_id
 
     async def _await_job(self, corr_id: str) -> dict:
         """Ждёт callback от KIE с таймаутом."""
@@ -189,11 +195,18 @@ class KieProvider(OpenAICompatProvider):
         finally:
             unregister_pending(corr_id)
 
+        data = callback_body.get("data", {})
+        logger.info("KIE image callback: model=%s state=%s code=%s resultJson=%s",
+                    actual_model, data.get("state"), callback_body.get("code"),
+                    str(data.get("resultJson", ""))[:200])
+
         if _is_failed(callback_body):
+            logger.error("KIE image failed: model=%s failMsg=%s", actual_model, data.get("failMsg"))
             raise ProviderUnavailableError("KIE: генерация завершилась с ошибкой")
 
         url = _extract_url(callback_body)
         if not url:
+            logger.error("KIE image: URL not found in callback. data keys=%s", list(data.keys()))
             raise ProviderUnavailableError("KIE: не получен URL изображения")
 
         image_bytes = await self._download(url)
