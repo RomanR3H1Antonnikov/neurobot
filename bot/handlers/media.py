@@ -1,6 +1,6 @@
 import asyncio
 from aiogram import Router, F
-from aiogram.types import Message, CallbackQuery, BufferedInputFile, InputMediaPhoto
+from aiogram.types import Message, CallbackQuery, BufferedInputFile, InputMediaPhoto, InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 
@@ -636,6 +636,15 @@ async def edit_prompt(callback: CallbackQuery, state: FSMContext) -> None:
     await callback.answer()
 
 
+@router.callback_query(F.data == "media:gen_why_long")
+async def gen_why_long(callback: CallbackQuery) -> None:
+    await callback.answer(
+        "Нейросети иногда думают дольше обычного — это нормально.\n\n"
+        "Результат придёт автоматически, как только будет готов. Просто подожди немного 🙏",
+        show_alert=True,
+    )
+
+
 # ─── Запуск генерации ─────────────────────────────────────────────────────────
 
 @router.callback_query(MediaStates.confirm, F.data == "media:start")
@@ -655,7 +664,12 @@ async def start_generation(callback: CallbackQuery, state: FSMContext) -> None:
         return
     model_slug = data.get("model_slug", "")
 
-    await callback.message.edit_text("⏳ Генерирую, подожди немного...")
+    await callback.message.edit_text(
+        "⏳ Генерирую, подожди немного...",
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=[[
+            InlineKeyboardButton(text="Долго грузит? ⏳", callback_data="media:gen_why_long"),
+        ]]),
+    )
     await callback.answer()
 
     try:
