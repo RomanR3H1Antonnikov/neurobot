@@ -292,10 +292,20 @@ async def menu_to_media(callback: CallbackQuery, state: FSMContext) -> None:
 
 @router.callback_query(F.data == "media:again")
 async def generate_again(callback: CallbackQuery, state: FSMContext) -> None:
-    await state.clear()
-    await state.set_state(MediaStates.select_type)
-    await callback.message.delete()
-    await callback.message.answer(MEDIA_MENU_TEXT, parse_mode="HTML", reply_markup=media_type_kb())
+    # Возвращаемся к карточке с теми же настройками — пользователь может сразу жать генерацию
+    await state.update_data(generated_file_id=None)
+    await state.set_state(MediaStates.confirm)
+    data = await state.get_data()
+    try:
+        await callback.message.edit_text(
+            _confirm_card_text(data), parse_mode="HTML", reply_markup=_confirm_kb(data)
+        )
+    except Exception:
+        await callback.message.delete()
+        sent = await callback.message.answer(
+            _confirm_card_text(data), parse_mode="HTML", reply_markup=_confirm_kb(data)
+        )
+        await state.update_data(confirm_msg_id=sent.message_id)
     await callback.answer()
 
 
