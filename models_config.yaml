@@ -31,7 +31,7 @@ tasks:
         aspect_ratios: ["1:1", "2:3", "3:2", "1:4", "4:1", "3:4", "4:3", "4:5", "5:4", "1:8", "8:1", "9:16", "16:9"]
         model_id: nano-banana-2
         provider: kie
-        cost_credits: 15
+        cost_credits: 1
         cost_usd: 0.01
         enabled: true
 
@@ -48,7 +48,7 @@ tasks:
         aspect_ratios: ["1:1", "2:3", "3:2", "1:4", "4:1", "3:4", "4:3", "4:5", "5:4", "1:8", "8:1", "9:16", "16:9"]
         model_id: gemini-3-pro-image
         provider: aitunnel
-        cost_credits: 20
+        cost_credits: 1
         cost_usd: 0.02
         enabled: true
 
@@ -61,7 +61,7 @@ tasks:
         aspect_ratios: ["1:1", "4:3", "3:4", "16:9", "9:16", "3:2", "2:3", "21:9"]
         model_id: seedream-v5
         provider: kie
-        cost_credits: 15
+        cost_credits: 1
         cost_usd: 0.01
         enabled: true
 
@@ -75,7 +75,7 @@ tasks:
         aspect_ratios: ["1:1", "5:4", "3:2", "7:4", "16:9", "2:1", "9:16", "1:2", "2:3"]
         model_id: midjourney
         provider: genapi
-        cost_credits: 25
+        cost_credits: 1
         cost_usd: 0.04
         enabled: true
 
@@ -92,7 +92,7 @@ tasks:
         aspect_ratios: ["1:1", "9:16", "16:9", "3:4", "4:3"]
         model_id: flux-2/flex-text-to-image
         provider: kie
-        cost_credits: 10
+        cost_credits: 1
         cost_usd: 0.005
         enabled: true
 
@@ -109,7 +109,7 @@ tasks:
         aspect_ratios: ["1:1", "9:16", "16:9", "3:4", "4:3"]
         model_id: flux-2/pro-text-to-image
         provider: kie
-        cost_credits: 15
+        cost_credits: 1
         cost_usd: 0.01
         enabled: true
 
@@ -123,7 +123,7 @@ tasks:
         aspect_ratios: ["1:1", "4:3", "3:4", "3:2", "2:3", "5:4", "4:5", "16:9", "9:16", "21:9"]
         model_id: gpt-image-2
         provider: aitunnel
-        cost_credits: 30
+        cost_credits: 1
         cost_usd: 0.04
         enabled: true
 
@@ -138,7 +138,7 @@ tasks:
           (изображения, видео, аудио), синхронную генерацию звука и локальное редактирование сцен.
         model_id: seedance-2.5
         provider: kie
-        cost_credits: 80
+        cost_credits: 1
         cost_usd: 0.08
         enabled: true
 
@@ -150,7 +150,7 @@ tasks:
           и сохранением консистентности персонажей.
         model_id: seedance-2.0
         provider: kie
-        cost_credits: 60
+        cost_credits: 1
         cost_usd: 0.06
         enabled: true
 
@@ -164,7 +164,7 @@ tasks:
           нативным звуком, multi-shot-раскадровкой и Motion Control.
         model_id: kling-v3
         provider: kie
-        cost_credits: 80
+        cost_credits: 1
         cost_usd: 0.08
         enabled: true
 
@@ -178,7 +178,7 @@ tasks:
           нативным звуком, multi-shot-раскадровкой и Motion Control.
         model_id: kling-v3-turbo
         provider: kie
-        cost_credits: 60
+        cost_credits: 1
         cost_usd: 0.05
         enabled: true
 
@@ -192,7 +192,7 @@ tasks:
           нативным звуком, multi-shot-раскадровкой и Motion Control.
         model_id: kling-v3-motion-control
         provider: kie
-        cost_credits: 80
+        cost_credits: 1
         cost_usd: 0.08
         enabled: true
 
@@ -204,7 +204,7 @@ tasks:
           мультимодальные входы (до 12 файлов), редактирование и контроль первого/последнего кадра.
         model_id: minimax-h3
         provider: kie
-        cost_credits: 70
+        cost_credits: 1
         cost_usd: 0.07
         enabled: true
 
@@ -218,7 +218,7 @@ tasks:
           сцены и сохранение идентичности персонажей.
         model_id: wan-3.0
         provider: kie
-        cost_credits: 80
+        cost_credits: 1
         cost_usd: 0.08
         enabled: true
 
@@ -232,7 +232,7 @@ tasks:
           сцены и сохранение идентичности персонажей.
         model_id: wan-2.7
         provider: kie
-        cost_credits: 70
+        cost_credits: 1
         cost_usd: 0.07
         enabled: true
 
@@ -244,7 +244,7 @@ tasks:
           и улучшенной динамикой движений.
         model_id: alibaba/happyhorse-1.1
         provider: routerai
-        cost_credits: 70
+        cost_credits: 1
         cost_usd: 0.07
         enabled: true
 
@@ -256,7 +256,7 @@ tasks:
           мультисценные переходы и локальную корректировку кадров.
         model_id: pixverse-v6
         provider: kie
-        cost_credits: 70
+        cost_credits: 1
         cost_usd: 0.07
         enabled: true
 
@@ -271,7 +271,7 @@ tasks:
         variant_description: "Облегчённая версия Veo 3.1 для быстрой и экономичной генерации коротких видео."
         model_id: veo3.1-lite
         provider: bratuha
-        cost_credits: 60
+        cost_credits: 1
         cost_usd: 0.06
         enabled: true
 
@@ -289,7 +289,7 @@ tasks:
           и низкой стоимости, подходит для тестов, итераций и контента под соцсети.
         model_id: veo3.1-fast
         provider: bratuha
-        cost_credits: 80
+        cost_credits: 1
         cost_usd: 0.08
         enabled: true
 
@@ -304,7 +304,7 @@ tasks:
         variant_description: ""
         model_id: veo3.1-quality
         provider: bratuha
-        cost_credits: 100
+        cost_credits: 1
         cost_usd: 0.10
         enabled: true
 
@@ -314,7 +314,7 @@ tasks:
         description: ""
         model_id: gemini-omni-flash
         provider: bratuha
-        cost_credits: 50
+        cost_credits: 1
         cost_usd: 0.05
         enabled: false
 
@@ -323,7 +323,7 @@ tasks:
         description: ""
         model_id: veo-3.1
         provider: bratuha
-        cost_credits: 100
+        cost_credits: 1
         cost_usd: 0.15
         enabled: false
 
@@ -332,7 +332,7 @@ tasks:
         description: ""
         model_id: sora-2
         provider: bratuha
-        cost_credits: 120
+        cost_credits: 1
         cost_usd: 0.20
         enabled: false  # bratuha.ru — нет публичного API
 
@@ -349,7 +349,7 @@ tasks:
         model_id: elevenlabs/text-to-dialogue-v3
         provider: kie
         audio_type: voice
-        cost_credits: 15
+        cost_credits: 1
         cost_usd: 0.02
         enabled: true
 
@@ -362,7 +362,7 @@ tasks:
         model_id: udio
         provider: genapi
         audio_type: music
-        cost_credits: 20
+        cost_credits: 1
         cost_usd: 0.04
         enabled: true
 
@@ -375,7 +375,7 @@ tasks:
         model_id: elevenlabs-music
         provider: genapi
         audio_type: music
-        cost_credits: 20
+        cost_credits: 1
         cost_usd: 0.04
         enabled: true
 
@@ -386,7 +386,7 @@ tasks:
         model_id: suno
         provider: bratuha
         audio_type: music
-        cost_credits: 25
+        cost_credits: 1
         cost_usd: 0.05
         enabled: false
 
@@ -401,7 +401,7 @@ tasks:
         description: ""
         model_id: nano-banana-2
         provider: kie
-        cost_credits: 15
+        cost_credits: 1
         cost_usd: 0.01
         enabled: true
 
@@ -412,7 +412,7 @@ tasks:
         description: ""
         model_id: gemini-3-pro-image
         provider: aitunnel
-        cost_credits: 20
+        cost_credits: 1
         cost_usd: 0.02
         enabled: true
 
@@ -421,7 +421,7 @@ tasks:
         description: ""
         model_id: gpt-image-2
         provider: aitunnel
-        cost_credits: 30
+        cost_credits: 1
         cost_usd: 0.04
         enabled: true
 
@@ -432,7 +432,7 @@ tasks:
         description: ""
         model_id: flux-2/flex-image-to-image
         provider: kie
-        cost_credits: 10
+        cost_credits: 1
         cost_usd: 0.005
         enabled: true
 
@@ -443,7 +443,7 @@ tasks:
         description: ""
         model_id: flux-2/pro-image-to-image
         provider: kie
-        cost_credits: 15
+        cost_credits: 1
         cost_usd: 0.01
         enabled: true
 
@@ -452,7 +452,7 @@ tasks:
         description: ""
         model_id: seedream-v5
         provider: kie
-        cost_credits: 15
+        cost_credits: 1
         cost_usd: 0.01
         enabled: true
 
@@ -461,7 +461,7 @@ tasks:
         description: ""
         model_id: midjourney
         provider: genapi
-        cost_credits: 25
+        cost_credits: 1
         cost_usd: 0.04
         enabled: true
 
@@ -479,7 +479,7 @@ tasks:
         description: ""
         model_id: gpt-5.5
         provider: kie
-        cost_credits: 3
+        cost_credits: 1
         cost_usd: 0.002
         enabled: true
 
@@ -488,7 +488,7 @@ tasks:
         description: ""
         model_id: anthropic/claude-opus-4.8
         provider: routerai
-        cost_credits: 5
+        cost_credits: 1
         cost_usd: 0.015
         enabled: true
 
@@ -497,7 +497,7 @@ tasks:
         description: ""
         model_id: deepseek/deepseek-v4-flash-vision-exp
         provider: routerai
-        cost_credits: 2
+        cost_credits: 1
         cost_usd: 0.001
         enabled: true
 
@@ -510,7 +510,7 @@ tasks:
         description: ""
         model_id: gpt-5.5
         provider: kie
-        cost_credits: 5
+        cost_credits: 1
         cost_usd: 0.002
         enabled: true
 
@@ -519,6 +519,6 @@ tasks:
         description: ""
         model_id: deepseek/deepseek-v4-flash-vision-exp
         provider: routerai
-        cost_credits: 3
+        cost_credits: 1
         cost_usd: 0.001
         enabled: true
