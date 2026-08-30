@@ -22,16 +22,30 @@ def _kie_ratio(aspect_ratio: str) -> str:
 
 
 def _extract_url(body: dict) -> str | None:
-    """Извлекает URL результата из callback-тела KIE (несколько возможных форматов)."""
-    # Формат 1: data.resultList[0].url
+    """Извлекает URL результата из callback-тела KIE."""
+    import json as _json
     data = body.get("data") or body
+
+    # Основной формат KIE: data.resultJson — JSON-строка {"resultUrls": ["url", ...]}
+    result_json_str = data.get("resultJson")
+    if result_json_str:
+        try:
+            result_obj = _json.loads(result_json_str)
+            urls = result_obj.get("resultUrls") or result_obj.get("resultUrl")
+            if isinstance(urls, list) and urls:
+                return urls[0]
+            if isinstance(urls, str) and urls:
+                return urls
+        except Exception:
+            pass
+
+    # Запасные форматы (legacy / другие модели)
     for key in ("resultList", "result_list", "results", "images", "videos"):
         lst = data.get(key)
         if isinstance(lst, list) and lst:
             url = lst[0].get("url") or lst[0].get("image_url") or lst[0].get("video_url")
             if url:
                 return url
-    # Формат 2: data.url / data.image_url / data.video_url
     for key in ("url", "image_url", "video_url", "output_url"):
         url = data.get(key)
         if url:
@@ -41,11 +55,20 @@ def _extract_url(body: dict) -> str | None:
 
 def _is_failed(body: dict) -> bool:
     data = body.get("data") or body
+    # Современный формат KIE: data.state
+    state = (data.get("state") or "").lower()
+    if state in ("fail", "failed", "error"):
+        return True
+    # Легаси: data.status
     status = data.get("status") or body.get("status")
     if isinstance(status, str):
         return status.lower() in ("failed", "error", "fail")
     if isinstance(status, int):
         return status in (3, -1)
+    # code 500/501 = ошибка генерации
+    code = body.get("code")
+    if isinstance(code, int) and code in (500, 501):
+        return True
     return False
 
 
@@ -100,6 +123,39 @@ class KieProvider(OpenAICompatProvider):
         finally:
             unregister_pending(corr_id)
         return result
+
+    # ─── Генерация аудио ──────────────────────────────────────────────────────
+
+    async def generate_audio(
+        self, prompt: str, audio_type: str = "voice", model: str | None = None,
+    ) -> GenerationResult:
+        actual_model = model or "elevenlabs/text-to-dialogue-v3"
+        corr_id = uuid.uuid4().hex
+        fut = register_pending(corr_id)
+
+        # elevenlabs/text-to-dialogue-v3 требует массив dialogue с voice ID
+        input_data = {
+            "dialogue": [{"text": prompt, "voice": "EkK5I93UQWFDigLMpZcX"}],
+            "stability": 0.5,
+        }
+
+        try:
+            await self._create_job(actual_model, input_data, corr_id)
+            callback_body = await asyncio.wait_for(fut, timeout=_JOB_TIMEOUT)
+        except asyncio.TimeoutError:
+            raise ProviderUnavailableError("KIE: истекло время ожидания аудио")
+        finally:
+            unregister_pending(corr_id)
+
+        if _is_failed(callback_body):
+            raise ProviderUnavailableError("KIE: генерация аудио завершилась с ошибкой")
+
+        url = _extract_url(callback_body)
+        if not url:
+            raise ProviderUnavailableError("KIE: не получен URL аудио")
+
+        audio_bytes = await self._download(url)
+        return GenerationResult(data=audio_bytes, mime_type="audio/mpeg", filename="audio.mp3")
 
     async def _download(self, url: str) -> bytes:
         async with aiohttp.ClientSession() as s:

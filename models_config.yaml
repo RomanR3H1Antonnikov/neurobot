@@ -90,7 +90,7 @@ tasks:
           цифровой живописи. Эффективно работает с анатомией и мелкими деталями, снижая число
           артефактов.
         aspect_ratios: ["1:1", "9:16", "16:9", "3:4", "4:3"]
-        model_id: flux-2-flex
+        model_id: flux-2/flex-text-to-image
         provider: kie
         cost_credits: 10
         cost_usd: 0.005
@@ -107,7 +107,7 @@ tasks:
           цифровой живописи. Эффективно работает с анатомией и мелкими деталями, снижая число
           артефактов.
         aspect_ratios: ["1:1", "9:16", "16:9", "3:4", "4:3"]
-        model_id: flux-2-pro
+        model_id: flux-2/pro-text-to-image
         provider: kie
         cost_credits: 15
         cost_usd: 0.01
@@ -346,7 +346,7 @@ tasks:
           Нейросеть для синтеза реалистичной речи: преобразует текст в аудио с точной передачей
           эмоций, интонаций и невербальных звуков (смех, вздохи и т. п.), поддерживает >70 языков,
           озвучку диалогов несколькими голосами и тонкую настройку через аудиотеги.
-        model_id: elevenlabs-v3
+        model_id: elevenlabs/text-to-dialogue-v3
         provider: kie
         audio_type: voice
         cost_credits: 15
@@ -430,7 +430,7 @@ tasks:
         group: flux-2-edit
         group_label: "Flux 2"
         description: ""
-        model_id: flux-2-flex
+        model_id: flux-2/flex-image-to-image
         provider: kie
         cost_credits: 10
         cost_usd: 0.005
@@ -441,7 +441,7 @@ tasks:
         group: flux-2-edit
         group_label: "Flux 2"
         description: ""
-        model_id: flux-2-pro
+        model_id: flux-2/pro-image-to-image
         provider: kie
         cost_credits: 15
         cost_usd: 0.01
