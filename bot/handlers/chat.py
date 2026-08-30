@@ -4,7 +4,7 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 
-from bot.keyboards.main_menu import BTN_CHAT, BTN_EXIT_CHAT, BTN_NEW_DIALOG, MENU_BUTTONS, main_menu_kb, inline_main_menu_kb
+from bot.keyboards.main_menu import BTN_CHAT, BTN_EXIT_CHAT, BTN_NEW_DIALOG, BTN_CHAT_PICK_MODEL, MENU_BUTTONS, main_menu_kb, inline_main_menu_kb
 from providers.base import ProviderError, TaskType
 from providers.router import get_models_for_task
 from services import chat_service
@@ -20,7 +20,10 @@ class ChatStates(StatesGroup):
 
 def chat_kb() -> ReplyKeyboardMarkup:
     return ReplyKeyboardMarkup(
-        keyboard=[[KeyboardButton(text=BTN_NEW_DIALOG), KeyboardButton(text=BTN_EXIT_CHAT)]],
+        keyboard=[
+            [KeyboardButton(text=BTN_NEW_DIALOG), KeyboardButton(text=BTN_CHAT_PICK_MODEL)],
+            [KeyboardButton(text=BTN_EXIT_CHAT)],
+        ],
         resize_keyboard=True,
     )
 
@@ -109,6 +112,18 @@ async def new_chat(message: Message, state: FSMContext) -> None:
     data = await state.get_data()
     label = data.get("chat_model_label", "ИИ")
     await message.answer(f"Диалог сброшен. {label} готов к новому разговору!")
+
+
+@router.message(ChatStates.active, F.text == BTN_CHAT_PICK_MODEL)
+async def back_to_model_select(message: Message, state: FSMContext) -> None:
+    await chat_service.reset_history(message.from_user.id)
+    models = get_models_for_task(TaskType.CHAT)
+    await state.set_state(ChatStates.select_model)
+    await message.answer(
+        "💬 <b>Выбери модель для чата:</b>",
+        parse_mode="HTML",
+        reply_markup=_chat_model_kb(models),
+    )
 
 
 @router.message(F.text == BTN_EXIT_CHAT)

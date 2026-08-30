@@ -7,8 +7,9 @@ BTN_DOCS = "📄 Работа с документами"
 BTN_BALANCE = "💳 Мой баланс"
 BTN_EXIT_CHAT = "🏠 Выйти в меню"
 BTN_NEW_DIALOG = "🔄 Новый диалог"
+BTN_CHAT_PICK_MODEL = "◀️ Сменить модель"
 
-MENU_BUTTONS = {BTN_MEDIA, BTN_CHAT, BTN_DOCS, BTN_BALANCE, BTN_EXIT_CHAT, BTN_NEW_DIALOG}
+MENU_BUTTONS = {BTN_MEDIA, BTN_CHAT, BTN_DOCS, BTN_BALANCE, BTN_EXIT_CHAT, BTN_NEW_DIALOG, BTN_CHAT_PICK_MODEL}
 
 
 def inline_main_menu_kb() -> InlineKeyboardMarkup:
