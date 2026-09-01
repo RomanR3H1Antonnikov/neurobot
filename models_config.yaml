@@ -65,13 +65,29 @@ tasks:
         cost_usd: 0.01
         enabled: true
 
-      - id: midjourney
-        label: "Midjourney"
+      - id: midjourney-v7
+        label: "V7"
+        group: midjourney
+        group_label: "Midjourney"
         description: >-
           Midjourney славится высокой художественной выразительностью и умением создавать
           детализированные, кинематографичные изображения. Нейросеть отлично интерпретирует
           текстовые описания, включая сложные стили и атмосферные эффекты. Популярна среди
           художников и дизайнеров благодаря уникальному визуальному стилю и гибкости настроек.
+        variant_description: ""
+        aspect_ratios: ["1:1", "5:4", "3:2", "7:4", "16:9", "2:1", "9:16", "1:2", "2:3"]
+        model_id: midjourney/7.0
+        provider: genapi
+        cost_credits: 1
+        cost_usd: 0.04
+        enabled: true
+
+      - id: midjourney-v8
+        label: "V8.1"
+        group: midjourney
+        group_label: "Midjourney"
+        description: ""
+        variant_description: ""
         aspect_ratios: ["1:1", "5:4", "3:2", "7:4", "16:9", "2:1", "9:16", "1:2", "2:3"]
         model_id: midjourney/8.1
         provider: genapi
@@ -497,9 +513,24 @@ tasks:
         cost_usd: 0.01
         enabled: true
 
-      - id: midjourney-edit
-        label: "Midjourney"
+      - id: midjourney-edit-v7
+        label: "V7"
+        group: midjourney-edit
+        group_label: "Midjourney"
         description: ""
+        variant_description: ""
+        model_id: midjourney/7.0
+        provider: genapi
+        cost_credits: 1
+        cost_usd: 0.04
+        enabled: true
+
+      - id: midjourney-edit-v8
+        label: "V8.1"
+        group: midjourney-edit
+        group_label: "Midjourney"
+        description: ""
+        variant_description: ""
         model_id: midjourney/8.1
         provider: genapi
         cost_credits: 1
