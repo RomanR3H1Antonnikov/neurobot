@@ -94,7 +94,7 @@ tasks:
         provider: kie
         cost_credits: 1
         cost_usd: 0.005
-        enabled: true
+        enabled: false
 
       - id: flux-2-pro
         label: "Flux 2 Pro"

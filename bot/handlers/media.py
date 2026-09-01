@@ -3,7 +3,7 @@ import logging
 from aiogram import Router, F
 
 logger = logging.getLogger(__name__)
-from aiogram.types import Message, CallbackQuery, BufferedInputFile, InputMediaPhoto, InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.types import Message, CallbackQuery, BufferedInputFile, InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 
@@ -968,14 +968,17 @@ async def _run_generation(send_msg: Message, tg_user, state: FSMContext, data: d
         )
         if result.variants:
             all_images = [result.data] + result.variants
-            media_group = [
-                InputMediaPhoto(media=BufferedInputFile(img, filename=f"image_{i+1}.png"))
-                for i, img in enumerate(all_images)
-            ]
-            msgs = await send_msg.answer_media_group(media=media_group)
-            gen_file_id = msgs[0].photo[-1].file_id if msgs and msgs[0].photo else None
+            gen_file_id = None
+            for i, img_bytes in enumerate(all_images):
+                f = BufferedInputFile(img_bytes, filename=f"image_{i+1}.png")
+                is_last = (i == len(all_images) - 1)
+                sent = await send_msg.answer_photo(
+                    f,
+                    reply_markup=after_generation_kb(is_image=True) if is_last else None,
+                )
+                if i == 0:
+                    gen_file_id = sent.photo[-1].file_id
             await state.update_data(generated_file_id=gen_file_id)
-            await send_msg.answer("Выбери действие:", reply_markup=after_generation_kb(is_image=True))
         else:
             file = BufferedInputFile(result.data, filename=result.filename)
             sent = await send_msg.answer_photo(file, reply_markup=after_generation_kb(is_image=True))
