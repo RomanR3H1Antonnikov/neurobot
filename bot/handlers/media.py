@@ -23,6 +23,25 @@ from services.media_service import InsufficientCreditsError, RateLimitError
 
 router = Router()
 
+# user_id → asyncio.Task текущей генерации (для возможности отмены)
+_active_tasks: dict[int, asyncio.Task] = {}
+
+
+class GenerationCancelledError(Exception):
+    pass
+
+
+async def _start_tracked(user_id: int, send_msg: Message, tg_user, state: FSMContext, data: dict) -> None:
+    """Запускает _run_generation как Task, чтобы пользователь мог отменить нажатием кнопки."""
+    task = asyncio.create_task(_run_generation(send_msg, tg_user, state, data))
+    _active_tasks[user_id] = task
+    try:
+        await task
+    except asyncio.CancelledError:
+        raise GenerationCancelledError()
+    finally:
+        _active_tasks.pop(user_id, None)
+
 
 class MediaStates(StatesGroup):
     select_type = State()
@@ -385,8 +404,10 @@ async def generate_again(callback: CallbackQuery, state: FSMContext) -> None:
     await callback.answer()
 
     try:
-        await _run_generation(waiting, tg_user, state, data)
+        await _start_tracked(tg_user.id, waiting, tg_user, state, data)
         await waiting.delete()
+    except GenerationCancelledError:
+        await waiting.edit_text("❌ Генерация отменена. Кредиты не списаны.", reply_markup=error_kb())
     except InsufficientCreditsError as e:
         await state.update_data(pending_retry_type="media")
         await waiting.edit_text(
@@ -680,8 +701,10 @@ async def receive_prompt(message: Message, state: FSMContext) -> None:
             reply_markup=gen_waiting_kb(),
         )
         try:
-            await _run_generation(message, message.from_user, state, data)
+            await _start_tracked(message.from_user.id, message, message.from_user, state, data)
             await waiting.delete()
+        except GenerationCancelledError:
+            await waiting.edit_text("❌ Генерация отменена. Кредиты не списаны.", reply_markup=error_kb())
         except InsufficientCreditsError as e:
             await state.update_data(pending_retry_type="media")
             await waiting.edit_text(
@@ -764,8 +787,10 @@ async def update_prompt_in_confirm(message: Message, state: FSMContext) -> None:
             reply_markup=gen_waiting_kb(),
         )
         try:
-            await _run_generation(message, message.from_user, state, edit_data)
+            await _start_tracked(message.from_user.id, message, message.from_user, state, edit_data)
             await waiting.delete()
+        except GenerationCancelledError:
+            await waiting.edit_text("❌ Генерация отменена. Кредиты не списаны.", reply_markup=error_kb())
         except InsufficientCreditsError as e:
             await state.update_data(pending_retry_type="media")
             await waiting.edit_text(
@@ -1026,6 +1051,16 @@ async def gen_why_long(callback: CallbackQuery) -> None:
     )
 
 
+@router.callback_query(F.data == "media:cancel_generation")
+async def cancel_generation(callback: CallbackQuery) -> None:
+    task = _active_tasks.get(callback.from_user.id)
+    if task and not task.done():
+        task.cancel()
+        await callback.answer("Отменяем...", show_alert=False)
+    else:
+        await callback.answer("Генерация уже завершена", show_alert=False)
+
+
 @router.callback_query(F.data == "media:show_prompt")
 async def show_prompt(callback: CallbackQuery, state: FSMContext) -> None:
     data = await state.get_data()
@@ -1150,10 +1185,12 @@ async def start_generation(callback: CallbackQuery, state: FSMContext) -> None:
     await callback.answer()
 
     try:
-        await _run_generation(callback.message, tg_user, state, data)
+        await _start_tracked(tg_user.id, callback.message, tg_user, state, data)
         await callback.message.delete()
         # state не очищаем — данные нужны для кнопки "Назад"
 
+    except GenerationCancelledError:
+        await callback.message.edit_text("❌ Генерация отменена. Кредиты не списаны.", reply_markup=error_kb())
     except InsufficientCreditsError as e:
         await state.update_data(pending_retry_type="media")
         await callback.message.edit_text(
@@ -1189,8 +1226,10 @@ async def resume_generation_after_topup(message: Message, state: FSMContext) -> 
         reply_markup=gen_waiting_kb(),
     )
     try:
-        await _run_generation(message, message.from_user, state, data)
+        await _start_tracked(message.from_user.id, message, message.from_user, state, data)
         await waiting.delete()
+    except GenerationCancelledError:
+        await waiting.edit_text("❌ Генерация отменена. Кредиты не списаны.", reply_markup=error_kb())
     except InsufficientCreditsError as e:
         await waiting.edit_text(f"❌ {e}\n\nПополни баланс в разделе «Мой баланс».")
     except RateLimitError as e:

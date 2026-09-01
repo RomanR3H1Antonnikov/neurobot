@@ -271,10 +271,15 @@ def error_kb() -> InlineKeyboardMarkup:
 
 def gen_waiting_kb() -> InlineKeyboardMarkup:
     """Клавиатура под сообщением «Генерирую…» — кнопка помощи и просмотр промпта."""
-    return InlineKeyboardMarkup(inline_keyboard=[[
-        InlineKeyboardButton(text="Долго грузит? ⏳", callback_data="media:gen_why_long"),
-        InlineKeyboardButton(text="📝 Описание", callback_data="media:show_prompt"),
-    ]])
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [
+            InlineKeyboardButton(text="Долго грузит? ⏳", callback_data="media:gen_why_long"),
+            InlineKeyboardButton(text="📝 Описание", callback_data="media:show_prompt"),
+        ],
+        [
+            InlineKeyboardButton(text="❌ Отмена", callback_data="media:cancel_generation"),
+        ],
+    ])
 
 
 def after_generation_kb(is_image: bool = False) -> InlineKeyboardMarkup:
