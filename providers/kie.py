@@ -326,6 +326,15 @@ class KieProvider(OpenAICompatProvider):
         elif actual_model == "bytedance/seedream-v4-edit":
             urls = [image_url] + ([style_reference_url] if style_reference_url else [])
             input_data = {"prompt": prompt, "image_urls": urls}
+        elif actual_model.startswith("seedream/") and "image-to-image" in actual_model:
+            urls = [image_url] + ([style_reference_url] if style_reference_url else [])
+            input_data = {
+                "prompt": prompt,
+                "image_urls": urls,
+                "aspect_ratio": "1:1",
+                "quality": "basic",
+                "output_format": "png",
+            }
         else:
             # google/nano-banana-edit и прочие
             urls = [image_url] + ([style_reference_url] if style_reference_url else [])

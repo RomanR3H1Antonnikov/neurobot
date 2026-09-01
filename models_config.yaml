@@ -477,10 +477,30 @@ tasks:
         cost_usd: 0.01
         enabled: true
 
-      - id: seedream-5-edit
-        label: "Seedream 5.0"
+      - id: seedream-5-edit-pro
+        label: "Pro"
+        group: seedream-5-edit
+        group_label: "Seedream 5.0"
         description: ""
+        variant_description: >-
+          Флагманская версия для сложных, насыщенных композиций — точность, структура
+          и контроль. Подходит дизайнерам, маркетологам, продюсерам и для коммерческих
+          макетов.
         model_id: bytedance/seedream-v4-edit
+        provider: kie
+        cost_credits: 1
+        cost_usd: 0.01
+        enabled: true
+
+      - id: seedream-5-edit-lite
+        label: "Lite"
+        group: seedream-5-edit
+        group_label: "Seedream 5.0"
+        description: ""
+        variant_description: >-
+          Универсальная версия — идеальна для старта, поиска концепций и простых
+          визуалов.
+        model_id: seedream/5-lite-image-to-image
         provider: kie
         cost_credits: 1
         cost_usd: 0.01
