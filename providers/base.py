@@ -44,7 +44,10 @@ class AbstractProvider(ABC):
     provider_id: str  # переопределяется в каждом адаптере
 
     @abstractmethod
-    async def generate_image(self, prompt: str, aspect_ratio: str = "1:1") -> GenerationResult:
+    async def generate_image(
+        self, prompt: str, aspect_ratio: str = "1:1", resolution: str = "1K",
+        model: str | None = None, style_reference_url: str | None = None,
+    ) -> GenerationResult:
         ...
 
     @abstractmethod
@@ -56,7 +59,10 @@ class AbstractProvider(ABC):
         ...
 
     @abstractmethod
-    async def edit_image(self, image_bytes: bytes, prompt: str) -> GenerationResult:
+    async def edit_image(
+        self, image_bytes: bytes, prompt: str, model: str | None = None,
+        image_url: str | None = None, style_reference_url: str | None = None,
+    ) -> GenerationResult:
         ...
 
     @abstractmethod

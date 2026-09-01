@@ -76,6 +76,8 @@ def _confirm_card_text(data: dict) -> str:
 
     if media_type == "image":
         lines.append(f"<b>Масштаб:</b> {data.get('aspect_ratio', '1:1')}  |  <b>Качество:</b> {data.get('resolution', '1K')}")
+        if data.get("style_reference_file_id"):
+            lines.append("<b>Ориентир:</b> фото ✅")
     elif media_type == "video":
         lines.append(f"<b>Длительность:</b> {data.get('duration', 5)} сек")
     elif media_type == "audio":
@@ -88,6 +90,8 @@ def _confirm_card_text(data: dict) -> str:
             lines.append(f"<b>Загружено:</b> {label} ✅")
         else:
             lines.append("<b>Загружено:</b> не добавлено")
+        if media_type == "photo_edit" and data.get("style_reference_file_id"):
+            lines.append("<b>Ориентир:</b> фото ✅")
 
     if media_type == "audio":
         prompt_label = "Текст для озвучки" if data.get("audio_type", "voice") == "voice" else "Описание музыки"
@@ -99,9 +103,13 @@ def _confirm_card_text(data: dict) -> str:
 
 def _confirm_kb(data: dict):
     has_prompt = bool(data.get("prompt"))
+    has_style_ref = bool(data.get("style_reference_file_id"))
     media_type = data.get("media_type")
     if media_type == "image":
-        return image_confirm_kb(data.get("aspect_ratio", "1:1"), data.get("resolution", "1K"), has_prompt=has_prompt)
+        return image_confirm_kb(
+            data.get("aspect_ratio", "1:1"), data.get("resolution", "1K"),
+            has_prompt=has_prompt, has_style_ref=has_style_ref,
+        )
     elif media_type == "video":
         return video_confirm_kb(
             data.get("duration", 5),
@@ -118,6 +126,7 @@ def _confirm_kb(data: dict):
             has_prompt=has_prompt,
             has_reference=bool(data.get("reference_file_id")),
             media_type=media_type,
+            has_style_ref=has_style_ref,
         )
 
 
@@ -295,6 +304,7 @@ async def back_to_model(callback: CallbackQuery, state: FSMContext) -> None:
         model_duration_options=None, model_min_duration=None, model_max_duration=None,
         entering_duration=None, confirm_msg_id=None,
         reference_file_id=None, reference_type=None,
+        style_reference_file_id=None, adding_style_ref=None,
         video_first_frame_file_id=None, video_last_frame_file_id=None,
         video_frames_expanded=None,
     )
@@ -469,6 +479,17 @@ async def add_reference_prompt(callback: CallbackQuery, state: FSMContext) -> No
     await callback.answer()
 
 
+@router.callback_query(MediaStates.confirm, F.data == "media:add_style_ref")
+async def add_style_ref_prompt(callback: CallbackQuery, state: FSMContext) -> None:
+    """Кнопка 'Добавить ориентир' — запрашивает фото-ориентир."""
+    has = bool((await state.get_data()).get("style_reference_file_id"))
+    hint = "📎 Пришли другое фото-ориентир:" if has else "📎 Пришли фото-ориентир, на основе которого нейросеть будет работать:"
+    await callback.message.edit_text(hint, reply_markup=back_to_confirm_kb())
+    await state.update_data(adding_style_ref=True)
+    await state.set_state(MediaStates.enter_reference)
+    await callback.answer()
+
+
 @router.callback_query(MediaStates.confirm, F.data == "media:toggle_frames")
 async def toggle_frames(callback: CallbackQuery, state: FSMContext) -> None:
     """Раскрывает кнопки выбора кадров на карточке видео."""
@@ -564,6 +585,10 @@ async def receive_reference_photo(message: Message, state: FSMContext) -> None:
         await message.answer("Для редактирования видео пришли видеофайл, а не фото.", reply_markup=back_to_model_kb())
         return
     photo = message.photo[-1]
+    if data.get("adding_style_ref"):
+        await state.update_data(style_reference_file_id=photo.file_id, adding_style_ref=None)
+        await _show_confirm_after_reference(message, state)
+        return
     if data.get("media_type") == "video":
         # Кадр для image-to-video: first или last в зависимости от нажатой кнопки
         frame_slot = data.get("adding_video_frame", "first")
@@ -1015,16 +1040,30 @@ async def show_prompt(callback: CallbackQuery, state: FSMContext) -> None:
 
 # ─── Запуск генерации ─────────────────────────────────────────────────────────
 
+async def _tg_file_url(bot, file_id: str | None, bot_token: str) -> str | None:
+    """Конвертирует Telegram file_id в прямой URL для передачи в провайдеры."""
+    if not file_id:
+        return None
+    fi = await bot.get_file(file_id)
+    return f"https://api.telegram.org/file/bot{bot_token}/{fi.file_path}"
+
+
 async def _run_generation(send_msg: Message, tg_user, state: FSMContext, data: dict) -> None:
     """Выполняет генерацию и отправляет результат. Пробрасывает исключения наверх."""
+    from config import config as _cfg
     media_type = data["media_type"]
     prompt = (data.get("prompt") or "").strip()
     model_slug = data.get("model_slug", "")
 
+    style_reference_url = await _tg_file_url(
+        send_msg.bot, data.get("style_reference_file_id"), _cfg.bot_token
+    )
+
     if media_type == "image":
         result = await media_service.generate_image(
             tg_user.id, tg_user.username, prompt,
-            data.get("aspect_ratio", "1:1"), data.get("resolution", "1K"), model_slug
+            data.get("aspect_ratio", "1:1"), data.get("resolution", "1K"), model_slug,
+            style_reference_url=style_reference_url,
         )
         if result.variants:
             all_images = [result.data] + result.variants
@@ -1045,16 +1084,8 @@ async def _run_generation(send_msg: Message, tg_user, state: FSMContext, data: d
             await state.update_data(generated_file_id=sent.photo[-1].file_id)
 
     elif media_type == "video":
-        from config import config as _cfg
-
-        async def _tg_url(file_id: str | None) -> str | None:
-            if not file_id:
-                return None
-            fi = await send_msg.bot.get_file(file_id)
-            return f"https://api.telegram.org/file/bot{_cfg.bot_token}/{fi.file_path}"
-
-        first_frame_url = await _tg_url(data.get("video_first_frame_file_id"))
-        last_frame_url = await _tg_url(data.get("video_last_frame_file_id"))
+        first_frame_url = await _tg_file_url(send_msg.bot, data.get("video_first_frame_file_id"), _cfg.bot_token)
+        last_frame_url = await _tg_file_url(send_msg.bot, data.get("video_last_frame_file_id"), _cfg.bot_token)
         result = await media_service.generate_video(
             tg_user.id, tg_user.username, prompt, data.get("duration", 5), model_slug,
             first_frame_url=first_frame_url,
@@ -1071,14 +1102,13 @@ async def _run_generation(send_msg: Message, tg_user, state: FSMContext, data: d
         await send_msg.answer_audio(file, reply_markup=after_generation_kb())
 
     elif media_type == "photo_edit":
-        from config import config as _cfg
         file_info = await send_msg.bot.get_file(data["reference_file_id"])
         image_url = f"https://api.telegram.org/file/bot{_cfg.bot_token}/{file_info.file_path}"
         file_bytes = await send_msg.bot.download_file(file_info.file_path)
         media_bytes = file_bytes.read()
         result = await media_service.edit_image(
             tg_user.id, tg_user.username, media_bytes, prompt, model_slug,
-            image_url=image_url,
+            image_url=image_url, style_reference_url=style_reference_url,
         )
         file = BufferedInputFile(result.data, filename=result.filename)
         sent = await send_msg.answer_photo(file, reply_markup=after_generation_kb(is_image=True))

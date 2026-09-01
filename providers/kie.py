@@ -31,7 +31,10 @@ def _kie_ratio(aspect_ratio: str) -> str:
     return _RATIO_MAP.get(aspect_ratio, aspect_ratio)
 
 
-def _image_input(model: str, prompt: str, aspect_ratio: str, resolution: str) -> dict:
+def _image_input(
+    model: str, prompt: str, aspect_ratio: str, resolution: str,
+    style_reference_url: str | None = None,
+) -> dict:
     """Формирует поле input для createTask в зависимости от семейства модели."""
     if model.startswith("seedream/"):
         return {
@@ -49,13 +52,14 @@ def _image_input(model: str, prompt: str, aspect_ratio: str, resolution: str) ->
             "resolution": resolution,
         }
     # Nano Banana и прочие — стандартный формат
-    return {
+    result: dict = {
         "prompt": prompt,
-        "image_input": [],
+        "image_input": [style_reference_url] if style_reference_url else [],
         "aspect_ratio": _kie_ratio(aspect_ratio),
         "resolution": resolution,
         "output_format": "png",
     }
+    return result
 
 
 def _extract_url(body: dict) -> str | None:
@@ -208,7 +212,7 @@ class KieProvider(OpenAICompatProvider):
 
     async def generate_image(
         self, prompt: str, aspect_ratio: str = "1:1", resolution: str = "1K",
-        model: str | None = None,
+        model: str | None = None, style_reference_url: str | None = None,
     ) -> GenerationResult:
         actual_model = model or "nano-banana-2"
         corr_id = uuid.uuid4().hex
@@ -217,7 +221,7 @@ class KieProvider(OpenAICompatProvider):
         try:
             await self._create_job(
                 actual_model,
-                _image_input(actual_model, prompt, aspect_ratio, resolution),
+                _image_input(actual_model, prompt, aspect_ratio, resolution, style_reference_url),
                 corr_id,
             )
 
@@ -301,7 +305,7 @@ class KieProvider(OpenAICompatProvider):
 
     async def edit_image(
         self, image_bytes: bytes, prompt: str, model: str | None = None,
-        image_url: str | None = None,
+        image_url: str | None = None, style_reference_url: str | None = None,
     ) -> GenerationResult:
         """Job-based редактирование через KIE createTask. Требует image_url."""
         if not image_url:
@@ -315,17 +319,19 @@ class KieProvider(OpenAICompatProvider):
             # Flux image-to-image: поле input_urls, нужны aspect_ratio и resolution
             input_data: dict = {
                 "prompt": prompt,
-                "input_urls": [image_url],
+                "input_urls": [image_url] + ([style_reference_url] if style_reference_url else []),
                 "aspect_ratio": "auto",
                 "resolution": "1K",
             }
         elif actual_model == "bytedance/seedream-v4-edit":
-            input_data = {"prompt": prompt, "image_urls": [image_url]}
+            urls = [image_url] + ([style_reference_url] if style_reference_url else [])
+            input_data = {"prompt": prompt, "image_urls": urls}
         else:
             # google/nano-banana-edit и прочие
+            urls = [image_url] + ([style_reference_url] if style_reference_url else [])
             input_data = {
                 "prompt": prompt,
-                "image_urls": [image_url],
+                "image_urls": urls,
                 "output_format": "png",
             }
 

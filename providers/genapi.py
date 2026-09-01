@@ -106,7 +106,8 @@ class GenApiProvider(AbstractProvider):
     # ─── Генерация изображений ────────────────────────────────────────────────
 
     async def generate_image(
-        self, prompt: str, aspect_ratio: str = "1:1", resolution: str = "1K", model: str | None = None
+        self, prompt: str, aspect_ratio: str = "1:1", resolution: str = "1K",
+        model: str | None = None, style_reference_url: str | None = None,
     ) -> GenerationResult:
         actual_model = model or "midjourney"
         # model_id формата "network/version" → URL /networks/{network}, тело {"model": version}
@@ -115,7 +116,9 @@ class GenApiProvider(AbstractProvider):
             extra: dict | None = {"model": version}
         else:
             network, extra = actual_model, None
-        data = await self._run(network, prompt, extra=extra)
+        # Midjourney принимает URL ориентира в начале промпта
+        effective_prompt = f"{style_reference_url} {prompt}" if style_reference_url else prompt
+        data = await self._run(network, effective_prompt, extra=extra)
 
         result = data.get("result")
         # GenAPI возвращает список URL в result — качаем все параллельно
@@ -152,7 +155,10 @@ class GenApiProvider(AbstractProvider):
 
     # ─── Редактирование и видео ───────────────────────────────────────────────
 
-    async def edit_image(self, image_bytes: bytes, prompt: str, model: str | None = None, image_url: str | None = None) -> GenerationResult:
+    async def edit_image(
+        self, image_bytes: bytes, prompt: str, model: str | None = None,
+        image_url: str | None = None, style_reference_url: str | None = None,
+    ) -> GenerationResult:
         """Редактирование через Midjourney: URL изображения передаётся в начале промпта."""
         if not image_url:
             raise ProviderUnavailableError("GenAPI edit_image: не передан URL изображения")
@@ -162,7 +168,9 @@ class GenApiProvider(AbstractProvider):
             extra: dict | None = {"model": version}
         else:
             network, extra = actual_model, None
-        full_prompt = f"{image_url} {prompt}"
+        # Основное фото + опциональный ориентир + промпт
+        urls_part = image_url + (f" {style_reference_url}" if style_reference_url else "")
+        full_prompt = f"{urls_part} {prompt}"
         data = await self._run(network, full_prompt, extra=extra)
 
         result = data.get("result")
