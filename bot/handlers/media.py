@@ -278,11 +278,17 @@ async def back_to_type(callback: CallbackQuery, state: FSMContext) -> None:
 async def back_to_model(callback: CallbackQuery, state: FSMContext) -> None:
     data = await state.get_data()
     media_type = data.get("media_type", "")
+
+    # Если пришли из быстрого редактирования сгенерированного фото — возвращаем в генерацию
+    if data.get("quick_edit") and media_type == "photo_edit":
+        media_type = "image"
+
     task_type = _TYPE_TO_TASK.get(media_type)
     models = get_models_for_task(task_type) if task_type else []
     type_label = _TYPE_LABELS.get(media_type, media_type)
 
     await state.update_data(
+        quick_edit=None,
         prompt=None, model_slug=None, model_label=None,
         model_description=None, model_variant_description=None,
         model_has_group=None, model_aspect_ratios=None,
@@ -636,7 +642,7 @@ async def receive_prompt(message: Message, state: FSMContext) -> None:
 
     if data.get("quick_edit"):
         # Быстрое редактирование сгенерированного фото — сразу запускаем без confirm-карточки
-        await state.update_data(quick_edit=False)
+        # quick_edit НЕ сбрасываем, чтобы «Назад» после результата вернул в генерацию
         await state.set_state(MediaStates.confirm)
         await message.delete()
         waiting = await message.answer(
