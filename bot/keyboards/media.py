@@ -153,21 +153,54 @@ def image_resolution_kb(current: str) -> InlineKeyboardMarkup:
 
 # ─── Карточка подтверждения: видео ───────────────────────────────────────────
 
-def video_confirm_kb(duration: int, has_prompt: bool = False) -> InlineKeyboardMarkup:
+def video_confirm_kb(
+    duration: int,
+    has_prompt: bool = False,
+    duration_options: list[int] | None = None,
+    has_first_frame: bool = False,
+    has_last_frame: bool = False,
+    frames_expanded: bool = False,
+) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
-    for d, label in [(5, "5 сек"), (10, "10 сек")]:
-        prefix = "✅ " if d == duration else ""
-        builder.add(InlineKeyboardButton(
-            text=f"{prefix}{label}",
-            callback_data=f"media:duration:{d}",
-        ))
-    builder.adjust(2)
+    builder.row(InlineKeyboardButton(
+        text=f"⏱ Длительность: {duration} сек",
+        callback_data="media:pick_duration",
+    ))
+    if frames_expanded or has_first_frame or has_last_frame:
+        first_text = "📎 Первый кадр: фото ✅" if has_first_frame else "📎 Первый кадр"
+        last_text = "📎 Последний кадр: фото ✅" if has_last_frame else "📎 Последний кадр"
+        builder.row(InlineKeyboardButton(text=first_text, callback_data="media:add_first_frame"))
+        builder.row(InlineKeyboardButton(text=last_text, callback_data="media:add_last_frame"))
+    else:
+        builder.row(InlineKeyboardButton(text="📎 Добавить кадры", callback_data="media:toggle_frames"))
     edit_text = "✏️ Изменить описание" if has_prompt else "✏️ Ввести описание"
     builder.row(
         InlineKeyboardButton(text=edit_text, callback_data="media:edit_prompt"),
         InlineKeyboardButton(text="◀️ Назад", callback_data="media:back:model"),
     )
     builder.row(InlineKeyboardButton(text="🚀 Начать генерацию", callback_data="media:start"))
+    return builder.as_markup()
+
+
+def video_duration_picker_kb(
+    current: int,
+    options: list[int],
+    min_d: int,
+    max_d: int,
+) -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    for d in options:
+        prefix = "✅ " if d == current else ""
+        builder.add(InlineKeyboardButton(
+            text=f"{prefix}{d} сек",
+            callback_data=f"media:duration:{d}",
+        ))
+    builder.adjust(min(len(options), 3))
+    builder.row(InlineKeyboardButton(
+        text=f"✏️ Своя ({min_d}–{max_d} сек)",
+        callback_data="media:duration_custom",
+    ))
+    builder.row(InlineKeyboardButton(text="◀️ Назад", callback_data="media:back:confirm"))
     return builder.as_markup()
 
 
@@ -213,6 +246,28 @@ def back_to_confirm_kb() -> InlineKeyboardMarkup:
 
 
 # ─── После генерации ─────────────────────────────────────────────────────────
+
+def error_kb() -> InlineKeyboardMarkup:
+    """Клавиатура под сообщением об ошибке генерации."""
+    builder = InlineKeyboardBuilder()
+    builder.row(
+        InlineKeyboardButton(text="🔄 Попробовать снова", callback_data="media:again"),
+        InlineKeyboardButton(text="🏠 Главное меню", callback_data="media:back:menu"),
+    )
+    builder.row(
+        InlineKeyboardButton(text="◀️ Назад", callback_data="media:back:confirm"),
+        InlineKeyboardButton(text="📋 К моделям", callback_data="media:back:model"),
+    )
+    return builder.as_markup()
+
+
+def gen_waiting_kb() -> InlineKeyboardMarkup:
+    """Клавиатура под сообщением «Генерирую…» — кнопка помощи и просмотр промпта."""
+    return InlineKeyboardMarkup(inline_keyboard=[[
+        InlineKeyboardButton(text="Долго грузит? ⏳", callback_data="media:gen_why_long"),
+        InlineKeyboardButton(text="📝 Описание", callback_data="media:show_prompt"),
+    ]])
+
 
 def after_generation_kb(is_image: bool = False) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()

@@ -47,13 +47,19 @@ async def generate_image(
 
 
 async def generate_video(
-    telegram_id: int, username: str, prompt: str, duration: int, model_slug: str
+    telegram_id: int, username: str, prompt: str, duration: int, model_slug: str,
+    first_frame_url: str | None = None,
+    last_frame_url: str | None = None,
 ) -> GenerationResult:
     task = TaskType.VIDEO_GENERATION
     provider, model_cfg = get_provider_by_model_id(task, model_slug)
     user_id = await _check_preconditions(telegram_id, username, task, model_cfg)
 
-    result = await provider.generate_video(prompt, duration=duration, model=model_cfg["model_id"])
+    result = await provider.generate_video(
+        prompt, duration=duration, model=model_cfg["model_id"],
+        first_frame_url=first_frame_url,
+        last_frame_url=last_frame_url,
+    )
     await deduct_credits(user_id, model_cfg["cost_credits"], task.value)
     return result
 
@@ -71,13 +77,16 @@ async def generate_audio(
 
 
 async def edit_image(
-    telegram_id: int, username: str, image_bytes: bytes, prompt: str, model_slug: str
+    telegram_id: int, username: str, image_bytes: bytes, prompt: str, model_slug: str,
+    image_url: str | None = None,
 ) -> GenerationResult:
     task = TaskType.IMAGE_EDIT
     provider, model_cfg = get_provider_by_model_id(task, model_slug)
     user_id = await _check_preconditions(telegram_id, username, task, model_cfg)
 
-    result = await provider.edit_image(image_bytes, prompt, model=model_cfg["model_id"])
+    result = await provider.edit_image(
+        image_bytes, prompt, model=model_cfg["model_id"], image_url=image_url,
+    )
     await deduct_credits(user_id, model_cfg["cost_credits"], task.value)
     return result
 

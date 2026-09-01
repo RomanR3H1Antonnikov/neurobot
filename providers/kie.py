@@ -19,9 +19,35 @@ _JOB_TIMEOUT = 600  # секунд ожидания callback'а (10 минут)
 # Формат соотношения сторон для KIE: "1:1" → "1:1" (совпадает), "auto" для произвольного
 _RATIO_MAP: dict[str, str] = {}  # пустой = передаём as-is
 
+# Маппинг resolution → quality для моделей Seedream
+_SEEDREAM_QUALITY: dict[str, str] = {
+    "1K": "basic",
+    "2K": "high",
+    "4K": "ultra",
+}
+
 
 def _kie_ratio(aspect_ratio: str) -> str:
     return _RATIO_MAP.get(aspect_ratio, aspect_ratio)
+
+
+def _image_input(model: str, prompt: str, aspect_ratio: str, resolution: str) -> dict:
+    """Формирует поле input для createTask в зависимости от семейства модели."""
+    if model.startswith("seedream/"):
+        return {
+            "prompt": prompt,
+            "aspect_ratio": _kie_ratio(aspect_ratio),
+            "quality": _SEEDREAM_QUALITY.get(resolution, "basic"),
+            "output_format": "png",
+        }
+    # Nano Banana, Flux 2 и прочие — стандартный формат
+    return {
+        "prompt": prompt,
+        "image_input": [],
+        "aspect_ratio": _kie_ratio(aspect_ratio),
+        "resolution": resolution,
+        "output_format": "png",
+    }
 
 
 def _extract_url(body: dict) -> str | None:
@@ -68,9 +94,9 @@ def _is_failed(body: dict) -> bool:
         return status.lower() in ("failed", "error", "fail")
     if isinstance(status, int):
         return status in (3, -1)
-    # code 500/501 = ошибка генерации
+    # code 4xx/5xx от KIE = ошибка генерации
     code = body.get("code")
-    if isinstance(code, int) and code in (500, 501):
+    if isinstance(code, int) and (400 <= code < 600):
         return True
     return False
 
@@ -181,13 +207,11 @@ class KieProvider(OpenAICompatProvider):
         fut = register_pending(corr_id)  # регистрируем ДО создания job (без гонки)
 
         try:
-            await self._create_job(actual_model, {
-                "prompt": prompt,
-                "image_input": [],
-                "aspect_ratio": _kie_ratio(aspect_ratio),
-                "resolution": resolution,
-                "output_format": "png",
-            }, corr_id)
+            await self._create_job(
+                actual_model,
+                _image_input(actual_model, prompt, aspect_ratio, resolution),
+                corr_id,
+            )
 
             callback_body = await asyncio.wait_for(fut, timeout=_JOB_TIMEOUT)
         except asyncio.TimeoutError:
@@ -216,17 +240,38 @@ class KieProvider(OpenAICompatProvider):
 
     async def generate_video(
         self, prompt: str, duration: int = 5, model: str | None = None,
+        first_frame_url: str | None = None,
+        last_frame_url: str | None = None,
     ) -> GenerationResult:
-        actual_model = model or "kling-v3"
+        actual_model = model or "kling-3.0/video"
         corr_id = uuid.uuid4().hex
         fut = register_pending(corr_id)
 
+        # Kling v3 Turbo и v3 требуют duration как строку и поле resolution
+        is_kling = actual_model.startswith("kling")
+        input_data: dict = {
+            "prompt": prompt,
+            "duration": str(duration) if is_kling else duration,
+            "aspect_ratio": "16:9",
+        }
+        if is_kling:
+            input_data["resolution"] = "720p"
+
+        if first_frame_url or last_frame_url:
+            if actual_model.startswith("bytedance/"):
+                if first_frame_url:
+                    input_data["first_frame_url"] = first_frame_url
+                if last_frame_url:
+                    input_data["last_frame_url"] = last_frame_url
+            elif is_kling:
+                input_data["image_urls"] = [u for u in [first_frame_url, last_frame_url] if u]
+            else:
+                # minimax-h3, wan, pixverse — только первый кадр
+                if first_frame_url:
+                    input_data["image_url"] = first_frame_url
+
         try:
-            await self._create_job(actual_model, {
-                "prompt": prompt,
-                "duration": duration,
-                "aspect_ratio": "16:9",
-            }, corr_id)
+            await self._create_job(actual_model, input_data, corr_id)
 
             callback_body = await asyncio.wait_for(fut, timeout=_JOB_TIMEOUT)
         except asyncio.TimeoutError:
@@ -243,3 +288,60 @@ class KieProvider(OpenAICompatProvider):
 
         video_bytes = await self._download(url)
         return GenerationResult(data=video_bytes, mime_type="video/mp4", filename="video.mp4")
+
+    # ─── Редактирование изображений ───────────────────────────────────────────
+
+    async def edit_image(
+        self, image_bytes: bytes, prompt: str, model: str | None = None,
+        image_url: str | None = None,
+    ) -> GenerationResult:
+        """Job-based редактирование через KIE createTask. Требует image_url."""
+        if not image_url:
+            raise ProviderUnavailableError("KIE edit_image: не передан URL изображения")
+
+        actual_model = model or "google/nano-banana-edit"
+        corr_id = uuid.uuid4().hex
+        fut = register_pending(corr_id)
+
+        if actual_model.startswith("flux-2/"):
+            # Flux image-to-image: поле input_urls, нужны aspect_ratio и resolution
+            input_data: dict = {
+                "prompt": prompt,
+                "input_urls": [image_url],
+                "aspect_ratio": "auto",
+                "resolution": "1K",
+            }
+        elif actual_model == "bytedance/seedream-v4-edit":
+            input_data = {"prompt": prompt, "image_urls": [image_url]}
+        else:
+            # google/nano-banana-edit и прочие
+            input_data = {
+                "prompt": prompt,
+                "image_urls": [image_url],
+                "output_format": "png",
+            }
+
+        try:
+            await self._create_job(actual_model, input_data, corr_id)
+            callback_body = await asyncio.wait_for(fut, timeout=_JOB_TIMEOUT)
+        except asyncio.TimeoutError:
+            raise ProviderUnavailableError("KIE: истекло время ожидания редактирования")
+        finally:
+            unregister_pending(corr_id)
+
+        data = callback_body.get("data", {})
+        logger.info("KIE edit callback: model=%s state=%s code=%s resultJson=%s",
+                    actual_model, data.get("state"), callback_body.get("code"),
+                    str(data.get("resultJson", ""))[:200])
+
+        if _is_failed(callback_body):
+            logger.error("KIE edit failed: model=%s failMsg=%s", actual_model, data.get("failMsg"))
+            raise ProviderUnavailableError("KIE: редактирование завершилось с ошибкой")
+
+        result_url = _extract_url(callback_body)
+        if not result_url:
+            logger.error("KIE edit: URL not found in callback. data keys=%s", list(data.keys()))
+            raise ProviderUnavailableError("KIE: не получен URL результата редактирования")
+
+        image_out = await self._download(result_url)
+        return GenerationResult(data=image_out, mime_type="image/png", filename="edited.png")

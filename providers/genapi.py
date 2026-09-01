@@ -144,10 +144,33 @@ class GenApiProvider(AbstractProvider):
         audio_bytes = await self._download(url)
         return GenerationResult(data=audio_bytes, mime_type="audio/mpeg", filename="audio.mp3")
 
-    # ─── Заглушки для редактирования и видео ─────────────────────────────────
+    # ─── Редактирование и видео ───────────────────────────────────────────────
 
-    async def edit_image(self, image_bytes: bytes, prompt: str, model: str | None = None) -> GenerationResult:
-        raise ProviderUnavailableError("Редактирование фото через GenAPI не поддерживается")
+    async def edit_image(self, image_bytes: bytes, prompt: str, model: str | None = None, image_url: str | None = None) -> GenerationResult:
+        """Редактирование через Midjourney: URL изображения передаётся в начале промпта."""
+        if not image_url:
+            raise ProviderUnavailableError("GenAPI edit_image: не передан URL изображения")
+        actual_model = model or "midjourney"
+        # Midjourney принимает URL картинки в начале промпта как референс для image-to-image
+        full_prompt = f"{image_url} {prompt}"
+        data = await self._run(actual_model, full_prompt)
+
+        result = data.get("result")
+        if isinstance(result, list) and result:
+            urls = [u for u in result if isinstance(u, str)]
+        else:
+            url = _extract_url(data)
+            if not url:
+                raise ProviderUnavailableError(f"GenAPI: не получен URL изображения (тело: {str(data)[:200]})")
+            urls = [url]
+
+        images = await asyncio.gather(*[self._download(u) for u in urls])
+        return GenerationResult(
+            data=images[0],
+            mime_type="image/png",
+            filename="edited.png",
+            variants=list(images[1:]) if len(images) > 1 else None,
+        )
 
     async def edit_video(self, video_bytes: bytes, prompt: str, model: str | None = None) -> GenerationResult:
         raise ProviderUnavailableError("Редактирование видео через GenAPI не поддерживается")

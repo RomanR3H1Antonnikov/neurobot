@@ -4,7 +4,7 @@ from aiogram.types import Message, CallbackQuery, PreCheckoutQuery, LabeledPrice
 from aiogram.fsm.context import FSMContext
 
 from bot.keyboards.main_menu import BTN_BALANCE, main_menu_kb, inline_main_menu_kb
-from bot.keyboards.billing import balance_kb
+from bot.keyboards.billing import balance_kb, quick_topup_kb
 from config import config, reload_models
 from db.queries import get_or_create_user, add_credits, get_balance
 
@@ -45,7 +45,7 @@ async def pre_checkout(query: PreCheckoutQuery) -> None:
 
 
 @router.message(F.successful_payment)
-async def handle_successful_payment(message: Message) -> None:
+async def handle_successful_payment(message: Message, state: FSMContext) -> None:
     payload = message.successful_payment.invoice_payload
     credits = int(payload.split(":")[1])
 
@@ -57,8 +57,31 @@ async def handle_successful_payment(message: Message) -> None:
         f"Зачислено: <b>{credits} кредитов</b>\n"
         f"Текущий баланс: <b>{new_balance} кредитов</b>",
         parse_mode="HTML",
-        reply_markup=main_menu_kb(),
     )
+
+    data = await state.get_data()
+    pending_type = data.get("pending_retry_type")
+
+    if pending_type == "media" and data.get("media_type"):
+        await state.update_data(pending_retry_type=None)
+        from bot.handlers.media import resume_generation_after_topup
+        await resume_generation_after_topup(message, state)
+    elif pending_type == "chat" and data.get("pending_message"):
+        await state.update_data(pending_retry_type=None)
+        from bot.handlers.chat import resume_chat_after_topup
+        await resume_chat_after_topup(message, state)
+    else:
+        await message.answer("Выбери, что хочешь сделать:", reply_markup=main_menu_kb())
+
+
+@router.callback_query(F.data == "billing:cancel_topup")
+async def cancel_topup(callback: CallbackQuery, state: FSMContext) -> None:
+    """Отмена пополнения из потока — возвращаем в меню, сбрасываем pending."""
+    await state.update_data(pending_retry_type=None, pending_message=None)
+    await state.clear()
+    await callback.message.edit_text("Пополнение отменено.")
+    await callback.message.answer("Главное меню:", reply_markup=main_menu_kb())
+    await callback.answer()
 
 
 @router.callback_query(F.data == "billing:menu")

@@ -5,6 +5,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 
 from bot.keyboards.main_menu import BTN_CHAT, BTN_EXIT_CHAT, BTN_NEW_DIALOG, BTN_CHAT_PICK_MODEL, MENU_BUTTONS, main_menu_kb, inline_main_menu_kb
+from bot.keyboards.billing import quick_topup_kb
 from providers.base import ProviderError, TaskType
 from providers.router import get_models_for_task
 from services import chat_service
@@ -147,7 +148,11 @@ async def chat_message(message: Message, state: FSMContext) -> None:
 
     except InsufficientCreditsError as e:
         await thinking.delete()
-        await message.answer(f"❌ {e}\n\nПополни баланс в разделе «Мой баланс».")
+        await state.update_data(pending_retry_type="chat", pending_message=message.text)
+        await message.answer(
+            f"❌ {e}\n\nПополни баланс — я отвечу на твой вопрос автоматически:",
+            reply_markup=quick_topup_kb(),
+        )
     except RateLimitError as e:
         await thinking.delete()
         await message.answer(f"⏱ {e}")
@@ -162,3 +167,31 @@ async def chat_message(message: Message, state: FSMContext) -> None:
 @router.message(ChatStates.active, ~F.text.in_(MENU_BUTTONS))
 async def chat_wrong_input(message: Message) -> None:
     await message.answer("Напиши текстовое сообщение — я отвечу на него.")
+
+
+async def resume_chat_after_topup(message: Message, state: FSMContext) -> None:
+    """Вызывается из billing после успешной оплаты — отвечает на отложенное сообщение."""
+    data = await state.get_data()
+    pending_text = data.get("pending_message", "")
+    await state.update_data(pending_message=None)
+
+    model_slug = data.get("chat_model_slug")
+    thinking = await message.answer("💭 Думаю...")
+    try:
+        response = await chat_service.send_message(
+            message.from_user.id, message.from_user.username, pending_text, model_slug
+        )
+        await thinking.delete()
+        await message.answer(response)
+    except InsufficientCreditsError as e:
+        await thinking.delete()
+        await message.answer(f"❌ {e}\n\nПополни баланс в разделе «Мой баланс».")
+    except RateLimitError as e:
+        await thinking.delete()
+        await message.answer(f"⏱ {e}")
+    except ProviderError:
+        await thinking.delete()
+        await message.answer("⚠️ Сервис временно недоступен. Попробуй позже.")
+    except Exception:
+        await thinking.delete()
+        await message.answer("⚠️ Произошла непредвиденная ошибка. Попробуй позже.")
