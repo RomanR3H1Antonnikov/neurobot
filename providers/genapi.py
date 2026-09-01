@@ -109,7 +109,13 @@ class GenApiProvider(AbstractProvider):
         self, prompt: str, aspect_ratio: str = "1:1", resolution: str = "1K", model: str | None = None
     ) -> GenerationResult:
         actual_model = model or "midjourney"
-        data = await self._run(actual_model, prompt)
+        # model_id формата "network/version" → URL /networks/{network}, тело {"model": version}
+        if "/" in actual_model:
+            network, version = actual_model.split("/", 1)
+            extra: dict | None = {"model": version}
+        else:
+            network, extra = actual_model, None
+        data = await self._run(network, prompt, extra=extra)
 
         result = data.get("result")
         # GenAPI возвращает список URL в result — качаем все параллельно
@@ -151,9 +157,13 @@ class GenApiProvider(AbstractProvider):
         if not image_url:
             raise ProviderUnavailableError("GenAPI edit_image: не передан URL изображения")
         actual_model = model or "midjourney"
-        # Midjourney принимает URL картинки в начале промпта как референс для image-to-image
+        if "/" in actual_model:
+            network, version = actual_model.split("/", 1)
+            extra: dict | None = {"model": version}
+        else:
+            network, extra = actual_model, None
         full_prompt = f"{image_url} {prompt}"
-        data = await self._run(actual_model, full_prompt)
+        data = await self._run(network, full_prompt, extra=extra)
 
         result = data.get("result")
         if isinstance(result, list) and result:

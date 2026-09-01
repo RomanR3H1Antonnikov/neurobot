@@ -73,7 +73,7 @@ tasks:
           текстовые описания, включая сложные стили и атмосферные эффекты. Популярна среди
           художников и дизайнеров благодаря уникальному визуальному стилю и гибкости настроек.
         aspect_ratios: ["1:1", "5:4", "3:2", "7:4", "16:9", "2:1", "9:16", "1:2", "2:3"]
-        model_id: midjourney
+        model_id: midjourney/8.1
         provider: genapi
         cost_credits: 1
         cost_usd: 0.04
@@ -94,7 +94,7 @@ tasks:
         provider: kie
         cost_credits: 1
         cost_usd: 0.005
-        enabled: false
+        enabled: true
 
       - id: flux-2-pro
         label: "Flux 2 Pro"
@@ -489,7 +489,7 @@ tasks:
       - id: midjourney-edit
         label: "Midjourney"
         description: ""
-        model_id: midjourney
+        model_id: midjourney/8.1
         provider: genapi
         cost_credits: 1
         cost_usd: 0.04

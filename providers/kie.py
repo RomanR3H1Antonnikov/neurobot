@@ -40,7 +40,15 @@ def _image_input(model: str, prompt: str, aspect_ratio: str, resolution: str) ->
             "quality": _SEEDREAM_QUALITY.get(resolution, "basic"),
             "output_format": "png",
         }
-    # Nano Banana, Flux 2 и прочие — стандартный формат
+    if model.startswith("flux-2/"):
+        # KIE docs: flux-2 text-to-image принимает только prompt/aspect_ratio/resolution.
+        # image_input: [] вызывает 501 — Flex воспринимает его как пустой image-to-image.
+        return {
+            "prompt": prompt,
+            "aspect_ratio": _kie_ratio(aspect_ratio),
+            "resolution": resolution,
+        }
+    # Nano Banana и прочие — стандартный формат
     return {
         "prompt": prompt,
         "image_input": [],
