@@ -844,6 +844,61 @@ async def confirm_unknown_input(message: Message, state: FSMContext) -> None:
     await state.update_data(confirm_msg_id=sent.message_id)
 
 
+# ─── Фото с подписью — быстрый запуск редактирования ─────────────────────────
+
+@router.message(F.photo, F.caption)
+async def photo_with_caption_shortcut(message: Message, state: FSMContext) -> None:
+    """Фото + подпись из любого контекста → редактирование фото без лишних шагов."""
+    photo = message.photo[-1]
+    caption = message.caption.strip()
+
+    task_type = _TYPE_TO_TASK.get("photo_edit")
+    models = get_models_for_task(task_type) if task_type else []
+
+    if not models:
+        await message.answer("⚠️ Редактирование фото временно недоступно.")
+        return
+
+    await state.set_data({
+        "media_type": "photo_edit",
+        "reference_file_id": photo.file_id,
+        "reference_type": "photo",
+        "prompt": caption,
+    })
+
+    if len(models) == 1:
+        model_cfg = models[0]
+        await state.update_data(
+            model_slug=model_cfg["id"],
+            model_label=model_cfg["label"],
+            model_description=model_cfg.get("description", ""),
+            model_variant_description=model_cfg.get("variant_description", ""),
+            model_has_group=bool(model_cfg.get("group")),
+            model_actual_id=model_cfg["model_id"],
+            model_aspect_ratios=model_cfg.get("aspect_ratios", []),
+            model_duration_options=model_cfg.get("duration_options", []),
+            model_min_duration=None,
+            model_max_duration=None,
+        )
+        await state.set_state(MediaStates.confirm)
+        data = await state.get_data()
+        await message.delete()
+        sent = await message.answer(
+            _confirm_card_text(data),
+            parse_mode="HTML",
+            reply_markup=_confirm_kb(data),
+        )
+        await state.update_data(confirm_msg_id=sent.message_id)
+    else:
+        await state.set_state(MediaStates.select_model)
+        await message.delete()
+        await message.answer(
+            model_select_text("Редактирование фото", models),
+            parse_mode="HTML",
+            reply_markup=model_top_kb(models),
+        )
+
+
 # ─── Изменение параметров в карточке ─────────────────────────────────────────
 
 @router.callback_query(MediaStates.confirm, F.data == "media:pick_ratio")
