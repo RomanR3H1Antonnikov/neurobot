@@ -134,7 +134,8 @@ class OpenAICompatProvider(AbstractProvider):
         return GenerationResult(data=audio_bytes, mime_type="audio/mpeg", filename="audio.mp3")
 
     async def edit_image(
-        self, image_bytes: bytes, prompt: str, model: str | None = None
+        self, image_bytes: bytes, prompt: str, model: str | None = None,
+        image_url: str | None = None,
     ) -> GenerationResult:
         actual_model = model or self.image_edit_model
 

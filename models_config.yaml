@@ -59,7 +59,7 @@ tasks:
           прорабатывает сложные композиции и текстуры. Модель точно следует описаниям, поддерживает
           разнообразные стили и эффективно генерирует как портреты, так и сцены с множеством объектов.
         aspect_ratios: ["1:1", "4:3", "3:4", "16:9", "9:16", "3:2", "2:3", "21:9"]
-        model_id: seedream-v5
+        model_id: seedream/5-lite-text-to-image
         provider: kie
         cost_credits: 1
         cost_usd: 0.01
@@ -136,7 +136,10 @@ tasks:
         description: >-
           Создаёт до 30 секунд ролика за один проход в 4K, поддерживает до 50 референсов
           (изображения, видео, аудио), синхронную генерацию звука и локальное редактирование сцен.
-        model_id: seedance-2.5
+        duration_options: [5, 10, 20, 30]
+        min_duration: 4
+        max_duration: 30
+        model_id: bytedance/seedance-2-5
         provider: kie
         cost_credits: 1
         cost_usd: 0.08
@@ -148,7 +151,10 @@ tasks:
           Нейросеть для генерации кинематографических видео (до 35 секунд, до 4K) по тексту,
           изображениям, видео- и аудиореференсам с синхронизированным звуком, контролем камеры
           и сохранением консистентности персонажей.
-        model_id: seedance-2.0
+        duration_options: [5, 10, 15]
+        min_duration: 4
+        max_duration: 15
+        model_id: bytedance/seedance-2
         provider: kie
         cost_credits: 1
         cost_usd: 0.06
@@ -162,7 +168,10 @@ tasks:
           Нейросеть от Kuaishou для генерации реалистичных видео (до 15 секунд, 4K) по тексту
           и изображениям с физически точной анимацией, стабильной идентичностью персонажей,
           нативным звуком, multi-shot-раскадровкой и Motion Control.
-        model_id: kling-v3
+        duration_options: [5, 10, 15]
+        min_duration: 3
+        max_duration: 15
+        model_id: kling-3.0/video
         provider: kie
         cost_credits: 1
         cost_usd: 0.08
@@ -176,7 +185,10 @@ tasks:
           Нейросеть от Kuaishou для генерации реалистичных видео (до 15 секунд, 4K) по тексту
           и изображениям с физически точной анимацией, стабильной идентичностью персонажей,
           нативным звуком, multi-shot-раскадровкой и Motion Control.
-        model_id: kling-v3-turbo
+        duration_options: [5, 10, 15]
+        min_duration: 3
+        max_duration: 15
+        model_id: kling/v3-turbo-text-to-video
         provider: kie
         cost_credits: 1
         cost_usd: 0.05
@@ -190,7 +202,10 @@ tasks:
           Нейросеть от Kuaishou для генерации реалистичных видео (до 15 секунд, 4K) по тексту
           и изображениям с физически точной анимацией, стабильной идентичностью персонажей,
           нативным звуком, multi-shot-раскадровкой и Motion Control.
-        model_id: kling-v3-motion-control
+        duration_options: [5, 10, 15]
+        min_duration: 3
+        max_duration: 15
+        model_id: kling-3.0/motion-control
         provider: kie
         cost_credits: 1
         cost_usd: 0.08
@@ -202,7 +217,10 @@ tasks:
           Омнимодальная нейросеть для генерации коротких видео (до 15 сек, 2K) с синхронным
           стереозвуком по тексту, изображениям, видео- и аудиореференсам; поддерживает
           мультимодальные входы (до 12 файлов), редактирование и контроль первого/последнего кадра.
-        model_id: minimax-h3
+        duration_options: [5, 10, 15]
+        min_duration: 4
+        max_duration: 15
+        model_id: minimax-h3/text-to-video
         provider: kie
         cost_credits: 1
         cost_usd: 0.07
@@ -216,7 +234,10 @@ tasks:
           Открытая нейросеть от Alibaba Tongyi Lab для генерации реалистичных видео (до 15 сек, 1080p)
           по тексту, изображениям или видео; поддерживает синхронную генерацию звука, многокадровые
           сцены и сохранение идентичности персонажей.
-        model_id: wan-3.0
+        duration_options: [5, 10, 15, 20, 30]
+        min_duration: 2
+        max_duration: 30
+        model_id: wan/3-0-video
         provider: kie
         cost_credits: 1
         cost_usd: 0.08
@@ -230,7 +251,10 @@ tasks:
           Открытая нейросеть от Alibaba Tongyi Lab для генерации реалистичных видео (до 15 сек, 1080p)
           по тексту, изображениям или видео; поддерживает синхронную генерацию звука, многокадровые
           сцены и сохранение идентичности персонажей.
-        model_id: wan-2.7
+        duration_options: [5, 10, 15]
+        min_duration: 2
+        max_duration: 15
+        model_id: wan/2-7-text-to-video
         provider: kie
         cost_credits: 1
         cost_usd: 0.07
@@ -242,6 +266,9 @@ tasks:
           Нейросеть от Alibaba для генерации коротких видео (до 15 сек, 1080p) по тексту,
           изображению или референсам с синхронным звуком, стабильной идентичностью персонажей
           и улучшенной динамикой движений.
+        duration_options: [5, 10, 15]
+        min_duration: 3
+        max_duration: 15
         model_id: alibaba/happyhorse-1.1
         provider: routerai
         cost_credits: 1
@@ -254,7 +281,10 @@ tasks:
           Нейросеть для генерации и редактирования видео (до 15 сек, 4K) по тексту, изображениям
           и референсам: поддерживает точную проработку движений, сохранение идентичности персонажей,
           мультисценные переходы и локальную корректировку кадров.
-        model_id: pixverse-v6
+        duration_options: [5, 10, 15]
+        min_duration: 1
+        max_duration: 15
+        model_id: pixverse-v6/text-to-video
         provider: kie
         cost_credits: 1
         cost_usd: 0.07
@@ -399,7 +429,7 @@ tasks:
         group: nano-banana-edit
         group_label: "Nano Banana AI"
         description: ""
-        model_id: nano-banana-2
+        model_id: google/nano-banana-edit
         provider: kie
         cost_credits: 1
         cost_usd: 0.01
@@ -434,7 +464,7 @@ tasks:
         provider: kie
         cost_credits: 1
         cost_usd: 0.005
-        enabled: true
+        enabled: false
 
       - id: flux-2-pro-edit
         label: "Flux 2 Pro"
@@ -450,7 +480,7 @@ tasks:
       - id: seedream-5-edit
         label: "Seedream 5.0"
         description: ""
-        model_id: seedream-v5
+        model_id: bytedance/seedream-v4-edit
         provider: kie
         cost_credits: 1
         cost_usd: 0.01
