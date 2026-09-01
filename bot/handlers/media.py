@@ -374,65 +374,15 @@ async def menu_to_media(callback: CallbackQuery, state: FSMContext) -> None:
 
 @router.callback_query(F.data == "media:again")
 async def generate_again(callback: CallbackQuery, state: FSMContext) -> None:
-    await state.update_data(generated_file_id=None)
-    data = await state.get_data()
-    tg_user = callback.from_user
-
-    if not (data.get("prompt") or "").strip():
-        # Нет описания — вернуться к карточке, чтобы ввести
-        await state.set_state(MediaStates.confirm)
-        try:
-            await callback.message.edit_text(
-                _confirm_card_text(data), parse_mode="HTML", reply_markup=_confirm_kb(data)
-            )
-        except Exception:
-            await callback.message.delete()
-            sent = await callback.message.answer(
-                _confirm_card_text(data), parse_mode="HTML", reply_markup=_confirm_kb(data)
-            )
-            await state.update_data(confirm_msg_id=sent.message_id)
-        await callback.answer()
-        return
-
-    await state.set_state(MediaStates.confirm)
-    # callback.message — это фото/видео/аудио-результат, edit_text на него нельзя
-    await callback.message.delete()
-    waiting = await callback.message.answer(
-        "⏳ Генерирую, подожди немного...",
-        reply_markup=gen_waiting_kb(),
-    )
-    await callback.answer()
-
+    """Открывает меню новой генерации с чистого листа."""
+    await state.clear()
+    await state.set_state(MediaStates.select_type)
     try:
-        await _start_tracked(tg_user.id, waiting, tg_user, state, data)
-        await waiting.delete()
-    except GenerationCancelledError:
-        await waiting.edit_text("❌ Генерация отменена. Кредиты не списаны.", reply_markup=error_kb())
-    except InsufficientCreditsError as e:
-        await state.update_data(pending_retry_type="media")
-        await waiting.edit_text(
-            f"❌ {e}\n\nПополни баланс — генерация продолжится автоматически:",
-            reply_markup=quick_topup_kb(),
-        )
-    except RateLimitError as e:
-        await waiting.edit_text(f"⏱ {e}", reply_markup=error_kb())
-    except ProviderContentPolicyError:
-        await waiting.edit_text(
-            "❌ Запрос не прошёл проверку безопасности. Попробуй изменить описание.",
-            reply_markup=error_kb(),
-        )
-    except ProviderError as e:
-        logger.error("ProviderError in generate_again: %s", e)
-        await waiting.edit_text(
-            "⚠️ Сервис временно недоступен. Кредиты не списаны — попробуй ещё раз.",
-            reply_markup=error_kb(),
-        )
+        await callback.message.edit_reply_markup(reply_markup=None)
     except Exception:
-        logger.exception("Unexpected error in generate_again")
-        await waiting.edit_text(
-            "⚠️ Произошла непредвиденная ошибка. Кредиты не списаны — попробуй ещё раз.",
-            reply_markup=error_kb(),
-        )
+        pass
+    await callback.message.answer(MEDIA_MENU_TEXT, parse_mode="HTML", reply_markup=media_type_kb())
+    await callback.answer()
 
 
 def _find_edit_model(gen_model_id: str) -> dict | None:
