@@ -299,11 +299,16 @@ async def back_to_model(callback: CallbackQuery, state: FSMContext) -> None:
         video_frames_expanded=None,
     )
     await state.set_state(MediaStates.select_model)
-    await callback.message.edit_text(
-        model_select_text(type_label, models),
-        parse_mode="HTML",
-        reply_markup=model_top_kb(models),
-    )
+    text = model_select_text(type_label, models)
+    try:
+        await callback.message.edit_text(text, parse_mode="HTML", reply_markup=model_top_kb(models))
+    except Exception:
+        # callback.message может быть фото (результат генерации) — edit_text на фото не работает
+        try:
+            await callback.message.edit_reply_markup(reply_markup=None)
+        except Exception:
+            pass
+        await callback.message.answer(text, parse_mode="HTML", reply_markup=model_top_kb(models))
     await callback.answer()
 
 
