@@ -129,7 +129,7 @@ tasks:
 
   # ─── Генерация видео ─────────────────────────────────────────────────────────
   video_generation:
-    rate_limit_per_hour: 5
+    rate_limit_per_hour: 20
     models:
       - id: seedance-2-5
         label: "Seedance 2.5"
@@ -368,7 +368,7 @@ tasks:
 
   # ─── Генерация аудио ─────────────────────────────────────────────────────────
   audio_generation:
-    rate_limit_per_hour: 10
+    rate_limit_per_hour: 20
     models:
       - id: elevenlabs-v3
         label: "ElevenLabs V3"
@@ -422,7 +422,7 @@ tasks:
 
   # ─── Редактирование медиа ────────────────────────────────────────────────────
   image_edit:
-    rate_limit_per_hour: 15
+    rate_limit_per_hour: 20
     models:
       - id: nano-banana-2-edit
         label: "Nano Banana 2"
@@ -497,7 +497,7 @@ tasks:
 
   # ─── Редактирование видео ────────────────────────────────────────────────────
   video_edit:
-    rate_limit_per_hour: 10
+    rate_limit_per_hour: 20
     models: []  # модели будут добавлены после получения от клиента
 
   # ─── Чат с ИИ ────────────────────────────────────────────────────────────────
