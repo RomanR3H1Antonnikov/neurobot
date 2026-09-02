@@ -66,11 +66,12 @@ class OpenAICompatProvider(AbstractProvider):
 
     async def generate_image(
         self, prompt: str, aspect_ratio: str = "1:1", resolution: str = "1K",
-        model: str | None = None, style_reference_url: str | None = None,
+        model: str | None = None, style_reference_urls: list[str] | None = None,
     ) -> GenerationResult:
         actual_model = model or self.image_model
         size = self._compute_size(aspect_ratio, resolution)
-        effective_prompt = f"Reference image: {style_reference_url}\n{prompt}" if style_reference_url else prompt
+        _refs = "\n".join(f"Reference image: {u}" for u in (style_reference_urls or []))
+        effective_prompt = f"{_refs}\n{prompt}" if _refs else prompt
 
         async with self._session() as session:
             async with session.post(f"{self.base_url}/images/generations", json={
@@ -137,10 +138,11 @@ class OpenAICompatProvider(AbstractProvider):
 
     async def edit_image(
         self, image_bytes: bytes, prompt: str, model: str | None = None,
-        image_url: str | None = None, style_reference_url: str | None = None,
+        image_url: str | None = None, style_reference_urls: list[str] | None = None,
     ) -> GenerationResult:
         actual_model = model or self.image_edit_model
-        effective_prompt = f"Reference image: {style_reference_url}\n{prompt}" if style_reference_url else prompt
+        _refs = "\n".join(f"Reference image: {u}" for u in (style_reference_urls or []))
+        effective_prompt = f"{_refs}\n{prompt}" if _refs else prompt
 
         form = aiohttp.FormData()
         form.add_field("model", actual_model)

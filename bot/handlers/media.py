@@ -14,7 +14,7 @@ from bot.keyboards.media import (
     model_select_text, model_variant_text, back_to_model_kb, back_to_confirm_kb,
     image_confirm_kb, image_ratio_kb, image_resolution_kb,
     video_confirm_kb, video_duration_picker_kb, audio_confirm_kb, edit_confirm_kb,
-    after_generation_kb, gen_waiting_kb, error_kb,
+    style_ref_collecting_kb, after_generation_kb, gen_waiting_kb, error_kb,
 )
 from providers.base import ProviderError, ProviderContentPolicyError, TaskType
 from providers.router import get_models_for_task
@@ -95,8 +95,9 @@ def _confirm_card_text(data: dict) -> str:
 
     if media_type == "image":
         lines.append(f"<b>Масштаб:</b> {data.get('aspect_ratio', '1:1')}  |  <b>Качество:</b> {data.get('resolution', '1K')}")
-        if data.get("style_reference_file_id"):
-            lines.append("<b>Ориентир:</b> фото ✅")
+        _srefs = data.get("style_reference_file_ids") or []
+        if _srefs:
+            lines.append(f"<b>{'Ориентир' if len(_srefs) == 1 else 'Ориентиры'}:</b> {len(_srefs)} фото ✅")
     elif media_type == "video":
         lines.append(f"<b>Длительность:</b> {data.get('duration', 5)} сек")
     elif media_type == "audio":
@@ -109,8 +110,10 @@ def _confirm_card_text(data: dict) -> str:
             lines.append(f"<b>Загружено:</b> {label} ✅")
         else:
             lines.append("<b>Загружено:</b> не добавлено")
-        if media_type == "photo_edit" and data.get("style_reference_file_id"):
-            lines.append("<b>Ориентир:</b> фото ✅")
+        if media_type == "photo_edit":
+            _srefs = data.get("style_reference_file_ids") or []
+            if _srefs:
+                lines.append(f"<b>{'Ориентир' if len(_srefs) == 1 else 'Ориентиры'}:</b> {len(_srefs)} фото ✅")
 
     if media_type == "audio":
         prompt_label = "Текст для озвучки" if data.get("audio_type", "voice") == "voice" else "Описание музыки"
@@ -122,12 +125,12 @@ def _confirm_card_text(data: dict) -> str:
 
 def _confirm_kb(data: dict):
     has_prompt = bool(data.get("prompt"))
-    has_style_ref = bool(data.get("style_reference_file_id"))
+    style_ref_count = len(data.get("style_reference_file_ids") or [])
     media_type = data.get("media_type")
     if media_type == "image":
         return image_confirm_kb(
             data.get("aspect_ratio", "1:1"), data.get("resolution", "1K"),
-            has_prompt=has_prompt, has_style_ref=has_style_ref,
+            has_prompt=has_prompt, style_ref_count=style_ref_count,
         )
     elif media_type == "video":
         return video_confirm_kb(
@@ -145,7 +148,7 @@ def _confirm_kb(data: dict):
             has_prompt=has_prompt,
             has_reference=bool(data.get("reference_file_id")),
             media_type=media_type,
-            has_style_ref=has_style_ref,
+            style_ref_count=style_ref_count,
         )
 
 
@@ -323,7 +326,7 @@ async def back_to_model(callback: CallbackQuery, state: FSMContext) -> None:
         model_duration_options=None, model_min_duration=None, model_max_duration=None,
         entering_duration=None, confirm_msg_id=None,
         reference_file_id=None, reference_type=None,
-        style_reference_file_id=None, adding_style_ref=None,
+        style_reference_file_ids=None, adding_style_ref=None,
         video_first_frame_file_id=None, video_last_frame_file_id=None,
         video_frames_expanded=None,
     )
@@ -452,13 +455,40 @@ async def add_reference_prompt(callback: CallbackQuery, state: FSMContext) -> No
 
 @router.callback_query(MediaStates.confirm, F.data == "media:add_style_ref")
 async def add_style_ref_prompt(callback: CallbackQuery, state: FSMContext) -> None:
-    """Кнопка 'Добавить ориентир' — запрашивает фото-ориентир."""
-    has = bool((await state.get_data()).get("style_reference_file_id"))
-    hint = "📎 Пришли другое фото-ориентир:" if has else "📎 Пришли фото-ориентир, на основе которого нейросеть будет работать:"
-    await callback.message.edit_text(hint, reply_markup=back_to_confirm_kb())
+    """Кнопка 'Добавить ориентир' — запрашивает фото-ориентиры (до 14 шт.)."""
+    data = await state.get_data()
+    count = len(data.get("style_reference_file_ids") or [])
+    hint = (
+        f"📎 Уже добавлено {count} фото. Пришли ещё (до 14 всего):"
+        if count else
+        "📎 Пришли фото-ориентиры (до 14 штук). Нейросеть будет ориентироваться на них при генерации:"
+    )
+    await callback.message.edit_text(hint, reply_markup=style_ref_collecting_kb(count))
     await state.update_data(adding_style_ref=True)
     await state.set_state(MediaStates.enter_reference)
     await callback.answer()
+
+
+@router.callback_query(F.data == "media:style_ref_done")
+async def style_ref_done(callback: CallbackQuery, state: FSMContext) -> None:
+    """Завершение сбора ориентиров — возврат к карточке подтверждения."""
+    await state.update_data(adding_style_ref=None)
+    await state.set_state(MediaStates.confirm)
+    data = await state.get_data()
+    await callback.message.edit_text(_confirm_card_text(data), parse_mode="HTML", reply_markup=_confirm_kb(data))
+    await state.update_data(confirm_msg_id=callback.message.message_id)
+    await callback.answer()
+
+
+@router.callback_query(F.data == "media:style_ref_clear")
+async def style_ref_clear(callback: CallbackQuery, state: FSMContext) -> None:
+    """Очистить все ориентиры и остаться в режиме сбора."""
+    await state.update_data(style_reference_file_ids=[])
+    await callback.message.edit_text(
+        "📎 Пришли фото-ориентиры (до 14 штук). Нейросеть будет ориентироваться на них при генерации:",
+        reply_markup=style_ref_collecting_kb(0),
+    )
+    await callback.answer("Ориентиры очищены", show_alert=False)
 
 
 @router.callback_query(MediaStates.confirm, F.data == "media:toggle_frames")
@@ -557,8 +587,14 @@ async def receive_reference_photo(message: Message, state: FSMContext) -> None:
         return
     photo = message.photo[-1]
     if data.get("adding_style_ref"):
-        await state.update_data(style_reference_file_id=photo.file_id, adding_style_ref=None)
-        await _show_confirm_after_reference(message, state)
+        srefs = list(data.get("style_reference_file_ids") or [])
+        if len(srefs) < 14:
+            srefs.append(photo.file_id)
+        await state.update_data(style_reference_file_ids=srefs)
+        await message.answer(
+            f"✅ Добавлено! Всего ориентиров: {len(srefs)}/14",
+            reply_markup=style_ref_collecting_kb(len(srefs)),
+        )
         return
     if data.get("media_type") == "video":
         # Кадр для image-to-video: first или last в зависимости от нажатой кнопки
@@ -605,11 +641,19 @@ async def receive_reference_document(message: Message, state: FSMContext) -> Non
 
 
 @router.message(MediaStates.enter_reference, ~F.text.in_(MENU_BUTTONS))
-async def reference_wrong_type(message: Message) -> None:
-    await message.answer(
-        "Пожалуйста, пришли фото или видео для редактирования.",
-        reply_markup=back_to_model_kb(),
-    )
+async def reference_wrong_type(message: Message, state: FSMContext) -> None:
+    data = await state.get_data()
+    if data.get("adding_style_ref"):
+        count = len(data.get("style_reference_file_ids") or [])
+        await message.answer(
+            "Пожалуйста, пришли фото (изображение).",
+            reply_markup=style_ref_collecting_kb(count),
+        )
+    else:
+        await message.answer(
+            "Пожалуйста, пришли фото или видео для редактирования.",
+            reply_markup=back_to_model_kb(),
+        )
 
 
 # ─── Ввод описания ───────────────────────────────────────────────────────────
@@ -1040,15 +1084,16 @@ async def _run_generation(send_msg: Message, tg_user, state: FSMContext, data: d
     prompt = (data.get("prompt") or "").strip()
     model_slug = data.get("model_slug", "")
 
-    style_reference_url = await _tg_file_url(
-        send_msg.bot, data.get("style_reference_file_id"), _cfg.bot_token
-    )
+    _sref_ids = data.get("style_reference_file_ids") or []
+    style_reference_urls = [
+        u for u in [await _tg_file_url(send_msg.bot, fid, _cfg.bot_token) for fid in _sref_ids] if u
+    ] or None
 
     if media_type == "image":
         result = await media_service.generate_image(
             tg_user.id, tg_user.username, prompt,
             data.get("aspect_ratio", "1:1"), data.get("resolution", "1K"), model_slug,
-            style_reference_url=style_reference_url,
+            style_reference_urls=style_reference_urls,
         )
         if result.variants:
             all_images = [result.data] + result.variants
@@ -1093,7 +1138,7 @@ async def _run_generation(send_msg: Message, tg_user, state: FSMContext, data: d
         media_bytes = file_bytes.read()
         result = await media_service.edit_image(
             tg_user.id, tg_user.username, media_bytes, prompt, model_slug,
-            image_url=image_url, style_reference_url=style_reference_url,
+            image_url=image_url, style_reference_urls=style_reference_urls,
         )
         file = BufferedInputFile(result.data, filename=result.filename)
         sent = await send_msg.answer_photo(file, reply_markup=after_generation_kb(is_image=True))

@@ -33,10 +33,10 @@ def _kie_ratio(aspect_ratio: str) -> str:
 
 def _image_input(
     model: str, prompt: str, aspect_ratio: str, resolution: str,
-    style_reference_url: str | None = None,
+    style_reference_urls: list[str] | None = None,
 ) -> dict:
     """Формирует поле input для createTask в зависимости от семейства модели."""
-    if model.startswith("seedream/"):
+    if model.startswith("seedream/") or model == "bytedance/seedream-v4":
         return {
             "prompt": prompt,
             "aspect_ratio": _kie_ratio(aspect_ratio),
@@ -51,10 +51,10 @@ def _image_input(
             "aspect_ratio": _kie_ratio(aspect_ratio),
             "resolution": resolution,
         }
-    # Nano Banana и прочие — стандартный формат
+    # Nano Banana и прочие — стандартный формат; поддерживает до 14 ориентиров
     result: dict = {
         "prompt": prompt,
-        "image_input": [style_reference_url] if style_reference_url else [],
+        "image_input": list(style_reference_urls) if style_reference_urls else [],
         "aspect_ratio": _kie_ratio(aspect_ratio),
         "resolution": resolution,
         "output_format": "png",
@@ -212,7 +212,7 @@ class KieProvider(OpenAICompatProvider):
 
     async def generate_image(
         self, prompt: str, aspect_ratio: str = "1:1", resolution: str = "1K",
-        model: str | None = None, style_reference_url: str | None = None,
+        model: str | None = None, style_reference_urls: list[str] | None = None,
     ) -> GenerationResult:
         actual_model = model or "nano-banana-2"
         corr_id = uuid.uuid4().hex
@@ -221,7 +221,7 @@ class KieProvider(OpenAICompatProvider):
         try:
             await self._create_job(
                 actual_model,
-                _image_input(actual_model, prompt, aspect_ratio, resolution, style_reference_url),
+                _image_input(actual_model, prompt, aspect_ratio, resolution, style_reference_urls),
                 corr_id,
             )
 
@@ -305,7 +305,7 @@ class KieProvider(OpenAICompatProvider):
 
     async def edit_image(
         self, image_bytes: bytes, prompt: str, model: str | None = None,
-        image_url: str | None = None, style_reference_url: str | None = None,
+        image_url: str | None = None, style_reference_urls: list[str] | None = None,
     ) -> GenerationResult:
         """Job-based редактирование через KIE createTask. Требует image_url."""
         if not image_url:
@@ -314,33 +314,31 @@ class KieProvider(OpenAICompatProvider):
         actual_model = model or "google/nano-banana-edit"
         corr_id = uuid.uuid4().hex
         fut = register_pending(corr_id)
+        _srefs = list(style_reference_urls) if style_reference_urls else []
 
         if actual_model.startswith("flux-2/"):
             # Flux image-to-image: поле input_urls, нужны aspect_ratio и resolution
             input_data: dict = {
                 "prompt": prompt,
-                "input_urls": [image_url] + ([style_reference_url] if style_reference_url else []),
+                "input_urls": [image_url] + _srefs,
                 "aspect_ratio": "auto",
                 "resolution": "1K",
             }
         elif actual_model == "bytedance/seedream-v4-edit":
-            urls = [image_url] + ([style_reference_url] if style_reference_url else [])
-            input_data = {"prompt": prompt, "image_urls": urls}
+            input_data = {"prompt": prompt, "image_urls": [image_url] + _srefs}
         elif actual_model.startswith("seedream/") and "image-to-image" in actual_model:
-            urls = [image_url] + ([style_reference_url] if style_reference_url else [])
             input_data = {
                 "prompt": prompt,
-                "image_urls": urls,
+                "image_urls": [image_url] + _srefs,
                 "aspect_ratio": "1:1",
                 "quality": "basic",
                 "output_format": "png",
             }
         else:
-            # google/nano-banana-edit и прочие
-            urls = [image_url] + ([style_reference_url] if style_reference_url else [])
+            # google/nano-banana-edit и прочие — поддерживает несколько ориентиров
             input_data = {
                 "prompt": prompt,
-                "image_urls": urls,
+                "image_urls": [image_url] + _srefs,
                 "output_format": "png",
             }
 

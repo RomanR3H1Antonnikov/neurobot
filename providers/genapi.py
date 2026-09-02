@@ -107,7 +107,7 @@ class GenApiProvider(AbstractProvider):
 
     async def generate_image(
         self, prompt: str, aspect_ratio: str = "1:1", resolution: str = "1K",
-        model: str | None = None, style_reference_url: str | None = None,
+        model: str | None = None, style_reference_urls: list[str] | None = None,
     ) -> GenerationResult:
         actual_model = model or "midjourney"
         # model_id формата "network/version" → URL /networks/{network}, тело {"model": version}
@@ -116,8 +116,9 @@ class GenApiProvider(AbstractProvider):
             extra: dict | None = {"model": version}
         else:
             network, extra = actual_model, None
-        # Midjourney принимает URL ориентира в начале промпта
-        effective_prompt = f"{style_reference_url} {prompt}" if style_reference_url else prompt
+        # Midjourney принимает URL ориентиров в начале промпта (пробел-разделитель)
+        _refs_prefix = " ".join(style_reference_urls) + " " if style_reference_urls else ""
+        effective_prompt = f"{_refs_prefix}{prompt}"
         data = await self._run(network, effective_prompt, extra=extra)
 
         result = data.get("result")
@@ -157,7 +158,7 @@ class GenApiProvider(AbstractProvider):
 
     async def edit_image(
         self, image_bytes: bytes, prompt: str, model: str | None = None,
-        image_url: str | None = None, style_reference_url: str | None = None,
+        image_url: str | None = None, style_reference_urls: list[str] | None = None,
     ) -> GenerationResult:
         """Редактирование через Midjourney: URL изображения передаётся в начале промпта."""
         if not image_url:
@@ -168,9 +169,9 @@ class GenApiProvider(AbstractProvider):
             extra: dict | None = {"model": version}
         else:
             network, extra = actual_model, None
-        # Основное фото + опциональный ориентир + промпт
-        urls_part = image_url + (f" {style_reference_url}" if style_reference_url else "")
-        full_prompt = f"{urls_part} {prompt}"
+        # Основное фото + ориентиры + промпт
+        _all_urls = [image_url] + (list(style_reference_urls) if style_reference_urls else [])
+        full_prompt = " ".join(_all_urls) + " " + prompt
         data = await self._run(network, full_prompt, extra=extra)
 
         result = data.get("result")

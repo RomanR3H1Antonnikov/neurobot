@@ -52,12 +52,33 @@ tasks:
         cost_usd: 0.02
         enabled: true
 
-      - id: seedream-5
-        label: "Seedream 5.0"
+      - id: seedream-5-pro
+        label: "Pro"
+        group: seedream-5
+        group_label: "Seedream 5.0"
         description: >-
           Seedream 5.0 отличается высокой детализацией и реалистичностью изображений, уверенно
           прорабатывает сложные композиции и текстуры. Модель точно следует описаниям, поддерживает
           разнообразные стили и эффективно генерирует как портреты, так и сцены с множеством объектов.
+        variant_description: >-
+          Флагманская версия для сложных, насыщенных композиций — точность, структура
+          и контроль. Подходит дизайнерам, маркетологам, продюсерам и для коммерческих
+          макетов.
+        aspect_ratios: ["1:1", "4:3", "3:4", "16:9", "9:16", "3:2", "2:3", "21:9"]
+        model_id: bytedance/seedream-v4
+        provider: kie
+        cost_credits: 1
+        cost_usd: 0.01
+        enabled: true
+
+      - id: seedream-5-lite
+        label: "Lite"
+        group: seedream-5
+        group_label: "Seedream 5.0"
+        description: ""
+        variant_description: >-
+          Универсальная версия — идеальна для старта, поиска концепций и простых
+          визуалов.
         aspect_ratios: ["1:1", "4:3", "3:4", "16:9", "9:16", "3:2", "2:3", "21:9"]
         model_id: seedream/5-lite-text-to-image
         provider: kie

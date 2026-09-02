@@ -112,15 +112,25 @@ ALL_RATIOS = ["1:1", "2:3", "3:2", "1:4", "4:1", "3:4", "4:3", "4:5", "5:4", "1:
 ALL_RESOLUTIONS = ["1K", "2K", "4K"]
 
 
+def style_ref_collecting_kb(count: int) -> InlineKeyboardMarkup:
+    """Клавиатура при сборе фото-ориентиров."""
+    builder = InlineKeyboardBuilder()
+    builder.row(InlineKeyboardButton(text=f"✅ Готово ({count}/14)", callback_data="media:style_ref_done"))
+    if count > 0:
+        builder.row(InlineKeyboardButton(text="🗑 Очистить всё", callback_data="media:style_ref_clear"))
+    builder.row(InlineKeyboardButton(text="◀️ Назад", callback_data="media:back:confirm"))
+    return builder.as_markup()
+
+
 def image_confirm_kb(
-    aspect_ratio: str, resolution: str = "1K", has_prompt: bool = False, has_style_ref: bool = False,
+    aspect_ratio: str, resolution: str = "1K", has_prompt: bool = False, style_ref_count: int = 0,
 ) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     builder.row(
         InlineKeyboardButton(text=f"📐 Масштаб: {aspect_ratio}", callback_data="media:pick_ratio"),
         InlineKeyboardButton(text=f"🖼 Качество: {resolution}", callback_data="media:pick_resolution"),
     )
-    ref_text = "🖼 Ориентир ✅" if has_style_ref else "📎 Добавить ориентир"
+    ref_text = f"🖼 Ориентиры: {style_ref_count} фото ✅" if style_ref_count else "📎 Добавить ориентир"
     builder.row(InlineKeyboardButton(text=ref_text, callback_data="media:add_style_ref"))
     edit_text = "✏️ Изменить описание" if has_prompt else "✏️ Ввести описание"
     builder.row(
@@ -227,7 +237,7 @@ def edit_confirm_kb(
     has_prompt: bool = False,
     has_reference: bool = False,
     media_type: str = "photo_edit",
-    has_style_ref: bool = False,
+    style_ref_count: int = 0,
 ) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     if media_type == "photo_edit":
@@ -236,7 +246,7 @@ def edit_confirm_kb(
         ref_text = "📎 Изменить видео" if has_reference else "📎 Добавить видео"
     builder.row(InlineKeyboardButton(text=ref_text, callback_data="media:add_reference"))
     if media_type == "photo_edit":
-        style_text = "🖼 Ориентир ✅" if has_style_ref else "📎 Добавить ориентир"
+        style_text = f"🖼 Ориентиры: {style_ref_count} фото ✅" if style_ref_count else "📎 Добавить ориентир"
         builder.row(InlineKeyboardButton(text=style_text, callback_data="media:add_style_ref"))
     prompt_text = "✏️ Изменить инструкцию" if has_prompt else "✏️ Ввести инструкцию"
     builder.row(

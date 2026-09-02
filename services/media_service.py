@@ -36,7 +36,7 @@ async def _check_preconditions(
 
 async def generate_image(
     telegram_id: int, username: str, prompt: str, aspect_ratio: str, resolution: str, model_slug: str,
-    style_reference_url: str | None = None,
+    style_reference_urls: list[str] | None = None,
 ) -> GenerationResult:
     task = TaskType.IMAGE_GENERATION
     provider, model_cfg = get_provider_by_model_id(task, model_slug)
@@ -44,7 +44,7 @@ async def generate_image(
 
     result = await provider.generate_image(
         prompt, aspect_ratio=aspect_ratio, resolution=resolution,
-        model=model_cfg["model_id"], style_reference_url=style_reference_url,
+        model=model_cfg["model_id"], style_reference_urls=style_reference_urls,
     )
     await deduct_credits(user_id, model_cfg["cost_credits"], task.value)
     return result
@@ -82,7 +82,7 @@ async def generate_audio(
 
 async def edit_image(
     telegram_id: int, username: str, image_bytes: bytes, prompt: str, model_slug: str,
-    image_url: str | None = None, style_reference_url: str | None = None,
+    image_url: str | None = None, style_reference_urls: list[str] | None = None,
 ) -> GenerationResult:
     task = TaskType.IMAGE_EDIT
     provider, model_cfg = get_provider_by_model_id(task, model_slug)
@@ -90,7 +90,7 @@ async def edit_image(
 
     result = await provider.edit_image(
         image_bytes, prompt, model=model_cfg["model_id"],
-        image_url=image_url, style_reference_url=style_reference_url,
+        image_url=image_url, style_reference_urls=style_reference_urls,
     )
     await deduct_credits(user_id, model_cfg["cost_credits"], task.value)
     return result
