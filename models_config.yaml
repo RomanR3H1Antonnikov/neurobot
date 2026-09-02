@@ -146,6 +146,21 @@ tasks:
         cost_usd: 0.01
         enabled: true
 
+      - id: grok-image-pro
+        label: "Grok Image Pro"
+        description: >-
+          Grok Imagine Image Pro — генерация фотореалистичных изображений с высокой детализацией
+          и точное следование сложным текстовым промптам. Модель ориентирована на профессиональное
+          использование: создание концепт-артов для игр и кино, дизайн-макетов, контента для рекламы,
+          маркетплейсов и иллюстраций для статей.
+        aspect_ratios: ["1:1", "2:3", "3:2", "16:9", "9:16"]
+        model_id: x-ai/grok-imagine-image-quality
+        provider: routerai
+        max_style_refs: 5
+        cost_credits: 1
+        cost_usd: 0.03
+        enabled: true
+
       - id: gpt-image-2
         label: "GPT Image 2"
         description: >-

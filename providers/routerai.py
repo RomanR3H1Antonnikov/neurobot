@@ -2,8 +2,10 @@
 Адаптер для RouteAI (routerai.ru).
 Чат — OpenAI-compat (/chat/completions).
 Видео — асинхронный API: POST /videos → поллинг GET /videos/{id} → GET /videos/{id}/content.
+Grok Image — /images/generations с extra_body.aspect_ratio + extra_body.input_references.
 """
 import asyncio
+import base64
 import logging
 import aiohttp
 from providers.openai_compat import OpenAICompatProvider
@@ -23,6 +25,29 @@ class RouteraiProvider(OpenAICompatProvider):
     provider_id = "routerai"
     base_url = _BASE_URL
     chat_model = "gpt-4o-mini"
+
+    async def generate_image(
+        self, prompt: str, aspect_ratio: str = "1:1", resolution: str = "1K",
+        model: str | None = None, style_reference_urls: list[str] | None = None,
+    ) -> GenerationResult:
+        actual_model = model or self.image_model
+
+        if actual_model.startswith("x-ai/"):
+            # Grok: aspect_ratio и ссылки идут в extra_body, size не нужен
+            extra_body: dict = {"aspect_ratio": aspect_ratio}
+            if style_reference_urls:
+                extra_body["input_references"] = [
+                    {"type": "image_url", "image_url": {"url": u}}
+                    for u in style_reference_urls
+                ]
+            body = {"model": actual_model, "prompt": prompt, "n": 1, "extra_body": extra_body}
+            async with self._session() as session:
+                async with session.post(f"{self.base_url}/images/generations", json=body) as resp:
+                    data = await self._handle_response(resp)
+            image_bytes = base64.b64decode(data["data"][0]["b64_json"])
+            return GenerationResult(data=image_bytes, mime_type="image/png", filename="image.png")
+
+        return await super().generate_image(prompt, aspect_ratio, resolution, model, style_reference_urls)
 
     async def generate_video(
         self, prompt: str, duration: int = 5, model: str | None = None,
