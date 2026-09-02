@@ -67,6 +67,7 @@ tasks:
         aspect_ratios: ["1:1", "4:3", "3:4", "16:9", "9:16", "3:2", "2:3", "21:9"]
         model_id: bytedance/seedream-v4
         provider: kie
+        max_style_refs: 10
         cost_credits: 1
         cost_usd: 0.01
         enabled: true
@@ -82,6 +83,7 @@ tasks:
         aspect_ratios: ["1:1", "4:3", "3:4", "16:9", "9:16", "3:2", "2:3", "21:9"]
         model_id: seedream/5-lite-text-to-image
         provider: kie
+        max_style_refs: 14
         cost_credits: 1
         cost_usd: 0.01
         enabled: true
@@ -99,6 +101,7 @@ tasks:
         aspect_ratios: ["1:1", "5:4", "3:2", "7:4", "16:9", "2:1", "9:16", "1:2", "2:3"]
         model_id: midjourney/7.0
         provider: genapi
+        max_style_refs: 4
         cost_credits: 1
         cost_usd: 0.04
         enabled: true
@@ -112,6 +115,7 @@ tasks:
         aspect_ratios: ["1:1", "5:4", "3:2", "7:4", "16:9", "2:1", "9:16", "1:2", "2:3"]
         model_id: midjourney/8.1
         provider: genapi
+        max_style_refs: 4
         cost_credits: 1
         cost_usd: 0.04
         enabled: true
@@ -137,6 +141,7 @@ tasks:
         aspect_ratios: ["1:1", "9:16", "16:9", "3:4", "4:3"]
         model_id: flux-2/pro-text-to-image
         provider: kie
+        max_style_refs: 8
         cost_credits: 1
         cost_usd: 0.01
         enabled: true
@@ -151,6 +156,7 @@ tasks:
         aspect_ratios: ["1:1", "4:3", "3:4", "3:2", "2:3", "5:4", "4:5", "16:9", "9:16", "21:9"]
         model_id: gpt-image-2
         provider: aitunnel
+        max_style_refs: 16
         cost_credits: 1
         cost_usd: 0.04
         enabled: true
@@ -479,6 +485,7 @@ tasks:
         description: ""
         model_id: gpt-image-2
         provider: aitunnel
+        max_style_refs: 3
         cost_credits: 1
         cost_usd: 0.04
         enabled: true
@@ -501,6 +508,7 @@ tasks:
         description: ""
         model_id: flux-2/pro-image-to-image
         provider: kie
+        max_style_refs: 3
         cost_credits: 1
         cost_usd: 0.01
         enabled: true
@@ -516,6 +524,7 @@ tasks:
           макетов.
         model_id: bytedance/seedream-v4-edit
         provider: kie
+        max_style_refs: 10
         cost_credits: 1
         cost_usd: 0.01
         enabled: true
@@ -530,6 +539,7 @@ tasks:
           визуалов.
         model_id: seedream/5-lite-image-to-image
         provider: kie
+        max_style_refs: 10
         cost_credits: 1
         cost_usd: 0.01
         enabled: true
@@ -542,6 +552,7 @@ tasks:
         variant_description: ""
         model_id: midjourney/7.0
         provider: genapi
+        max_style_refs: 4
         cost_credits: 1
         cost_usd: 0.04
         enabled: true
@@ -554,6 +565,7 @@ tasks:
         variant_description: ""
         model_id: midjourney/8.1
         provider: genapi
+        max_style_refs: 4
         cost_credits: 1
         cost_usd: 0.04
         enabled: true

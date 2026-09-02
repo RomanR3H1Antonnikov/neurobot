@@ -112,10 +112,10 @@ ALL_RATIOS = ["1:1", "2:3", "3:2", "1:4", "4:1", "3:4", "4:3", "4:5", "5:4", "1:
 ALL_RESOLUTIONS = ["1K", "2K", "4K"]
 
 
-def style_ref_collecting_kb(count: int) -> InlineKeyboardMarkup:
+def style_ref_collecting_kb(count: int, max_refs: int = 14) -> InlineKeyboardMarkup:
     """Клавиатура при сборе фото-ориентиров."""
     builder = InlineKeyboardBuilder()
-    builder.row(InlineKeyboardButton(text=f"✅ Готово ({count}/14)", callback_data="media:style_ref_done"))
+    builder.row(InlineKeyboardButton(text=f"✅ Готово ({count}/{max_refs})", callback_data="media:style_ref_done"))
     if count > 0:
         builder.row(InlineKeyboardButton(text="🗑 Очистить всё", callback_data="media:style_ref_clear"))
     builder.row(InlineKeyboardButton(text="◀️ Назад", callback_data="media:back:confirm"))

@@ -238,6 +238,7 @@ async def select_model(callback: CallbackQuery, state: FSMContext) -> None:
         "model_duration_options": duration_options,
         "model_min_duration": min_duration,
         "model_max_duration": max_duration,
+        "model_max_style_refs": model_cfg.get("max_style_refs", 14),
     }
     # если текущий ratio недоступен у новой модели — сбрасываем на 1:1
     if aspect_ratios and data.get("aspect_ratio", "1:1") not in aspect_ratios:
@@ -324,7 +325,7 @@ async def back_to_model(callback: CallbackQuery, state: FSMContext) -> None:
         model_description=None, model_variant_description=None,
         model_has_group=None, model_aspect_ratios=None,
         model_duration_options=None, model_min_duration=None, model_max_duration=None,
-        entering_duration=None, confirm_msg_id=None,
+        model_max_style_refs=None, entering_duration=None, confirm_msg_id=None,
         reference_file_id=None, reference_type=None,
         style_reference_file_ids=None, adding_style_ref=None,
         video_first_frame_file_id=None, video_last_frame_file_id=None,
@@ -458,12 +459,13 @@ async def add_style_ref_prompt(callback: CallbackQuery, state: FSMContext) -> No
     """Кнопка 'Добавить ориентир' — запрашивает фото-ориентиры (до 14 шт.)."""
     data = await state.get_data()
     count = len(data.get("style_reference_file_ids") or [])
+    max_refs = data.get("model_max_style_refs", 14)
     hint = (
-        f"📎 Уже добавлено {count} фото. Пришли ещё (до 14 всего):"
+        f"📎 Уже добавлено {count} фото. Пришли ещё (до {max_refs} всего):"
         if count else
-        "📎 Пришли фото-ориентиры (до 14 штук). Нейросеть будет ориентироваться на них при генерации:"
+        f"📎 Пришли фото-ориентиры (до {max_refs} штук). Нейросеть будет ориентироваться на них при генерации:"
     )
-    await callback.message.edit_text(hint, reply_markup=style_ref_collecting_kb(count))
+    await callback.message.edit_text(hint, reply_markup=style_ref_collecting_kb(count, max_refs))
     await state.update_data(adding_style_ref=True)
     await state.set_state(MediaStates.enter_reference)
     await callback.answer()
@@ -483,10 +485,12 @@ async def style_ref_done(callback: CallbackQuery, state: FSMContext) -> None:
 @router.callback_query(F.data == "media:style_ref_clear")
 async def style_ref_clear(callback: CallbackQuery, state: FSMContext) -> None:
     """Очистить все ориентиры и остаться в режиме сбора."""
+    data = await state.get_data()
+    max_refs = data.get("model_max_style_refs", 14)
     await state.update_data(style_reference_file_ids=[])
     await callback.message.edit_text(
-        "📎 Пришли фото-ориентиры (до 14 штук). Нейросеть будет ориентироваться на них при генерации:",
-        reply_markup=style_ref_collecting_kb(0),
+        f"📎 Пришли фото-ориентиры (до {max_refs} штук). Нейросеть будет ориентироваться на них при генерации:",
+        reply_markup=style_ref_collecting_kb(0, max_refs),
     )
     await callback.answer("Ориентиры очищены", show_alert=False)
 
@@ -588,12 +592,13 @@ async def receive_reference_photo(message: Message, state: FSMContext) -> None:
     photo = message.photo[-1]
     if data.get("adding_style_ref"):
         srefs = list(data.get("style_reference_file_ids") or [])
-        if len(srefs) < 14:
+        max_refs = data.get("model_max_style_refs", 14)
+        if len(srefs) < max_refs:
             srefs.append(photo.file_id)
         await state.update_data(style_reference_file_ids=srefs)
         await message.answer(
-            f"✅ Добавлено! Всего ориентиров: {len(srefs)}/14",
-            reply_markup=style_ref_collecting_kb(len(srefs)),
+            f"✅ Добавлено! Всего ориентиров: {len(srefs)}/{max_refs}",
+            reply_markup=style_ref_collecting_kb(len(srefs), max_refs),
         )
         return
     if data.get("media_type") == "video":
@@ -645,9 +650,10 @@ async def reference_wrong_type(message: Message, state: FSMContext) -> None:
     data = await state.get_data()
     if data.get("adding_style_ref"):
         count = len(data.get("style_reference_file_ids") or [])
+        max_refs = data.get("model_max_style_refs", 14)
         await message.answer(
             "Пожалуйста, пришли фото (изображение).",
-            reply_markup=style_ref_collecting_kb(count),
+            reply_markup=style_ref_collecting_kb(count, max_refs),
         )
     else:
         await message.answer(
