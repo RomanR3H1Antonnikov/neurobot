@@ -117,6 +117,10 @@ def style_ref_collecting_kb(count: int, max_refs: int = 14) -> InlineKeyboardMar
     builder = InlineKeyboardBuilder()
     builder.row(InlineKeyboardButton(text=f"✅ Готово ({count}/{max_refs})", callback_data="media:style_ref_done"))
     if count > 0:
+        builder.row(
+            InlineKeyboardButton(text="❌ Удалить фото", callback_data="media:style_ref_delete"),
+            InlineKeyboardButton(text="✏️ Заменить", callback_data="media:style_ref_replace"),
+        )
         builder.row(InlineKeyboardButton(text="🗑 Очистить всё", callback_data="media:style_ref_clear"))
     builder.row(InlineKeyboardButton(text="◀️ Назад", callback_data="media:back:confirm"))
     return builder.as_markup()

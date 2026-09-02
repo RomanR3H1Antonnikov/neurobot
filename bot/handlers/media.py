@@ -333,6 +333,7 @@ async def back_to_model(callback: CallbackQuery, state: FSMContext) -> None:
         model_max_style_refs=None, model_resolutions=None, entering_duration=None, confirm_msg_id=None,
         reference_file_id=None, reference_type=None,
         style_reference_file_ids=None, adding_style_ref=None,
+        managing_style_ref=None, managing_style_ref_index=None,
         video_first_frame_file_id=None, video_last_frame_file_id=None,
         video_frames_expanded=None,
     )
@@ -492,12 +493,40 @@ async def style_ref_clear(callback: CallbackQuery, state: FSMContext) -> None:
     """Очистить все ориентиры и остаться в режиме сбора."""
     data = await state.get_data()
     max_refs = data.get("model_max_style_refs", 14)
-    await state.update_data(style_reference_file_ids=[])
+    await state.update_data(style_reference_file_ids=[], managing_style_ref=None, managing_style_ref_index=None)
     await callback.message.edit_text(
         f"📎 Пришли фото-ориентиры (до {max_refs} штук). Нейросеть будет ориентироваться на них при генерации:",
         reply_markup=style_ref_collecting_kb(0, max_refs),
     )
     await callback.answer("Ориентиры очищены", show_alert=False)
+
+
+@router.callback_query(F.data == "media:style_ref_delete")
+async def style_ref_delete_start(callback: CallbackQuery, state: FSMContext) -> None:
+    """Запрашивает номер фото для удаления."""
+    data = await state.get_data()
+    count = len(data.get("style_reference_file_ids") or [])
+    max_refs = data.get("model_max_style_refs", 14)
+    await state.update_data(managing_style_ref="delete")
+    await callback.message.edit_text(
+        f"Введи номер фото для удаления (1–{count}):",
+        reply_markup=style_ref_collecting_kb(count, max_refs),
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data == "media:style_ref_replace")
+async def style_ref_replace_start(callback: CallbackQuery, state: FSMContext) -> None:
+    """Запрашивает номер фото для замены."""
+    data = await state.get_data()
+    count = len(data.get("style_reference_file_ids") or [])
+    max_refs = data.get("model_max_style_refs", 14)
+    await state.update_data(managing_style_ref="replace")
+    await callback.message.edit_text(
+        f"Введи номер фото для замены (1–{count}):",
+        reply_markup=style_ref_collecting_kb(count, max_refs),
+    )
+    await callback.answer()
 
 
 @router.callback_query(MediaStates.confirm, F.data == "media:toggle_frames")
@@ -598,6 +627,19 @@ async def receive_reference_photo(message: Message, state: FSMContext) -> None:
     if data.get("adding_style_ref"):
         srefs = list(data.get("style_reference_file_ids") or [])
         max_refs = data.get("model_max_style_refs", 14)
+        if data.get("managing_style_ref") == "replace_photo":
+            idx = data.get("managing_style_ref_index", 0)
+            if 0 <= idx < len(srefs):
+                srefs[idx] = photo.file_id
+            await state.update_data(
+                style_reference_file_ids=srefs,
+                managing_style_ref=None, managing_style_ref_index=None,
+            )
+            await message.answer(
+                f"✅ Фото #{idx + 1} заменено. Всего: {len(srefs)}/{max_refs}",
+                reply_markup=style_ref_collecting_kb(len(srefs), max_refs),
+            )
+            return
         if len(srefs) < max_refs:
             srefs.append(photo.file_id)
         await state.update_data(style_reference_file_ids=srefs)
@@ -647,6 +689,48 @@ async def receive_reference_document(message: Message, state: FSMContext) -> Non
         await message.answer(
             "Пожалуйста, пришли подходящий файл для редактирования.",
             reply_markup=back_to_model_kb(),
+        )
+
+
+@router.message(MediaStates.enter_reference, F.text, ~F.text.in_(MENU_BUTTONS))
+async def enter_reference_text_input(message: Message, state: FSMContext) -> None:
+    """Ввод номера фото для удаления/замены в режиме сбора ориентиров."""
+    data = await state.get_data()
+    managing = data.get("managing_style_ref")
+
+    if not managing or not data.get("adding_style_ref"):
+        await message.answer(
+            "Пожалуйста, пришли фото или видео для редактирования.",
+            reply_markup=back_to_model_kb(),
+        )
+        return
+
+    srefs = list(data.get("style_reference_file_ids") or [])
+    max_refs = data.get("model_max_style_refs", 14)
+
+    try:
+        idx = int(message.text.strip()) - 1
+        if idx < 0 or idx >= len(srefs):
+            await message.answer(f"Номер должен быть от 1 до {len(srefs)}.")
+            return
+    except ValueError:
+        await message.answer(f"Введи число от 1 до {len(srefs)}.")
+        return
+
+    if managing == "delete":
+        srefs.pop(idx)
+        await state.update_data(style_reference_file_ids=srefs, managing_style_ref=None)
+        text = (
+            f"✅ Фото #{idx + 1} удалено. Осталось: {len(srefs)}/{max_refs}"
+            if srefs else
+            f"✅ Фото #{idx + 1} удалено. Список ориентиров пуст."
+        )
+        await message.answer(text, reply_markup=style_ref_collecting_kb(len(srefs), max_refs))
+    elif managing == "replace":
+        await state.update_data(managing_style_ref="replace_photo", managing_style_ref_index=idx)
+        await message.answer(
+            f"Пришли новое фото для замены #{idx + 1}:",
+            reply_markup=style_ref_collecting_kb(len(srefs), max_refs),
         )
 
 
