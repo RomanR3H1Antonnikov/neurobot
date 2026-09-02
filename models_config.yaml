@@ -81,7 +81,7 @@ tasks:
         model_id: bytedance/seedream-v4
         provider: kie
         max_style_refs: 10
-        resolutions: ["1K", "2K"]
+        resolutions: ["2K", "3K"]
         cost_credits: 1
         cost_usd: 0.01
         enabled: true
@@ -98,7 +98,7 @@ tasks:
         model_id: seedream/5-lite-text-to-image
         provider: kie
         max_style_refs: 14
-        resolutions: ["2K", "4K"]
+        resolutions: ["2K", "3K", "4K"]
         cost_credits: 1
         cost_usd: 0.01
         enabled: true
@@ -586,7 +586,7 @@ tasks:
         model_id: bytedance/seedream-v4-edit
         provider: kie
         max_style_refs: 10
-        resolutions: ["1K", "2K"]
+        resolutions: ["2K", "3K"]
         cost_credits: 1
         cost_usd: 0.01
         enabled: true
@@ -602,7 +602,7 @@ tasks:
         model_id: seedream/5-lite-image-to-image
         provider: kie
         max_style_refs: 10
-        resolutions: ["2K", "4K"]
+        resolutions: ["2K", "3K", "4K"]
         cost_credits: 1
         cost_usd: 0.01
         enabled: true

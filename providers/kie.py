@@ -19,10 +19,10 @@ _JOB_TIMEOUT = 600  # секунд ожидания callback'а (10 минут)
 # Формат соотношения сторон для KIE: "1:1" → "1:1" (совпадает), "auto" для произвольного
 _RATIO_MAP: dict[str, str] = {}  # пустой = передаём as-is
 
-# Маппинг resolution → quality для моделей Seedream
+# Маппинг resolution → quality для моделей Seedream (basic=2K, high=3K, ultra=4K)
 _SEEDREAM_QUALITY: dict[str, str] = {
-    "1K": "basic",
-    "2K": "high",
+    "2K": "basic",
+    "3K": "high",
     "4K": "ultra",
 }
 

@@ -109,7 +109,7 @@ def back_to_type_kb() -> InlineKeyboardMarkup:
 # ─── Карточка подтверждения: фото ────────────────────────────────────────────
 
 ALL_RATIOS = ["1:1", "2:3", "3:2", "1:4", "4:1", "3:4", "4:3", "4:5", "5:4", "1:8", "8:1", "9:16", "16:9"]
-ALL_RESOLUTIONS = ["1K", "2K", "4K"]
+ALL_RESOLUTIONS = ["1K", "2K", "3K", "4K"]
 
 
 def style_ref_collecting_kb(count: int, max_refs: int = 14) -> InlineKeyboardMarkup:
