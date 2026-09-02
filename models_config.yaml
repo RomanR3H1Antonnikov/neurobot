@@ -525,6 +525,20 @@ tasks:
         cost_usd: 0.02
         enabled: true
 
+      - id: grok-image-2-0-edit
+        label: "Grok Image 2.0"
+        description: >-
+          Grok Imagine Image 2.0 — создание и точная доработка изображений для рабочих задач:
+          дизайна, маркетинга, создания контента. Модель делает акцент на итеративном процессе —
+          картинку можно последовательно улучшать, не теряя уже удачные элементы композиции.
+        aspect_ratios: ["1:1", "2:3", "3:2", "16:9", "9:16"]
+        model_id: grok-imagine-image-2-0/image-edit
+        provider: kie
+        max_style_refs: 5
+        cost_credits: 1
+        cost_usd: 0.03
+        enabled: true
+
       - id: gpt-image-2-edit
         label: "GPT Image 2"
         description: ""
