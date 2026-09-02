@@ -51,7 +51,14 @@ def _image_input(
             "aspect_ratio": _kie_ratio(aspect_ratio),
             "resolution": resolution,
         }
-    # Nano Banana и прочие — стандартный формат; поддерживает до 14 ориентиров
+    if model == "nano-banana-2-lite":
+        # Lite использует image_urls (не image_input) и не принимает resolution/output_format
+        return {
+            "prompt": prompt,
+            "image_urls": list(style_reference_urls) if style_reference_urls else [],
+            "aspect_ratio": _kie_ratio(aspect_ratio),
+        }
+    # Nano Banana 2 и прочие — стандартный формат; поддерживает до 14 ориентиров
     result: dict = {
         "prompt": prompt,
         "image_input": list(style_reference_urls) if style_reference_urls else [],
@@ -333,6 +340,13 @@ class KieProvider(OpenAICompatProvider):
                 "aspect_ratio": "1:1",
                 "quality": "basic",
                 "output_format": "png",
+            }
+        elif actual_model == "nano-banana-2-lite":
+            # Lite: image_urls без output_format и без aspect_ratio (определяется источником)
+            input_data = {
+                "prompt": prompt,
+                "image_urls": [image_url] + _srefs,
+                "aspect_ratio": "auto",
             }
         else:
             # google/nano-banana-edit и прочие — поддерживает несколько ориентиров

@@ -155,9 +155,10 @@ def image_ratio_kb(current: str, allowed_ratios: list[str] | None = None) -> Inl
     return builder.as_markup()
 
 
-def image_resolution_kb(current: str) -> InlineKeyboardMarkup:
+def image_resolution_kb(current: str, allowed_resolutions: list[str] | None = None) -> InlineKeyboardMarkup:
+    resolutions = allowed_resolutions if allowed_resolutions else ALL_RESOLUTIONS
     builder = InlineKeyboardBuilder()
-    for res in ALL_RESOLUTIONS:
+    for res in resolutions:
         prefix = "✅ " if res == current else ""
         builder.add(InlineKeyboardButton(text=f"{prefix}{res}", callback_data=f"media:resolution:{res}"))
     builder.adjust(3)

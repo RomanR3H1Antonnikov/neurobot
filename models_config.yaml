@@ -19,32 +19,45 @@ tasks:
     rate_limit_per_hour: 20
     models:
       - id: nano-banana-2
-        label: "Nano Banana 2"
-        group: nano-banana
-        group_label: "Nano Banana AI"
+        label: "Pro"
+        group: nano-banana-2
+        group_label: "Nano Banana 2"
         description: >-
-          Nano Banana быстро генерирует и редактирует изображения, отлично справляется с текстом
+          Nano Banana 2 быстро генерирует и редактирует изображения, отлично справляется с текстом
           внутри картинок (постеры, инфографика), сохраняет облик нескольких персонажей в серии
           работ и может брать за основу видео или ссылку на него. Модель гибко работает с
           разрешением и соотношением сторон, а также позволяет итеративно дорабатывать картинку
           в диалоге.
+        variant_description: "Полная версия с поддержкой разрешений 1K и 2K."
         aspect_ratios: ["1:1", "2:3", "3:2", "1:4", "4:1", "3:4", "4:3", "4:5", "5:4", "1:8", "8:1", "9:16", "16:9"]
         model_id: nano-banana-2
         provider: kie
+        resolutions: ["1K", "2K"]
         cost_credits: 1
         cost_usd: 0.01
         enabled: true
 
+      - id: nano-banana-2-lite
+        label: "Lite"
+        group: nano-banana-2
+        group_label: "Nano Banana 2"
+        description: ""
+        variant_description: >-
+          Облегчённая версия для генерации и редактирования изображений в разрешении 1K.
+          Максимальная скорость и низкая стоимость.
+        aspect_ratios: ["1:1", "1:4", "1:8", "2:3", "3:2", "3:4", "4:1", "4:3", "4:5", "5:4", "8:1", "9:16", "16:9", "21:9"]
+        model_id: nano-banana-2-lite
+        provider: kie
+        resolutions: ["1K"]
+        cost_credits: 1
+        cost_usd: 0.005
+        enabled: true
+
       - id: nano-banana-pro
         label: "Nano Banana Pro"
-        group: nano-banana
-        group_label: "Nano Banana AI"
         description: >-
-          Nano Banana быстро генерирует и редактирует изображения, отлично справляется с текстом
-          внутри картинок (постеры, инфографика), сохраняет облик нескольких персонажей в серии
-          работ и может брать за основу видео или ссылку на него. Модель гибко работает с
-          разрешением и соотношением сторон, а также позволяет итеративно дорабатывать картинку
-          в диалоге.
+          Nano Banana Pro на базе Gemini — высокое качество генерации и редактирования
+          изображений с глубоким пониманием контекста и сложных описаний.
         aspect_ratios: ["1:1", "2:3", "3:2", "1:4", "4:1", "3:4", "4:3", "4:5", "5:4", "1:8", "8:1", "9:16", "16:9"]
         model_id: gemini-3-pro-image
         provider: aitunnel
@@ -474,20 +487,33 @@ tasks:
     rate_limit_per_hour: 20
     models:
       - id: nano-banana-2-edit
-        label: "Nano Banana 2"
-        group: nano-banana-edit
-        group_label: "Nano Banana AI"
+        label: "Pro"
+        group: nano-banana-2-edit
+        group_label: "Nano Banana 2"
         description: ""
+        variant_description: "Полная версия редактирования с поддержкой разрешений 1K и 2K."
         model_id: google/nano-banana-edit
         provider: kie
+        resolutions: ["1K", "2K"]
         cost_credits: 1
         cost_usd: 0.01
         enabled: true
 
+      - id: nano-banana-2-lite-edit
+        label: "Lite"
+        group: nano-banana-2-edit
+        group_label: "Nano Banana 2"
+        description: ""
+        variant_description: "Облегчённая версия — максимальная скорость и низкая стоимость, разрешение 1K."
+        model_id: nano-banana-2-lite
+        provider: kie
+        resolutions: ["1K"]
+        cost_credits: 1
+        cost_usd: 0.005
+        enabled: true
+
       - id: nano-banana-pro-edit
         label: "Nano Banana Pro"
-        group: nano-banana-edit
-        group_label: "Nano Banana AI"
         description: ""
         model_id: gemini-3-pro-image
         provider: aitunnel

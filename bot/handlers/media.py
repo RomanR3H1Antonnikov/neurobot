@@ -239,10 +239,15 @@ async def select_model(callback: CallbackQuery, state: FSMContext) -> None:
         "model_min_duration": min_duration,
         "model_max_duration": max_duration,
         "model_max_style_refs": model_cfg.get("max_style_refs", 14),
+        "model_resolutions": model_cfg.get("resolutions"),
     }
     # если текущий ratio недоступен у новой модели — сбрасываем на 1:1
     if aspect_ratios and data.get("aspect_ratio", "1:1") not in aspect_ratios:
         update["aspect_ratio"] = "1:1"
+    # если текущее разрешение недоступно у новой модели — сбрасываем на первое из списка
+    allowed_res = model_cfg.get("resolutions")
+    if allowed_res and data.get("resolution", "1K") not in allowed_res:
+        update["resolution"] = allowed_res[0]
     # если текущая длительность вне допустимых опций — сбрасываем на первую
     if media_type == "video" and data.get("duration", 5) not in duration_options:
         update["duration"] = duration_options[0]
@@ -325,7 +330,7 @@ async def back_to_model(callback: CallbackQuery, state: FSMContext) -> None:
         model_description=None, model_variant_description=None,
         model_has_group=None, model_aspect_ratios=None,
         model_duration_options=None, model_min_duration=None, model_max_duration=None,
-        model_max_style_refs=None, entering_duration=None, confirm_msg_id=None,
+        model_max_style_refs=None, model_resolutions=None, entering_duration=None, confirm_msg_id=None,
         reference_file_id=None, reference_type=None,
         style_reference_file_ids=None, adding_style_ref=None,
         video_first_frame_file_id=None, video_last_frame_file_id=None,
@@ -969,7 +974,7 @@ async def pick_resolution(callback: CallbackQuery, state: FSMContext) -> None:
     await callback.message.edit_text(
         "<b>Выбери качество:</b>",
         parse_mode="HTML",
-        reply_markup=image_resolution_kb(data.get("resolution", "1K")),
+        reply_markup=image_resolution_kb(data.get("resolution", "1K"), data.get("model_resolutions")),
     )
     await callback.answer()
 
