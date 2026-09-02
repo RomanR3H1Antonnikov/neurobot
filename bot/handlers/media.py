@@ -939,12 +939,7 @@ async def confirm_unknown_input(message: Message, state: FSMContext) -> None:
     # Во всех случаях удаляем сообщение пользователя
     await message.delete()
 
-    # Для edit-режимов: фото/видео принимаем как загрузку референса
-    if media_type == "photo_edit" and message.photo:
-        photo = message.photo[-1]
-        await state.update_data(reference_file_id=photo.file_id, reference_type="photo")
-        await _update_confirm_card(message, state)
-        return
+    # Видео для редактирования
     if media_type == "video_edit" and message.video:
         await state.update_data(reference_file_id=message.video.file_id, reference_type="video")
         await _update_confirm_card(message, state)
@@ -956,15 +951,43 @@ async def confirm_unknown_input(message: Message, state: FSMContext) -> None:
         await message.answer("Для редактирования видео пришли видеофайл, а не фото.")
         return
 
-    # Для генерации: информируем о разнице между генерацией и редактированием
-    if message.photo and media_type == "image":
-        await message.answer(
-            "Этот раздел создаёт фото с нуля по текстовому описанию. "
-            "Если хочешь изменить готовое фото — перейди в редактирование:",
-            reply_markup=InlineKeyboardMarkup(inline_keyboard=[
-                [InlineKeyboardButton(text="✏️ Перейти в редактирование фото", callback_data="media:switch_to_photo_edit")],
-            ]),
-        )
+    # Фото в confirm state → автоматически добавляется как ориентир (если модель поддерживает)
+    if message.photo and media_type in ("image", "photo_edit"):
+        photo = message.photo[-1]
+        max_refs = data.get("model_max_style_refs", 0)
+
+        # photo_edit без основного фото → добавляем как основное редактируемое фото
+        if media_type == "photo_edit" and not data.get("reference_file_id"):
+            await state.update_data(reference_file_id=photo.file_id, reference_type="photo")
+            await _update_confirm_card(message, state)
+            return
+
+        # Если модель поддерживает ориентиры — добавляем туда
+        if max_refs > 0:
+            srefs = list(data.get("style_reference_file_ids") or [])
+            if len(srefs) < max_refs:
+                srefs.append(photo.file_id)
+                await state.update_data(style_reference_file_ids=srefs)
+                await _update_confirm_card(message, state)
+            else:
+                await message.answer(f"Уже добавлено максимальное количество ориентиров ({max_refs} фото).")
+                await _update_confirm_card(message, state)
+            return
+
+        # image без поддержки ориентиров → подсказываем про редактирование
+        if media_type == "image":
+            await message.answer(
+                "Этот раздел создаёт фото с нуля по текстовому описанию. "
+                "Если хочешь изменить готовое фото — перейди в редактирование:",
+                reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+                    [InlineKeyboardButton(text="✏️ Перейти в редактирование фото", callback_data="media:switch_to_photo_edit")],
+                ]),
+            )
+            return
+
+        # photo_edit, ориентиры не поддерживаются → заменяем основное фото
+        await state.update_data(reference_file_id=photo.file_id, reference_type="photo")
+        await _update_confirm_card(message, state)
         return
     elif (message.video or message.video_note) and media_type == "video":
         hint = (

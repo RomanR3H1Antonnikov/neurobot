@@ -63,7 +63,7 @@ tasks:
         provider: aitunnel
         cost_credits: 1
         cost_usd: 0.02
-        enabled: true
+        enabled: false
 
       - id: seedream-5-pro
         label: "Pro"
@@ -523,7 +523,7 @@ tasks:
         provider: aitunnel
         cost_credits: 1
         cost_usd: 0.02
-        enabled: true
+        enabled: false
 
       - id: grok-image-2-0-edit
         label: "Grok Image 2.0"
