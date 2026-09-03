@@ -32,6 +32,16 @@ _task_start_times: dict[int, float] = {}
 _CANCEL_WINDOW_SEC = 5  # секунд, в течение которых отмена ещё возможна
 
 
+async def _notify_generating(bot, chat_id: int, delay: float = 5.0) -> None:
+    """Отправляет временное уведомление 'Идёт генерация' и удаляет его через delay секунд."""
+    try:
+        msg = await bot.send_message(chat_id, "⏳ Идёт генерация, подожди...")
+        await asyncio.sleep(delay)
+        await bot.delete_message(chat_id, msg.message_id)
+    except Exception:
+        pass
+
+
 async def _track_msg(state: FSMContext, msg_id: int) -> None:
     """Запоминает message_id отправленного ботом сообщения для последующей очистки."""
     data = await state.get_data()
@@ -354,6 +364,19 @@ async def back_to_model(callback: CallbackQuery, state: FSMContext) -> None:
     task_type = _TYPE_TO_TASK.get(media_type)
     models = get_models_for_task(task_type) if task_type else []
     type_label = _TYPE_LABELS.get(media_type, media_type)
+
+    # Сессия устарела (перезапуск бота или слишком давно) — нет данных о типе задачи
+    if not models:
+        await state.clear()
+        try:
+            await callback.message.edit_text(
+                "⚠️ Сессия устарела — начни заново.",
+                reply_markup=inline_main_menu_kb(),
+            )
+        except Exception:
+            await callback.message.answer("⚠️ Сессия устарела — начни заново.", reply_markup=main_menu_kb())
+        await callback.answer()
+        return
 
     await state.update_data(
         quick_edit=None,
@@ -890,6 +913,11 @@ async def enter_prompt_wrong_input(message: Message, state: FSMContext) -> None:
 async def update_prompt_in_confirm(message: Message, state: FSMContext) -> None:
     data = await state.get_data()
 
+    if data.get("_is_generating"):
+        await message.delete()
+        asyncio.create_task(_notify_generating(message.bot, message.chat.id))
+        return
+
     # Ввод кастомной длительности видео
     if data.get("entering_duration"):
         min_d = data.get("model_min_duration") or 1
@@ -977,6 +1005,11 @@ async def confirm_unknown_input(message: Message, state: FSMContext) -> None:
     """Нетекстовый ввод в confirm state."""
     data = await state.get_data()
     media_type = data.get("media_type", "")
+
+    if data.get("_is_generating"):
+        await message.delete()
+        asyncio.create_task(_notify_generating(message.bot, message.chat.id))
+        return
 
     # Во всех случаях удаляем сообщение пользователя
     await message.delete()
@@ -1355,6 +1388,7 @@ async def start_generation(callback: CallbackQuery, state: FSMContext) -> None:
     )
     await callback.answer()
 
+    await state.update_data(_is_generating=True)
     try:
         await _start_tracked(tg_user.id, callback.message, tg_user, state, data)
         await callback.message.delete()
@@ -1390,6 +1424,8 @@ async def start_generation(callback: CallbackQuery, state: FSMContext) -> None:
             "⚠️ Произошла непредвиденная ошибка. Кредиты не списаны — попробуй ещё раз.",
             reply_markup=error_kb(),
         )
+    finally:
+        await state.update_data(_is_generating=None)
 
 
 async def resume_generation_after_topup(message: Message, state: FSMContext) -> None:
