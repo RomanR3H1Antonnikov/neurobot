@@ -163,11 +163,14 @@ tasks:
         enabled: true
 
       - id: grok-image-2-0
-        label: "Grok Image 2.0"
+        label: "Image 2.0"
+        group: grok-image-ai
+        group_label: "Grok Image AI"
         description: >-
-          Grok Imagine Image 2.0 — создание фотореалистичных изображений для рабочих задач:
-          дизайна, маркетинга, создания контента. Модель акцентирует внимание на итеративной
-          доработке — результат можно последовательно улучшать, не теряя удачные элементы.
+          Grok Image AI — модели от xAI для генерации фотореалистичных изображений:
+          дизайна, маркетинга, создания контента. Акцент на итеративной доработке —
+          результат можно последовательно улучшать, не теряя удачные элементы.
+        variant_description: "Grok Image 2.0 — быстрая генерация без ориентиров по стилю."
         aspect_ratios: ["1:1", "2:3", "3:2", "16:9", "9:16"]
         model_id: grok-imagine-image-2-0/text-to-image
         provider: kie
@@ -177,12 +180,13 @@ tasks:
         enabled: true
 
       - id: grok-image-pro
-        label: "Grok Image Pro"
-        description: >-
-          Grok Imagine Image Pro — генерация фотореалистичных изображений с высокой детализацией
-          и точное следование сложным текстовым промптам. Модель ориентирована на профессиональное
-          использование: создание концепт-артов для игр и кино, дизайн-макетов, контента для рекламы,
-          маркетплейсов и иллюстраций для статей.
+        label: "Image Pro"
+        group: grok-image-ai
+        group_label: "Grok Image AI"
+        description: ""
+        variant_description: >-
+          Grok Image Pro — высокая детализация и точное следование сложным промптам,
+          поддерживает фото-ориентиры по стилю (до 5 шт.).
         aspect_ratios: ["1:1", "2:3", "3:2", "16:9", "9:16"]
         model_id: x-ai/grok-imagine-image-quality
         provider: routerai
@@ -540,14 +544,33 @@ tasks:
         enabled: false
 
       - id: grok-image-2-0-edit
-        label: "Grok Image 2.0"
+        label: "Image 2.0"
+        group: grok-image-ai-edit
+        group_label: "Grok Image AI"
         description: >-
-          Grok Imagine Image 2.0 — создание и точная доработка изображений для рабочих задач:
-          дизайна, маркетинга, создания контента. Модель делает акцент на итеративном процессе —
-          картинку можно последовательно улучшать, не теряя уже удачные элементы композиции.
+          Grok Image AI — модели от xAI для редактирования фотореалистичных изображений:
+          замена фона, изменение объектов, стилизация. Акцент на итеративном процессе —
+          картинку можно последовательно улучшать, не теряя удачные элементы.
+        variant_description: "Grok Image 2.0 — редактирование с поддержкой до 5 фото-ориентиров."
         aspect_ratios: ["1:1", "2:3", "3:2", "16:9", "9:16"]
         model_id: grok-imagine-image-2-0/image-edit
         provider: kie
+        max_style_refs: 5
+        cost_credits: 1
+        cost_usd: 0.03
+        enabled: true
+
+      - id: grok-image-pro-edit
+        label: "Image Pro"
+        group: grok-image-ai-edit
+        group_label: "Grok Image AI"
+        description: ""
+        variant_description: >-
+          Grok Image Pro — высокая детализация при редактировании, точное следование
+          инструкциям, поддерживает фото-ориентиры (до 5 шт.).
+        aspect_ratios: ["1:1", "2:3", "3:2", "16:9", "9:16"]
+        model_id: x-ai/grok-imagine-image-quality
+        provider: routerai
         max_style_refs: 5
         cost_credits: 1
         cost_usd: 0.03

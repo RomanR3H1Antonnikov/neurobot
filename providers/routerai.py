@@ -124,5 +124,32 @@ class RouteraiProvider(OpenAICompatProvider):
 
         return GenerationResult(data=video_bytes, mime_type="video/mp4", filename="video.mp4")
 
+    async def edit_image(
+        self, image_bytes: bytes, prompt: str, model: str | None = None,
+        image_url: str | None = None, style_reference_urls: list[str] | None = None,
+    ) -> GenerationResult:
+        actual_model = model or self.image_edit_model
+
+        if actual_model.startswith("x-ai/"):
+            # Grok не поддерживает /images/edits — передаём исходное фото и ориентиры
+            # как input_references в /images/generations с инструкцией как промптом
+            references = []
+            if image_url:
+                references.append({"type": "image_url", "image_url": {"url": image_url}})
+            for u in (style_reference_urls or []):
+                references.append({"type": "image_url", "image_url": {"url": u}})
+            extra_body: dict = {"aspect_ratio": "1:1"}
+            if references:
+                extra_body["input_references"] = references
+            body = {"model": actual_model, "prompt": prompt, "n": 1, "extra_body": extra_body}
+            headers = {"Authorization": f"Bearer {self._api_key}", "Content-Type": "application/json"}
+            async with aiohttp.ClientSession(headers=headers, timeout=aiohttp.ClientTimeout(total=120)) as session:
+                async with session.post(f"{_BASE_URL}/images/generations", json=body) as resp:
+                    data = await self._handle_response(resp)
+            image_out = base64.b64decode(data["data"][0]["b64_json"])
+            return GenerationResult(data=image_out, mime_type="image/png", filename="edited.png")
+
+        return await super().edit_image(image_bytes, prompt, model, image_url, style_reference_urls)
+
     async def generate_audio(self, prompt: str, audio_type: str = "voice", model: str | None = None) -> GenerationResult:
         raise ProviderUnavailableError("Генерация аудио через RouteAI не настроена")
