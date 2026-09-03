@@ -340,6 +340,7 @@ async def back_to_model(callback: CallbackQuery, state: FSMContext) -> None:
         model_duration_options=None, model_min_duration=None, model_max_duration=None,
         model_max_style_refs=None, model_resolutions=None, entering_duration=None, confirm_msg_id=None,
         reference_file_id=None, reference_type=None,
+        generated_file_id=None,
         style_reference_file_ids=None, adding_style_ref=None,
         managing_style_ref=None, managing_style_ref_index=None,
         video_first_frame_file_id=None, video_last_frame_file_id=None,
