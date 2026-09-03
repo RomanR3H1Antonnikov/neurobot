@@ -760,6 +760,10 @@ async def enter_reference_text_input(message: Message, state: FSMContext) -> Non
     data = await state.get_data()
     managing = data.get("managing_style_ref")
 
+    if data.get("adding_style_ref") and not managing:
+        await message.answer("Текст не принимается в качестве ориентира — пришли фото 📎")
+        return
+
     if not managing or not data.get("adding_style_ref"):
         await message.answer(
             "Пожалуйста, пришли фото или видео для редактирования.",
