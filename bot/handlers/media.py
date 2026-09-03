@@ -131,6 +131,7 @@ def _confirm_kb(data: dict):
         return image_confirm_kb(
             data.get("aspect_ratio", "1:1"), data.get("resolution", "1K"),
             has_prompt=has_prompt, style_ref_count=style_ref_count,
+            max_style_refs=data.get("model_max_style_refs", 14),
         )
     elif media_type == "video":
         return video_confirm_kb(

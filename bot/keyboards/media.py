@@ -127,15 +127,17 @@ def style_ref_collecting_kb(count: int, max_refs: int = 14) -> InlineKeyboardMar
 
 
 def image_confirm_kb(
-    aspect_ratio: str, resolution: str = "1K", has_prompt: bool = False, style_ref_count: int = 0,
+    aspect_ratio: str, resolution: str = "1K", has_prompt: bool = False,
+    style_ref_count: int = 0, max_style_refs: int = 14,
 ) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     builder.row(
         InlineKeyboardButton(text=f"📐 Масштаб: {aspect_ratio}", callback_data="media:pick_ratio"),
         InlineKeyboardButton(text=f"🖼 Качество: {resolution}", callback_data="media:pick_resolution"),
     )
-    ref_text = f"🖼 Ориентиры: {style_ref_count} фото ✅" if style_ref_count else "📎 Добавить ориентир"
-    builder.row(InlineKeyboardButton(text=ref_text, callback_data="media:add_style_ref"))
+    if max_style_refs > 0:
+        ref_text = f"🖼 Ориентиры: {style_ref_count} фото ✅" if style_ref_count else "📎 Добавить ориентир"
+        builder.row(InlineKeyboardButton(text=ref_text, callback_data="media:add_style_ref"))
     edit_text = "✏️ Изменить описание" if has_prompt else "✏️ Ввести описание"
     builder.row(
         InlineKeyboardButton(text=edit_text, callback_data="media:edit_prompt"),
