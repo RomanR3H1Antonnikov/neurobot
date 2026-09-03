@@ -607,6 +607,8 @@ async def back_to_confirm(callback: CallbackQuery, state: FSMContext) -> None:
             model_has_group=None, model_aspect_ratios=None,
             model_duration_options=None, model_min_duration=None, model_max_duration=None,
             reference_file_id=None, reference_type=None, prompt=None,
+            generated_file_id=None,
+            style_reference_file_ids=None,
         )
         models = get_models_for_task(TaskType.IMAGE_GENERATION)
         await state.set_state(MediaStates.select_model)

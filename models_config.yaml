@@ -170,11 +170,11 @@ tasks:
           Grok Image AI — модели от xAI для генерации фотореалистичных изображений:
           дизайна, маркетинга, создания контента. Акцент на итеративной доработке —
           результат можно последовательно улучшать, не теряя удачные элементы.
-        variant_description: "Grok Image 2.0 — быстрая генерация без ориентиров по стилю."
+        variant_description: "Grok Image 2.0 — быстрая генерация, поддерживает фото-ориентиры (до 5 шт.)."
         aspect_ratios: ["1:1", "2:3", "3:2", "16:9", "9:16"]
         model_id: grok-imagine-image-2-0/text-to-image
         provider: kie
-        max_style_refs: 0
+        max_style_refs: 5
         cost_credits: 1
         cost_usd: 0.03
         enabled: true

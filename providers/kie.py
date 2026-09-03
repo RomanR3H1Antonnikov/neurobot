@@ -59,11 +59,15 @@ def _image_input(
             "aspect_ratio": _kie_ratio(aspect_ratio),
         }
     if model.startswith("grok-imagine-image-2-0/"):
-        # Grok text-to-image: только prompt + aspect_ratio, без resolution и image_input
-        return {
+        payload: dict = {
             "prompt": prompt,
             "aspect_ratio": _kie_ratio(aspect_ratio),
         }
+        if style_reference_urls:
+            payload["image_input"] = {
+                "image_list": [{"image_url": u} for u in style_reference_urls],
+            }
+        return payload
     # Nano Banana 2 и прочие — стандартный формат; поддерживает до 14 ориентиров
     result: dict = {
         "prompt": prompt,
