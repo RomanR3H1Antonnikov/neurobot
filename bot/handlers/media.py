@@ -32,6 +32,29 @@ _task_start_times: dict[int, float] = {}
 _CANCEL_WINDOW_SEC = 5  # секунд, в течение которых отмена ещё возможна
 
 
+async def _track_msg(state: FSMContext, msg_id: int) -> None:
+    """Запоминает message_id отправленного ботом сообщения для последующей очистки."""
+    data = await state.get_data()
+    ids = list(data.get("_tracked_msg_ids") or [])
+    if msg_id not in ids:
+        ids.append(msg_id)
+    await state.update_data(_tracked_msg_ids=ids)
+
+
+async def _delete_msgs_below(bot, chat_id: int, state: FSMContext, anchor_id: int) -> None:
+    """Удаляет все трекнутые сообщения с ID > anchor_id (т.е. отправленные после anchor)."""
+    data = await state.get_data()
+    ids = list(data.get("_tracked_msg_ids") or [])
+    to_delete = [mid for mid in ids if mid > anchor_id]
+    keep = [mid for mid in ids if mid <= anchor_id]
+    await state.update_data(_tracked_msg_ids=keep)
+    for mid in to_delete:
+        try:
+            await bot.delete_message(chat_id, mid)
+        except Exception:
+            pass
+
+
 class GenerationCancelledError(Exception):
     pass
 
@@ -802,7 +825,8 @@ async def receive_prompt(message: Message, state: FSMContext) -> None:
             await _start_tracked(message.from_user.id, message, message.from_user, state, data)
             await waiting.delete()
         except GenerationCancelledError:
-            await waiting.edit_text("❌ Генерация отменена. Кредиты не списаны.", reply_markup=error_kb())
+            await _delete_msgs_below(message.bot, message.chat.id, state, waiting.message_id)
+            await waiting.delete()
         except InsufficientCreditsError as e:
             await state.update_data(pending_retry_type="media")
             await waiting.edit_text(
@@ -888,7 +912,8 @@ async def update_prompt_in_confirm(message: Message, state: FSMContext) -> None:
             await _start_tracked(message.from_user.id, message, message.from_user, state, edit_data)
             await waiting.delete()
         except GenerationCancelledError:
-            await waiting.edit_text("❌ Генерация отменена. Кредиты не списаны.", reply_markup=error_kb())
+            await _delete_msgs_below(message.bot, message.chat.id, state, waiting.message_id)
+            await waiting.delete()
         except InsufficientCreditsError as e:
             await state.update_data(pending_retry_type="media")
             await waiting.edit_text(
@@ -1241,12 +1266,14 @@ async def _run_generation(send_msg: Message, tg_user, state: FSMContext, data: d
                     f,
                     reply_markup=after_generation_kb(is_image=True) if is_last else None,
                 )
+                await _track_msg(state, sent.message_id)
                 if i == 0:
                     gen_file_id = sent.photo[-1].file_id
             await state.update_data(generated_file_id=gen_file_id)
         else:
             file = BufferedInputFile(result.data, filename=result.filename)
             sent = await send_msg.answer_photo(file, reply_markup=after_generation_kb(is_image=True))
+            await _track_msg(state, sent.message_id)
             await state.update_data(generated_file_id=sent.photo[-1].file_id)
 
     elif media_type == "video":
@@ -1258,14 +1285,16 @@ async def _run_generation(send_msg: Message, tg_user, state: FSMContext, data: d
             last_frame_url=last_frame_url,
         )
         file = BufferedInputFile(result.data, filename=result.filename)
-        await send_msg.answer_video(file, reply_markup=after_generation_kb())
+        sent = await send_msg.answer_video(file, reply_markup=after_generation_kb())
+        await _track_msg(state, sent.message_id)
 
     elif media_type == "audio":
         result = await media_service.generate_audio(
             tg_user.id, tg_user.username, prompt, data.get("audio_type", "voice"), model_slug
         )
         file = BufferedInputFile(result.data, filename=result.filename)
-        await send_msg.answer_audio(file, reply_markup=after_generation_kb())
+        sent = await send_msg.answer_audio(file, reply_markup=after_generation_kb())
+        await _track_msg(state, sent.message_id)
 
     elif media_type == "photo_edit":
         file_info = await send_msg.bot.get_file(data["reference_file_id"])
@@ -1278,6 +1307,7 @@ async def _run_generation(send_msg: Message, tg_user, state: FSMContext, data: d
         )
         file = BufferedInputFile(result.data, filename=result.filename)
         sent = await send_msg.answer_photo(file, reply_markup=after_generation_kb(is_image=True))
+        await _track_msg(state, sent.message_id)
         # Сохраняем file_id результата, чтобы пользователь мог сразу редактировать снова
         new_file_id = sent.photo[-1].file_id
         await state.update_data(generated_file_id=new_file_id, reference_file_id=new_file_id)
@@ -1290,7 +1320,8 @@ async def _run_generation(send_msg: Message, tg_user, state: FSMContext, data: d
             tg_user.id, tg_user.username, media_bytes, prompt, model_slug
         )
         file = BufferedInputFile(result.data, filename=result.filename)
-        await send_msg.answer_video(file, reply_markup=after_generation_kb())
+        sent = await send_msg.answer_video(file, reply_markup=after_generation_kb())
+        await _track_msg(state, sent.message_id)
 
 
 @router.callback_query(MediaStates.confirm, F.data == "media:start")
@@ -1321,7 +1352,10 @@ async def start_generation(callback: CallbackQuery, state: FSMContext) -> None:
         # state не очищаем — данные нужны для кнопки "Назад"
 
     except GenerationCancelledError:
-        await callback.message.edit_text("❌ Генерация отменена. Кредиты не списаны.", reply_markup=error_kb())
+        # Удаляем всё, что успело появиться ниже waiting-сообщения, и восстанавливаем карточку
+        await _delete_msgs_below(callback.bot, callback.message.chat.id, state, callback.message.message_id)
+        data = await state.get_data()
+        await callback.message.edit_text(_confirm_card_text(data), parse_mode="HTML", reply_markup=_confirm_kb(data))
     except InsufficientCreditsError as e:
         await state.update_data(pending_retry_type="media")
         await callback.message.edit_text(
