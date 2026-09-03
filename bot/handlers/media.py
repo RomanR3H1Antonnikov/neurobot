@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import time
 from aiogram import Router, F
 
 logger = logging.getLogger(__name__)
@@ -25,6 +26,10 @@ router = Router()
 
 # user_id → asyncio.Task текущей генерации (для возможности отмены)
 _active_tasks: dict[int, asyncio.Task] = {}
+# user_id → время запуска генерации (monotonic), для окна отмены
+_task_start_times: dict[int, float] = {}
+
+_CANCEL_WINDOW_SEC = 5  # секунд, в течение которых отмена ещё возможна
 
 
 class GenerationCancelledError(Exception):
@@ -35,12 +40,14 @@ async def _start_tracked(user_id: int, send_msg: Message, tg_user, state: FSMCon
     """Запускает _run_generation как Task, чтобы пользователь мог отменить нажатием кнопки."""
     task = asyncio.create_task(_run_generation(send_msg, tg_user, state, data))
     _active_tasks[user_id] = task
+    _task_start_times[user_id] = time.monotonic()
     try:
         await task
     except asyncio.CancelledError:
         raise GenerationCancelledError()
     finally:
         _active_tasks.pop(user_id, None)
+        _task_start_times.pop(user_id, None)
 
 
 class MediaStates(StatesGroup):
@@ -1166,10 +1173,19 @@ async def gen_why_long(callback: CallbackQuery) -> None:
 
 @router.callback_query(F.data == "media:cancel_generation")
 async def cancel_generation(callback: CallbackQuery) -> None:
-    task = _active_tasks.get(callback.from_user.id)
+    user_id = callback.from_user.id
+    task = _active_tasks.get(user_id)
+    elapsed = time.monotonic() - _task_start_times.get(user_id, 0)
+
     if task and not task.done():
-        task.cancel()
-        await callback.answer("Отменяем...", show_alert=False)
+        if elapsed < _CANCEL_WINDOW_SEC:
+            task.cancel()
+            await callback.answer("Отменяем...", show_alert=False)
+        else:
+            await callback.answer(
+                "Уже загружаю результат к тебе в чат — подожди немного 🙏",
+                show_alert=True,
+            )
     else:
         await callback.answer("Генерация уже завершена", show_alert=False)
 
