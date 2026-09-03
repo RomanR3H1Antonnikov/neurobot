@@ -42,12 +42,11 @@ async def _track_msg(state: FSMContext, msg_id: int) -> None:
 
 
 async def _delete_msgs_below(bot, chat_id: int, state: FSMContext, anchor_id: int) -> None:
-    """Удаляет все трекнутые сообщения с ID > anchor_id (т.е. отправленные после anchor)."""
+    """Удаляет все трекнутые сообщения с ID > anchor_id и сбрасывает весь список."""
     data = await state.get_data()
     ids = list(data.get("_tracked_msg_ids") or [])
     to_delete = [mid for mid in ids if mid > anchor_id]
-    keep = [mid for mid in ids if mid <= anchor_id]
-    await state.update_data(_tracked_msg_ids=keep)
+    await state.update_data(_tracked_msg_ids=None)
     for mid in to_delete:
         try:
             await bot.delete_message(chat_id, mid)
