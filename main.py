@@ -7,6 +7,7 @@ from aiogram.enums import ParseMode
 from config import config
 from db.database import get_db, close_db
 from bot.middlewares.user_middleware import UserMiddleware
+from bot.middlewares.cleanup import CallbackCleanupMiddleware
 from bot.handlers import start, media, chat, documents, billing, fallback
 from services.kie_webhook import start_webhook_server
 
@@ -25,6 +26,7 @@ async def main() -> None:
     dp = Dispatcher()
 
     dp.update.middleware(UserMiddleware())
+    dp.callback_query.middleware(CallbackCleanupMiddleware())
 
     dp.include_router(start.router)
     dp.include_router(billing.router)

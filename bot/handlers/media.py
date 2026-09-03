@@ -42,11 +42,12 @@ async def _track_msg(state: FSMContext, msg_id: int) -> None:
 
 
 async def _delete_msgs_below(bot, chat_id: int, state: FSMContext, anchor_id: int) -> None:
-    """Удаляет все трекнутые сообщения с ID > anchor_id и сбрасывает весь список."""
+    """Удаляет трекнутые сообщения с ID > anchor_id, сохраняет остальные."""
     data = await state.get_data()
     ids = list(data.get("_tracked_msg_ids") or [])
     to_delete = [mid for mid in ids if mid > anchor_id]
-    await state.update_data(_tracked_msg_ids=None)
+    keep = [mid for mid in ids if mid <= anchor_id]
+    await state.update_data(_tracked_msg_ids=keep or None)
     for mid in to_delete:
         try:
             await bot.delete_message(chat_id, mid)
@@ -378,7 +379,8 @@ async def back_to_model(callback: CallbackQuery, state: FSMContext) -> None:
             await callback.message.edit_reply_markup(reply_markup=None)
         except Exception:
             pass
-        await callback.message.answer(text, parse_mode="HTML", reply_markup=model_top_kb(models))
+        sent = await callback.message.answer(text, parse_mode="HTML", reply_markup=model_top_kb(models))
+        await _track_msg(state, sent.message_id)
     await callback.answer()
 
 
@@ -473,10 +475,11 @@ async def edit_generated_image(callback: CallbackQuery, state: FSMContext) -> No
     # Флаг: после ввода описания сразу запустить редактирование (без confirm-карточки)
     await state.update_data(quick_edit=True)
     await state.set_state(MediaStates.enter_prompt)
-    await callback.message.answer(
+    sent = await callback.message.answer(
         "Опиши, что нужно изменить на фото:",
         reply_markup=back_to_confirm_kb(),
     )
+    await _track_msg(state, sent.message_id)
     await callback.answer()
 
 
@@ -612,11 +615,12 @@ async def back_to_confirm(callback: CallbackQuery, state: FSMContext) -> None:
         )
         models = get_models_for_task(TaskType.IMAGE_GENERATION)
         await state.set_state(MediaStates.select_model)
-        await callback.message.answer(
+        sent = await callback.message.answer(
             model_select_text("Фото", models),
             parse_mode="HTML",
             reply_markup=model_top_kb(models),
         )
+        await _track_msg(state, sent.message_id)
         await callback.answer()
         return
 
@@ -632,6 +636,7 @@ async def back_to_confirm(callback: CallbackQuery, state: FSMContext) -> None:
         except Exception:
             pass
         sent = await callback.message.answer(text, parse_mode="HTML", reply_markup=kb)
+        await _track_msg(state, sent.message_id)
         await state.update_data(confirm_msg_id=sent.message_id)
     await callback.answer()
 
@@ -647,6 +652,7 @@ async def _show_confirm_after_reference(message: Message, state: FSMContext) -> 
         parse_mode="HTML",
         reply_markup=_confirm_kb(data),
     )
+    await _track_msg(state, sent.message_id)
     await state.update_data(confirm_msg_id=sent.message_id)
 
 
@@ -805,6 +811,7 @@ async def _update_confirm_card(message: Message, state: FSMContext) -> None:
         except Exception:
             pass
     sent = await message.answer(text, parse_mode="HTML", reply_markup=kb)
+    await _track_msg(state, sent.message_id)
     await state.update_data(confirm_msg_id=sent.message_id)
 
 
