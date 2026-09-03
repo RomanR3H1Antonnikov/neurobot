@@ -600,9 +600,10 @@ tasks:
 
       - id: flux-2-pro-edit
         label: "Flux 2 Pro"
-        group: flux-2-edit
-        group_label: "Flux 2"
-        description: ""
+        description: >-
+          Flux 2 Pro — высокая детализация и реалистичность при редактировании изображений.
+          Точно следует инструкции, хорошо работает с текстурами, освещением и сложными
+          композициями.
         model_id: flux-2/pro-image-to-image
         provider: kie
         max_style_refs: 3

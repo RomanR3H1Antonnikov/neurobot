@@ -986,18 +986,19 @@ async def confirm_unknown_input(message: Message, state: FSMContext) -> None:
         await message.answer("Для редактирования видео пришли видеофайл, а не фото.")
         return
 
-    # Фото в confirm state → автоматически добавляется как ориентир (если модель поддерживает)
+    # Фото в confirm state
     if message.photo and media_type in ("image", "photo_edit"):
         photo = message.photo[-1]
         max_refs = data.get("model_max_style_refs", 0)
 
-        # photo_edit без основного фото → добавляем как основное редактируемое фото
-        if media_type == "photo_edit" and not data.get("reference_file_id"):
+        # photo_edit: прямая отправка фото всегда заменяет основное редактируемое фото
+        # (ориентиры добавляются только через кнопку «Добавить ориентир»)
+        if media_type == "photo_edit":
             await state.update_data(reference_file_id=photo.file_id, reference_type="photo")
             await _update_confirm_card(message, state)
             return
 
-        # Если модель поддерживает ориентиры — добавляем туда
+        # image: если модель поддерживает ориентиры — добавляем туда
         if max_refs > 0:
             srefs = list(data.get("style_reference_file_ids") or [])
             if len(srefs) < max_refs:
