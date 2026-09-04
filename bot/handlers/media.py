@@ -440,14 +440,52 @@ async def menu_to_media(callback: CallbackQuery, state: FSMContext) -> None:
 
 @router.callback_query(F.data == "media:again")
 async def generate_again(callback: CallbackQuery, state: FSMContext) -> None:
-    """Открывает меню новой генерации с чистого листа."""
-    await state.clear()
-    await state.set_state(MediaStates.select_type)
+    """Возврат к карточке той же модели с очищенным промптом и референсами."""
+    data = await state.get_data()
+
+    if not data.get("model_slug") or not data.get("media_type"):
+        # Сессия устарела — возвращаем в выбор типа медиа
+        await state.clear()
+        await state.set_state(MediaStates.select_type)
+        try:
+            await callback.message.edit_reply_markup(reply_markup=None)
+        except Exception:
+            pass
+        await callback.message.answer(MEDIA_MENU_TEXT, parse_mode="HTML", reply_markup=media_type_kb())
+        await callback.answer()
+        return
+
+    # Очищаем контент (промпт, референсы, ориентиры), сохраняем модель и формат
+    await state.update_data(
+        prompt=None,
+        reference_file_id=None, reference_type=None,
+        style_reference_file_ids=None,
+        generated_file_id=None,
+        video_first_frame_file_id=None, video_last_frame_file_id=None,
+        confirm_msg_id=None,
+        quick_edit=None,
+        adding_style_ref=None,
+        managing_style_ref=None, managing_style_ref_index=None,
+        video_frames_expanded=None,
+        entering_duration=None,
+        _tracked_msg_ids=None,
+        _is_generating=None,
+        _cleanup_warned_msg_id=None,
+    )
+    await state.set_state(MediaStates.confirm)
+    data = await state.get_data()
+
     try:
         await callback.message.edit_reply_markup(reply_markup=None)
     except Exception:
         pass
-    await callback.message.answer(MEDIA_MENU_TEXT, parse_mode="HTML", reply_markup=media_type_kb())
+    sent = await callback.message.answer(
+        _confirm_card_text(data),
+        parse_mode="HTML",
+        reply_markup=_confirm_kb(data),
+    )
+    await _track_msg(state, sent.message_id)
+    await state.update_data(confirm_msg_id=sent.message_id)
     await callback.answer()
 
 
