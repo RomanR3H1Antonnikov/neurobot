@@ -36,7 +36,7 @@ def _image_input(
     style_reference_urls: list[str] | None = None,
 ) -> dict:
     """Формирует поле input для createTask в зависимости от семейства модели."""
-    if model.startswith("seedream/") or model == "bytedance/seedream-v4":
+    if model.startswith("seedream/"):
         return {
             "prompt": prompt,
             "aspect_ratio": _kie_ratio(aspect_ratio),
@@ -341,8 +341,6 @@ class KieProvider(OpenAICompatProvider):
                 "aspect_ratio": "auto",
                 "resolution": "1K",
             }
-        elif actual_model == "bytedance/seedream-v4-edit":
-            input_data = {"prompt": prompt, "image_urls": [image_url] + _srefs}
         elif actual_model.startswith("seedream/") and "image-to-image" in actual_model:
             input_data = {
                 "prompt": prompt,

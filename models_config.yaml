@@ -79,7 +79,7 @@ tasks:
           и контроль. Подходит дизайнерам, маркетологам, продюсерам и для коммерческих
           макетов.
         aspect_ratios: ["1:1", "4:3", "3:4", "16:9", "9:16", "3:2", "2:3", "21:9"]
-        model_id: bytedance/seedream-v4
+        model_id: seedream/5-pro-text-to-image
         provider: kie
         max_style_refs: 10
         resolutions: ["2K", "3K"]
@@ -625,7 +625,7 @@ tasks:
           Флагманская версия для сложных, насыщенных композиций — точность, структура
           и контроль. Подходит дизайнерам, маркетологам, продюсерам и для коммерческих
           макетов.
-        model_id: bytedance/seedream-v4-edit
+        model_id: seedream/5-pro-image-to-image
         provider: kie
         max_style_refs: 10
         resolutions: ["2K", "3K"]
