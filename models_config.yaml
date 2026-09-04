@@ -82,7 +82,7 @@ tasks:
         model_id: seedream/5-pro-text-to-image
         provider: kie
         max_style_refs: 10
-        resolutions: ["2K", "3K"]
+        resolutions: ["1K", "2K"]
         cost_credits: 1
         cost_usd: 0.01
         enabled: true
@@ -630,7 +630,7 @@ tasks:
         model_id: seedream/5-pro-image-to-image
         provider: kie
         max_style_refs: 10
-        resolutions: ["2K", "3K"]
+        resolutions: ["1K", "2K"]
         cost_credits: 1
         cost_usd: 0.01
         enabled: true
