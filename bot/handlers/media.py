@@ -512,6 +512,8 @@ async def add_reference_prompt(callback: CallbackQuery, state: FSMContext) -> No
     data = await state.get_data()
     media_type = data.get("media_type", "")
     hint = "Отправь фото для редактирования:" if media_type == "photo_edit" else "Отправь видео для редактирования:"
+    # Сбрасываем флаги ориентиров — здесь добавляется основное фото, не стиль-реф
+    await state.update_data(adding_style_ref=None, managing_style_ref=None, managing_style_ref_index=None)
     await callback.message.edit_text(hint, reply_markup=back_to_confirm_kb())
     await state.set_state(MediaStates.enter_reference)
     await callback.answer()
