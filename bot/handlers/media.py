@@ -32,6 +32,22 @@ _task_start_times: dict[int, float] = {}
 _CANCEL_WINDOW_SEC = 5  # секунд, в течение которых отмена ещё возможна
 
 
+async def _update_sref_status(bot, chat_id: int, state: FSMContext, text: str, kb) -> None:
+    """Редактирует сообщение-счётчик ориентиров; если не удаётся — отправляет новое."""
+    data = await state.get_data()
+    msg_id = data.get("_sref_msg_id")
+    if msg_id:
+        try:
+            await bot.edit_message_text(
+                text, chat_id=chat_id, message_id=msg_id, reply_markup=kb,
+            )
+            return
+        except Exception:
+            pass
+    sent = await bot.send_message(chat_id, text, reply_markup=kb)
+    await state.update_data(_sref_msg_id=sent.message_id)
+
+
 async def _notify_generating(bot, chat_id: int, delay: float = 5.0) -> None:
     """Отправляет временное уведомление 'Идёт генерация' и удаляет его через delay секунд."""
     try:
@@ -569,7 +585,7 @@ async def add_style_ref_prompt(callback: CallbackQuery, state: FSMContext) -> No
         f"📎 Пришли фото-ориентиры (до {max_refs} штук). Нейросеть будет ориентироваться на них при генерации:"
     )
     await callback.message.edit_text(hint, reply_markup=style_ref_collecting_kb(count, max_refs))
-    await state.update_data(adding_style_ref=True)
+    await state.update_data(adding_style_ref=True, _sref_msg_id=callback.message.message_id)
     await state.set_state(MediaStates.enter_reference)
     await callback.answer()
 
@@ -737,17 +753,19 @@ async def receive_reference_photo(message: Message, state: FSMContext) -> None:
                 style_reference_file_ids=srefs,
                 managing_style_ref=None, managing_style_ref_index=None,
             )
-            await message.answer(
+            await _update_sref_status(
+                message.bot, message.chat.id, state,
                 f"✅ Фото #{idx + 1} заменено. Всего: {len(srefs)}/{max_refs}",
-                reply_markup=style_ref_collecting_kb(len(srefs), max_refs),
+                style_ref_collecting_kb(len(srefs), max_refs),
             )
             return
         if len(srefs) < max_refs:
             srefs.append(photo.file_id)
         await state.update_data(style_reference_file_ids=srefs)
-        await message.answer(
+        await _update_sref_status(
+            message.bot, message.chat.id, state,
             f"✅ Добавлено! Всего ориентиров: {len(srefs)}/{max_refs}",
-            reply_markup=style_ref_collecting_kb(len(srefs), max_refs),
+            style_ref_collecting_kb(len(srefs), max_refs),
         )
         return
     if data.get("media_type") == "video":
@@ -831,12 +849,16 @@ async def enter_reference_text_input(message: Message, state: FSMContext) -> Non
             if srefs else
             f"✅ Фото #{idx + 1} удалено. Список ориентиров пуст."
         )
-        await message.answer(text, reply_markup=style_ref_collecting_kb(len(srefs), max_refs))
+        await _update_sref_status(
+            message.bot, message.chat.id, state,
+            text, style_ref_collecting_kb(len(srefs), max_refs),
+        )
     elif managing == "replace":
         await state.update_data(managing_style_ref="replace_photo", managing_style_ref_index=idx)
-        await message.answer(
+        await _update_sref_status(
+            message.bot, message.chat.id, state,
             f"Пришли новое фото для замены #{idx + 1}:",
-            reply_markup=style_ref_collecting_kb(len(srefs), max_refs),
+            style_ref_collecting_kb(len(srefs), max_refs),
         )
 
 
@@ -846,9 +868,10 @@ async def reference_wrong_type(message: Message, state: FSMContext) -> None:
     if data.get("adding_style_ref"):
         count = len(data.get("style_reference_file_ids") or [])
         max_refs = data.get("model_max_style_refs", 14)
-        await message.answer(
+        await _update_sref_status(
+            message.bot, message.chat.id, state,
             "Пожалуйста, пришли фото (изображение).",
-            reply_markup=style_ref_collecting_kb(count, max_refs),
+            style_ref_collecting_kb(count, max_refs),
         )
     else:
         await message.answer(
