@@ -176,7 +176,8 @@ def _confirm_card_text(data: dict) -> str:
         prompt_label = "Текст для озвучки" if data.get("audio_type", "voice") == "voice" else "Описание музыки"
     else:
         prompt_label = "Описание"
-    lines.append(f"<b>{prompt_label}:</b> {prompt}")
+    prompt_display = f"<code>{prompt}</code>" if data.get("prompt") else "не задано"
+    lines.append(f"<b>{prompt_label}:</b> {prompt_display}")
     return "\n".join(lines)
 
 
