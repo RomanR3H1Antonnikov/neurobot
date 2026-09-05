@@ -360,15 +360,17 @@ class KieProvider(OpenAICompatProvider):
                 "aspect_ratio": "auto",
             }
         elif actual_model.startswith("grok-imagine"):
-            # Grok использует image_input.image_list (как в text-to-image)
-            all_images = [image_url] + _srefs
+            # Grok image edit: исходное фото — image_url (top-level),
+            # дополнительные ориентиры — image_input.image_list
             input_data = {
                 "prompt": prompt,
                 "aspect_ratio": "1:1",
-                "image_input": {
-                    "image_list": [{"image_url": u} for u in all_images]
-                },
+                "image_url": image_url,
             }
+            if _srefs:
+                input_data["image_input"] = {
+                    "image_list": [{"image_url": u} for u in _srefs]
+                }
         else:
             # google/nano-banana-edit и прочие — поддерживает несколько ориентиров
             input_data = {
