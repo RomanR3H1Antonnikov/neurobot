@@ -356,6 +356,13 @@ class KieProvider(OpenAICompatProvider):
                 "image_urls": [image_url] + _srefs,
                 "aspect_ratio": "auto",
             }
+        elif actual_model.startswith("grok-imagine"):
+            # Grok image edit требует aspect_ratio
+            input_data = {
+                "prompt": prompt,
+                "image_urls": [image_url] + _srefs,
+                "aspect_ratio": "1:1",
+            }
         else:
             # google/nano-banana-edit и прочие — поддерживает несколько ориентиров
             input_data = {
