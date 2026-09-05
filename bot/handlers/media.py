@@ -1115,9 +1115,11 @@ async def confirm_unknown_input(message: Message, state: FSMContext) -> None:
             await _update_confirm_card(message, state)
             return
 
-        # image: если модель поддерживает ориентиры — добавляем туда (фото не удаляем,
-        # карточку настроек не перерисовываем — только статус снизу)
+        # image: если модель поддерживает ориентиры — добавляем туда.
+        # Фото удаляем (чтобы не засорять чат), карточку настроек не перерисовываем,
+        # меню коллекции ориентиров не показываем — только тихий статус снизу.
         if max_refs > 0:
+            await message.delete()
             srefs = list(data.get("style_reference_file_ids") or [])
             if len(srefs) < max_refs:
                 srefs.append(photo.file_id)
@@ -1125,13 +1127,13 @@ async def confirm_unknown_input(message: Message, state: FSMContext) -> None:
                 await _update_sref_status(
                     message.bot, message.chat.id, state,
                     f"✅ Добавлено! Всего ориентиров: {len(srefs)}/{max_refs}",
-                    style_ref_collecting_kb(len(srefs), max_refs),
+                    None,
                 )
             else:
                 await _update_sref_status(
                     message.bot, message.chat.id, state,
                     f"Уже добавлено максимальное количество ориентиров ({max_refs} фото).",
-                    style_ref_collecting_kb(len(srefs), max_refs),
+                    None,
                 )
             return
 
