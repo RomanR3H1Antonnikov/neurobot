@@ -618,7 +618,7 @@ tasks:
         cost_usd: 0.01
         enabled: true
 
-      - id: seedream-5-edit-pro
+      - id: seedream-5-pro-edit
         label: "Pro"
         group: seedream-5-edit
         group_label: "Seedream 5.0"
@@ -635,7 +635,7 @@ tasks:
         cost_usd: 0.01
         enabled: true
 
-      - id: seedream-5-edit-lite
+      - id: seedream-5-lite-edit
         label: "Lite"
         group: seedream-5-edit
         group_label: "Seedream 5.0"

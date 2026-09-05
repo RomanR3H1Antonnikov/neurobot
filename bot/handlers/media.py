@@ -505,19 +505,29 @@ async def generate_again(callback: CallbackQuery, state: FSMContext) -> None:
     await callback.answer()
 
 
-def _find_edit_model(gen_model_id: str) -> dict | None:
-    """Возвращает модель редактирования: сначала ищет совпадение по model_id, иначе первую."""
+def _find_edit_model(gen_model_id: str, gen_slug: str = "") -> dict | None:
+    """Возвращает edit-модель для сгенерированного фото.
+
+    Порядок поиска:
+    1. Точное совпадение model_id (работает когда gen и edit используют одинаковый model_id).
+    2. Slug-конвенция: gen_slug + "-edit" (основной способ, требует соблюдения именования).
+    3. Первая доступная edit-модель как запасной вариант.
+    """
     edit_models = get_models_for_task(TaskType.IMAGE_EDIT)
-    return (
-        next((m for m in edit_models if m.get("model_id") == gen_model_id), None)
-        or (edit_models[0] if edit_models else None)
-    )
+    by_id = next((m for m in edit_models if m.get("model_id") == gen_model_id), None)
+    if by_id:
+        return by_id
+    if gen_slug:
+        by_slug = next((m for m in edit_models if m.get("id") == gen_slug + "-edit"), None)
+        if by_slug:
+            return by_slug
+    return edit_models[0] if edit_models else None
 
 
 async def _apply_edit_model_to_state(state: FSMContext, edit_prompt: str | None = None) -> dict | None:
     """Переключает стейт в photo_edit для сгенерированного фото. Возвращает edit_model или None."""
     data = await state.get_data()
-    edit_model = _find_edit_model(data.get("model_actual_id", ""))
+    edit_model = _find_edit_model(data.get("model_actual_id", ""), data.get("model_slug", ""))
     if not edit_model:
         return None
     await state.update_data(
