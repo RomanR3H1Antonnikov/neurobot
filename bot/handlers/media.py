@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import time
+import uuid
 from aiogram import Router, F
 
 logger = logging.getLogger(__name__)
@@ -472,6 +473,7 @@ async def back_to_model(callback: CallbackQuery, state: FSMContext) -> None:
     await state.update_data(
         quick_edit=None,
         _gen_snapshot=None,
+        _gen_nonce=None,
         prompt=None, model_slug=None, model_label=None,
         model_description=None, model_variant_description=None,
         model_has_group=None, model_aspect_ratios=None,
@@ -1467,6 +1469,7 @@ async def _run_generation(send_msg: Message, tg_user, state: FSMContext, data: d
             data.get("aspect_ratio", "1:1"), data.get("resolution", "1K"), model_slug,
             style_reference_urls=style_reference_urls,
         )
+        gen_nonce = data.get("_gen_nonce")
         if result.variants:
             all_images = [result.data] + result.variants
             gen_file_id = None
@@ -1480,12 +1483,16 @@ async def _run_generation(send_msg: Message, tg_user, state: FSMContext, data: d
                 await _track_msg(state, sent.message_id)
                 if i == 0:
                     gen_file_id = sent.photo[-1].file_id
-            await state.update_data(generated_file_id=gen_file_id)
+            current = await state.get_data()
+            if current.get("_gen_nonce") == gen_nonce:
+                await state.update_data(generated_file_id=gen_file_id)
         else:
             file = BufferedInputFile(result.data, filename=result.filename)
             sent = await send_msg.answer_photo(file, reply_markup=after_generation_kb(is_image=True))
             await _track_msg(state, sent.message_id)
-            await state.update_data(generated_file_id=sent.photo[-1].file_id)
+            current = await state.get_data()
+            if current.get("_gen_nonce") == gen_nonce:
+                await state.update_data(generated_file_id=sent.photo[-1].file_id)
 
     elif media_type == "video":
         first_frame_url = await _tg_file_url(send_msg.bot, data.get("video_first_frame_file_id"), _cfg.bot_token)
@@ -1557,7 +1564,9 @@ async def start_generation(callback: CallbackQuery, state: FSMContext) -> None:
     )
     await callback.answer()
 
-    await state.update_data(_is_generating=True)
+    gen_nonce = uuid.uuid4().hex
+    await state.update_data(_is_generating=True, _gen_nonce=gen_nonce)
+    data = {**data, "_gen_nonce": gen_nonce}
     try:
         await _start_tracked(tg_user.id, callback.message, tg_user, state, data)
         await callback.message.delete()
@@ -1594,7 +1603,7 @@ async def start_generation(callback: CallbackQuery, state: FSMContext) -> None:
             reply_markup=error_kb(),
         )
     finally:
-        await state.update_data(_is_generating=None)
+        await state.update_data(_is_generating=None, _gen_nonce=None)
 
 
 async def resume_generation_after_topup(message: Message, state: FSMContext) -> None:
