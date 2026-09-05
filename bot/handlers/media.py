@@ -547,6 +547,19 @@ async def generate_again(callback: CallbackQuery, state: FSMContext) -> None:
         await callback.answer()
         return
 
+    # В режиме быстрого редактирования «Попробовать снова» возвращает к вводу описания
+    if data.get("quick_edit"):
+        await state.update_data(prompt=None, _tracked_msg_ids=None, _is_generating=None, _cleanup_warned_msg_id=None)
+        await state.set_state(MediaStates.enter_prompt)
+        try:
+            await callback.message.edit_reply_markup(reply_markup=None)
+        except Exception:
+            pass
+        sent = await callback.message.answer("Опиши, что нужно изменить на фото:", reply_markup=back_to_confirm_kb())
+        await _track_msg(state, sent.message_id)
+        await callback.answer()
+        return
+
     # Очищаем контент (промпт, референсы, ориентиры), сохраняем модель и формат
     await state.update_data(
         prompt=None,
