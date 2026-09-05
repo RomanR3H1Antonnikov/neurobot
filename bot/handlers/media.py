@@ -1089,18 +1089,17 @@ async def confirm_unknown_input(message: Message, state: FSMContext) -> None:
         asyncio.create_task(_notify_generating(message.bot, message.chat.id))
         return
 
-    # Во всех случаях удаляем сообщение пользователя
-    await message.delete()
-
     # Видео для редактирования
     if media_type == "video_edit" and message.video:
         await state.update_data(reference_file_id=message.video.file_id, reference_type="video")
         await _update_confirm_card(message, state)
         return
     if media_type == "photo_edit" and (message.video or message.video_note):
+        await message.delete()
         await message.answer("Для редактирования фото пришли изображение, а не видео.")
         return
     if media_type == "video_edit" and message.photo:
+        await message.delete()
         await message.answer("Для редактирования видео пришли видеофайл, а не фото.")
         return
 
@@ -1116,7 +1115,7 @@ async def confirm_unknown_input(message: Message, state: FSMContext) -> None:
             await _update_confirm_card(message, state)
             return
 
-        # image: если модель поддерживает ориентиры — добавляем туда
+        # image: если модель поддерживает ориентиры — добавляем туда (фото не удаляем)
         if max_refs > 0:
             srefs = list(data.get("style_reference_file_ids") or [])
             if len(srefs) < max_refs:
@@ -1135,6 +1134,7 @@ async def confirm_unknown_input(message: Message, state: FSMContext) -> None:
 
         # image без поддержки ориентиров → подсказываем про редактирование
         if media_type == "image":
+            await message.delete()
             await message.answer(
                 "Этот раздел создаёт фото с нуля по текстовому описанию. "
                 "Если хочешь изменить готовое фото — перейди в редактирование:",
@@ -1156,6 +1156,7 @@ async def confirm_unknown_input(message: Message, state: FSMContext) -> None:
     else:
         hint = "Не понял запроса. Введи текстовое описание или воспользуйся кнопками."
 
+    await message.delete()
     await message.answer(hint)
     sent = await message.answer(
         _confirm_card_text(data),
