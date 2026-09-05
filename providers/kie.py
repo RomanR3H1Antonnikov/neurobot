@@ -338,7 +338,8 @@ class KieProvider(OpenAICompatProvider):
         _srefs = list(style_reference_urls) if style_reference_urls else []
 
         if actual_model.startswith("grok-imagine"):
-            # Grok редактирует через task_id предыдущей генерации, не через image URL
+            # Grok редактирует через task_id предыдущей генерации, не через image URL.
+            # mask_indexs: [] — редактировать всё изображение (без сегментации)
             if not provider_task_id:
                 raise ProviderUnavailableError(
                     "Grok Image: для редактирования нужно сначала сгенерировать фото этой же моделью"
@@ -346,6 +347,7 @@ class KieProvider(OpenAICompatProvider):
             input_data: dict = {
                 "prompt": prompt,
                 "task_id": provider_task_id,
+                "mask_indexs": [],
             }
         elif actual_model.startswith("flux-2/"):
             if not image_url:
