@@ -754,6 +754,7 @@ async def receive_reference_photo(message: Message, state: FSMContext) -> None:
         return
     photo = message.photo[-1]
     if data.get("adding_style_ref"):
+        await message.delete()
         srefs = list(data.get("style_reference_file_ids") or [])
         max_refs = data.get("model_max_style_refs", 14)
         if data.get("managing_style_ref") == "replace_photo":
