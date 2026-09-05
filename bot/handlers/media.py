@@ -377,6 +377,11 @@ async def _restore_gen_snapshot(callback: CallbackQuery, state: FSMContext) -> b
     snapshot = data.get("_gen_snapshot")
     if not snapshot:
         return False
+    logger.info(
+        "_restore_gen_snapshot: slug=%s label=%s media_type=%s prompt=%r",
+        snapshot.get("model_slug"), snapshot.get("model_label"),
+        snapshot.get("media_type"), (snapshot.get("prompt") or "")[:40],
+    )
     await state.update_data(
         quick_edit=None,
         _gen_snapshot=None,
@@ -602,6 +607,11 @@ async def _apply_edit_model_to_state(state: FSMContext, edit_prompt: str | None 
     edit_model = _find_edit_model(data.get("model_actual_id", ""), data.get("model_slug", ""))
     if not edit_model:
         return None
+    logger.info(
+        "_apply_edit_model_to_state: saving snapshot slug=%s label=%s media_type=%s prompt=%r",
+        data.get("model_slug"), data.get("model_label"), data.get("media_type"),
+        (data.get("prompt") or "")[:40],
+    )
     # Сохраняем снапшот генерации, чтобы «Назад» мог вернуть пользователя к ней
     await state.update_data(
         _gen_snapshot={
