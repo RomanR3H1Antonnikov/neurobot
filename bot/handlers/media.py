@@ -368,15 +368,57 @@ async def back_to_type(callback: CallbackQuery, state: FSMContext) -> None:
     await callback.answer()
 
 
+async def _restore_gen_snapshot(callback: CallbackQuery, state: FSMContext) -> bool:
+    """Восстанавливает состояние генерации из снапшота и показывает confirm-карточку.
+
+    Возвращает True если снапшот был и восстановление прошло успешно, иначе False.
+    """
+    data = await state.get_data()
+    snapshot = data.get("_gen_snapshot")
+    if not snapshot:
+        return False
+    await state.update_data(
+        quick_edit=None,
+        _gen_snapshot=None,
+        media_type=snapshot.get("media_type", "image"),
+        model_slug=snapshot.get("model_slug"),
+        model_label=snapshot.get("model_label"),
+        model_description=snapshot.get("model_description"),
+        model_variant_description=snapshot.get("model_variant_description"),
+        model_has_group=snapshot.get("model_has_group"),
+        model_actual_id=snapshot.get("model_actual_id"),
+        model_aspect_ratios=snapshot.get("model_aspect_ratios"),
+        model_resolutions=snapshot.get("model_resolutions"),
+        model_max_style_refs=snapshot.get("model_max_style_refs"),
+        prompt=snapshot.get("prompt"),
+        reference_file_id=None,
+        reference_type=None,
+        adding_style_ref=None,
+    )
+    await state.set_state(MediaStates.confirm)
+    data = await state.get_data()
+    text = _confirm_card_text(data)
+    kb = _confirm_kb(data)
+    try:
+        await callback.message.edit_reply_markup(reply_markup=None)
+    except Exception:
+        pass
+    sent = await callback.message.answer(text, parse_mode="HTML", reply_markup=kb)
+    await _track_msg(state, sent.message_id)
+    await state.update_data(confirm_msg_id=sent.message_id)
+    await callback.answer()
+    return True
+
+
 @router.callback_query(F.data == "media:back:model")
 async def back_to_model(callback: CallbackQuery, state: FSMContext) -> None:
     data = await state.get_data()
+
+    # Если пришли из быстрого редактирования — возвращаем к карточке генерации
+    if data.get("quick_edit") and await _restore_gen_snapshot(callback, state):
+        return
+
     media_type = data.get("media_type", "")
-
-    # Если пришли из быстрого редактирования сгенерированного фото — возвращаем в генерацию
-    if data.get("quick_edit") and media_type == "photo_edit":
-        media_type = "image"
-
     task_type = _TYPE_TO_TASK.get(media_type)
     models = get_models_for_task(task_type) if task_type else []
     type_label = _TYPE_LABELS.get(media_type, media_type)
@@ -396,6 +438,7 @@ async def back_to_model(callback: CallbackQuery, state: FSMContext) -> None:
 
     await state.update_data(
         quick_edit=None,
+        _gen_snapshot=None,
         prompt=None, model_slug=None, model_label=None,
         model_description=None, model_variant_description=None,
         model_has_group=None, model_aspect_ratios=None,
@@ -480,6 +523,7 @@ async def generate_again(callback: CallbackQuery, state: FSMContext) -> None:
         video_first_frame_file_id=None, video_last_frame_file_id=None,
         confirm_msg_id=None,
         quick_edit=None,
+        _gen_snapshot=None,
         adding_style_ref=None,
         managing_style_ref=None, managing_style_ref_index=None,
         video_frames_expanded=None,
@@ -530,7 +574,22 @@ async def _apply_edit_model_to_state(state: FSMContext, edit_prompt: str | None 
     edit_model = _find_edit_model(data.get("model_actual_id", ""), data.get("model_slug", ""))
     if not edit_model:
         return None
+    # Сохраняем снапшот генерации, чтобы «Назад» мог вернуть пользователя к ней
     await state.update_data(
+        _gen_snapshot={
+            "media_type": data.get("media_type"),
+            "model_slug": data.get("model_slug"),
+            "model_label": data.get("model_label"),
+            "model_description": data.get("model_description"),
+            "model_variant_description": data.get("model_variant_description"),
+            "model_has_group": data.get("model_has_group"),
+            "model_actual_id": data.get("model_actual_id"),
+            "model_aspect_ratios": data.get("model_aspect_ratios"),
+            "model_resolutions": data.get("model_resolutions"),
+            "model_max_style_refs": data.get("model_max_style_refs"),
+            "prompt": data.get("prompt"),
+            "confirm_msg_id": data.get("confirm_msg_id"),
+        },
         media_type="photo_edit",
         reference_file_id=data["generated_file_id"],
         reference_type="photo",
@@ -690,27 +749,8 @@ async def back_to_confirm(callback: CallbackQuery, state: FSMContext) -> None:
     """Возврат к карточке настроек — работает после генерации и из enter_reference."""
     data = await state.get_data()
 
-    # В режиме быстрого редактирования «Назад» ведёт к выбору модели генерации фото
-    if data.get("quick_edit"):
-        await state.update_data(
-            quick_edit=None, media_type="image",
-            model_slug=None, model_label=None,
-            model_description=None, model_variant_description=None,
-            model_has_group=None, model_aspect_ratios=None,
-            model_duration_options=None, model_min_duration=None, model_max_duration=None,
-            reference_file_id=None, reference_type=None, prompt=None,
-            generated_file_id=None,
-            style_reference_file_ids=None,
-        )
-        models = get_models_for_task(TaskType.IMAGE_GENERATION)
-        await state.set_state(MediaStates.select_model)
-        sent = await callback.message.answer(
-            model_select_text("Фото", models),
-            parse_mode="HTML",
-            reply_markup=model_top_kb(models),
-        )
-        await _track_msg(state, sent.message_id)
-        await callback.answer()
+    # В режиме быстрого редактирования «Назад» возвращает к карточке генерации
+    if data.get("quick_edit") and await _restore_gen_snapshot(callback, state):
         return
 
     await state.update_data(adding_style_ref=None, managing_style_ref=None, managing_style_ref_index=None)
