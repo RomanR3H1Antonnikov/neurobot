@@ -168,7 +168,10 @@ class KieProvider(OpenAICompatProvider):
                 data = await resp.json()
 
         if data.get("code") != 200:
-            logger.error("KIE createTask failed: code=%s msg=%s model=%s", data.get("code"), data.get("msg"), model)
+            logger.error(
+                "KIE createTask failed: code=%s msg=%s model=%s input=%s",
+                data.get("code"), data.get("msg"), model, input_data,
+            )
             raise ProviderUnavailableError(f"KIE: {data.get('msg', 'неизвестная ошибка')}")
         task_id = data["data"]["taskId"]
         logger.info("KIE task created: model=%s taskId=%s", model, task_id)
