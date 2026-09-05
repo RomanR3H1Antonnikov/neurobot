@@ -1113,6 +1113,11 @@ async def confirm_unknown_input(message: Message, state: FSMContext) -> None:
                 srefs.append(photo.file_id)
                 await state.update_data(style_reference_file_ids=srefs)
                 await _update_confirm_card(message, state)
+                await _update_sref_status(
+                    message.bot, message.chat.id, state,
+                    f"✅ Добавлено! Всего ориентиров: {len(srefs)}/{max_refs}",
+                    style_ref_collecting_kb(len(srefs), max_refs),
+                )
             else:
                 await message.answer(f"Уже добавлено максимальное количество ориентиров ({max_refs} фото).")
                 await _update_confirm_card(message, state)
