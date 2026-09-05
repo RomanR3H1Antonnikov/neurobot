@@ -44,10 +44,11 @@ tasks:
         description: ""
         variant_description: "Версия на базе Gemini — высокое качество и глубокое понимание сложных описаний."
         aspect_ratios: ["1:1", "2:3", "3:2", "1:4", "4:1", "3:4", "4:3", "4:5", "5:4", "1:8", "8:1", "9:16", "16:9"]
-        model_id: gemini-3-pro-image
-        provider: aitunnel
+        model_id: nano-banana-pro
+        provider: bratuha
+        resolutions: ["1K", "2K"]
         cost_credits: 1
-        cost_usd: 0.02
+        cost_usd: 0.01
         enabled: true
 
       - id: nano-banana-2-lite

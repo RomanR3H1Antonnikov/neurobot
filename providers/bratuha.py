@@ -12,10 +12,11 @@ from providers.base import (
 
 # Маппинг model_id → tool slug на bratuha.ru
 _MODEL_TOOLS: dict[str, str] = {
-    "veo3.1-lite":    "veo-3-1",
-    "veo3.1-fast":    "veo-3-1",
-    "veo3.1-quality": "veo-3-1",
-    "suno":           "suno",
+    "veo3.1-lite":      "veo-3-1",
+    "veo3.1-fast":      "veo-3-1",
+    "veo3.1-quality":   "veo-3-1",
+    "suno":             "suno",
+    "nano-banana-pro":  "nano-banana-pro",
 }
 
 
@@ -111,10 +112,42 @@ class BratuhaProvider(AbstractProvider):
 
         return GenerationResult(data=video_bytes, mime_type="video/mp4", filename="video.mp4")
 
-    # ─── Методы, не поддерживаемые Bratuha в текущей версии ─────────────────
+    # ─── Генерация изображений ────────────────────────────────────────────────
 
-    async def generate_image(self, prompt: str, aspect_ratio: str = "1:1", resolution: str = "1K", model: str | None = None) -> GenerationResult:
-        raise ProviderUnavailableError("Генерация изображений через Bratuha не поддерживается")
+    async def generate_image(
+        self,
+        prompt: str,
+        aspect_ratio: str = "1:1",
+        resolution: str = "1K",
+        model: str | None = None,
+        style_reference_urls: list[str] | None = None,
+    ) -> GenerationResult:
+        actual_model = model or "nano-banana-pro"
+        tool = _MODEL_TOOLS.get(actual_model, actual_model)
+
+        op_id = await self._create_operation(tool, {
+            "mode": "normal",
+            "prompt": prompt,
+            "aspect_ratio": aspect_ratio,
+            "image_size": resolution,
+        })
+        result = await self._poll_operation(op_id)
+
+        url = (
+            result.get("url")
+            or result.get("image_url")
+            or ((result.get("images") or [{}])[0]).get("url")
+        )
+        if not url:
+            raise ProviderUnavailableError("Bratuha: не получен URL изображения")
+
+        async with aiohttp.ClientSession() as s:
+            async with s.get(url) as iresp:
+                image_bytes = await iresp.read()
+
+        return GenerationResult(data=image_bytes, mime_type="image/png", filename="image.png")
+
+    # ─── Методы, не поддерживаемые Bratuha в текущей версии ─────────────────
 
     async def generate_audio(self, prompt: str, audio_type: str = "voice", model: str | None = None) -> GenerationResult:
         raise ProviderUnavailableError("Генерация аудио через Bratuha не поддерживается")
