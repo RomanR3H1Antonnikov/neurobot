@@ -1106,21 +1106,27 @@ async def confirm_unknown_input(message: Message, state: FSMContext) -> None:
             await _update_confirm_card(message, state)
             return
 
-        # image: фото-ориентиры добавляются только через кнопку «Добавить ориентир»,
-        # чтобы пользователь не случайно добавил фото вместо текстового описания
-        if media_type == "image":
-            if max_refs > 0:
-                await message.answer(
-                    "Чтобы добавить фото-ориентиры, используй кнопку «Добавить ориентир» 👇",
-                )
+        # image: если модель поддерживает ориентиры — добавляем туда
+        if max_refs > 0:
+            srefs = list(data.get("style_reference_file_ids") or [])
+            if len(srefs) < max_refs:
+                srefs.append(photo.file_id)
+                await state.update_data(style_reference_file_ids=srefs)
+                await _update_confirm_card(message, state)
             else:
-                await message.answer(
-                    "Этот раздел создаёт фото с нуля по текстовому описанию. "
-                    "Если хочешь изменить готовое фото — перейди в редактирование:",
-                    reply_markup=InlineKeyboardMarkup(inline_keyboard=[
-                        [InlineKeyboardButton(text="✏️ Перейти в редактирование фото", callback_data="media:switch_to_photo_edit")],
-                    ]),
-                )
+                await message.answer(f"Уже добавлено максимальное количество ориентиров ({max_refs} фото).")
+                await _update_confirm_card(message, state)
+            return
+
+        # image без поддержки ориентиров → подсказываем про редактирование
+        if media_type == "image":
+            await message.answer(
+                "Этот раздел создаёт фото с нуля по текстовому описанию. "
+                "Если хочешь изменить готовое фото — перейди в редактирование:",
+                reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+                    [InlineKeyboardButton(text="✏️ Перейти в редактирование фото", callback_data="media:switch_to_photo_edit")],
+                ]),
+            )
             return
 
         # photo_edit, ориентиры не поддерживаются → заменяем основное фото
