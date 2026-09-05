@@ -1117,25 +1117,13 @@ async def confirm_unknown_input(message: Message, state: FSMContext) -> None:
             return
 
         # image: если модель поддерживает ориентиры — добавляем туда.
-        # Фото удаляем (чтобы не засорять чат), карточку настроек не перерисовываем,
-        # меню коллекции ориентиров не показываем — только тихий статус снизу.
+        # Фото удаляем молча, никаких сообщений не показываем.
         if max_refs > 0:
             await message.delete()
             srefs = list(data.get("style_reference_file_ids") or [])
             if len(srefs) < max_refs:
                 srefs.append(photo.file_id)
                 await state.update_data(style_reference_file_ids=srefs)
-                await _update_sref_status(
-                    message.bot, message.chat.id, state,
-                    f"✅ Добавлено! Всего ориентиров: {len(srefs)}/{max_refs}",
-                    None,
-                )
-            else:
-                await _update_sref_status(
-                    message.bot, message.chat.id, state,
-                    f"Уже добавлено максимальное количество ориентиров ({max_refs} фото).",
-                    None,
-                )
             return
 
         # image без поддержки ориентиров → подсказываем про редактирование
