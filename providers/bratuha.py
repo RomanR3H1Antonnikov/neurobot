@@ -152,7 +152,9 @@ class BratuhaProvider(AbstractProvider):
     async def generate_audio(self, prompt: str, audio_type: str = "voice", model: str | None = None) -> GenerationResult:
         raise ProviderUnavailableError("Генерация аудио через Bratuha не поддерживается")
 
-    async def edit_image(self, image_bytes: bytes, prompt: str, model: str | None = None) -> GenerationResult:
+    async def edit_image(self, image_bytes: bytes, prompt: str, model: str | None = None,
+                         image_url: str | None = None, style_reference_urls: list[str] | None = None,
+                         provider_task_id: str | None = None) -> GenerationResult:
         raise ProviderUnavailableError("Редактирование изображений через Bratuha не поддерживается")
 
     async def edit_video(self, video_bytes: bytes, prompt: str, model: str | None = None) -> GenerationResult:

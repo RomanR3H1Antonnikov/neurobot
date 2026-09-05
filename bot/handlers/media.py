@@ -475,6 +475,7 @@ async def back_to_model(callback: CallbackQuery, state: FSMContext) -> None:
         quick_edit=None,
         _gen_snapshot=None,
         _gen_nonce=None,
+        kie_gen_task_id=None,
         prompt=None, model_slug=None, model_label=None,
         model_description=None, model_variant_description=None,
         model_has_group=None, model_aspect_ratios=None,
@@ -569,6 +570,7 @@ async def generate_again(callback: CallbackQuery, state: FSMContext) -> None:
         reference_file_id=None, reference_type=None,
         style_reference_file_ids=None,
         generated_file_id=None,
+        kie_gen_task_id=None,
         video_first_frame_file_id=None, video_last_frame_file_id=None,
         confirm_msg_id=None,
         quick_edit=None,
@@ -1486,14 +1488,16 @@ async def _run_generation(send_msg: Message, tg_user, state: FSMContext, data: d
                     gen_file_id = sent.photo[-1].file_id
             current = await state.get_data()
             if current.get("_gen_nonce") == gen_nonce:
-                await state.update_data(generated_file_id=gen_file_id)
+                await state.update_data(generated_file_id=gen_file_id,
+                                        kie_gen_task_id=result.provider_task_id)
         else:
             file = BufferedInputFile(result.data, filename=result.filename)
             sent = await send_msg.answer_photo(file, reply_markup=after_generation_kb(is_image=True))
             await _track_msg(state, sent.message_id)
             current = await state.get_data()
             if current.get("_gen_nonce") == gen_nonce:
-                await state.update_data(generated_file_id=sent.photo[-1].file_id)
+                await state.update_data(generated_file_id=sent.photo[-1].file_id,
+                                        kie_gen_task_id=result.provider_task_id)
 
     elif media_type == "video":
         first_frame_url = await _tg_file_url(send_msg.bot, data.get("video_first_frame_file_id"), _cfg.bot_token)
@@ -1523,6 +1527,7 @@ async def _run_generation(send_msg: Message, tg_user, state: FSMContext, data: d
         result = await media_service.edit_image(
             tg_user.id, tg_user.username, media_bytes, prompt, model_slug,
             image_url=image_url, style_reference_urls=style_reference_urls,
+            provider_task_id=data.get("kie_gen_task_id"),
         )
         file = BufferedInputFile(result.data, filename=result.filename)
         sent = await send_msg.answer_photo(file, reply_markup=after_generation_kb(is_image=True))

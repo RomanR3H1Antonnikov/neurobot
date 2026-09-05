@@ -31,6 +31,7 @@ class GenerationResult:
     mime_type: str       # например 'image/png', 'video/mp4', 'audio/mpeg'
     filename: str
     variants: list[bytes] = None  # доп. варианты (например, 4 картинки Midjourney)
+    provider_task_id: str = None  # task ID у провайдера (нужен Grok для редактирования)
 
 
 @dataclass
@@ -62,6 +63,7 @@ class AbstractProvider(ABC):
     async def edit_image(
         self, image_bytes: bytes, prompt: str, model: str | None = None,
         image_url: str | None = None, style_reference_urls: list[str] | None = None,
+        provider_task_id: str | None = None,
     ) -> GenerationResult:
         ...
 

@@ -239,7 +239,7 @@ class KieProvider(OpenAICompatProvider):
         fut = register_pending(corr_id)  # регистрируем ДО создания job (без гонки)
 
         try:
-            await self._create_job(
+            task_id = await self._create_job(
                 actual_model,
                 _image_input(actual_model, prompt, aspect_ratio, resolution, style_reference_urls),
                 corr_id,
@@ -266,7 +266,10 @@ class KieProvider(OpenAICompatProvider):
             raise ProviderUnavailableError("KIE: не получен URL изображения")
 
         image_bytes = await self._download(url)
-        return GenerationResult(data=image_bytes, mime_type="image/png", filename="image.png")
+        # Grok-модели используют task_id для последующего редактирования
+        kie_task_id = task_id if actual_model.startswith("grok-imagine") else None
+        return GenerationResult(data=image_bytes, mime_type="image/png", filename="image.png",
+                                provider_task_id=kie_task_id)
 
     # ─── Генерация видео ──────────────────────────────────────────────────────
 
@@ -326,25 +329,36 @@ class KieProvider(OpenAICompatProvider):
     async def edit_image(
         self, image_bytes: bytes, prompt: str, model: str | None = None,
         image_url: str | None = None, style_reference_urls: list[str] | None = None,
+        provider_task_id: str | None = None,
     ) -> GenerationResult:
-        """Job-based редактирование через KIE createTask. Требует image_url."""
-        if not image_url:
-            raise ProviderUnavailableError("KIE edit_image: не передан URL изображения")
-
+        """Job-based редактирование через KIE createTask."""
         actual_model = model or "google/nano-banana-edit"
         corr_id = uuid.uuid4().hex
         fut = register_pending(corr_id)
         _srefs = list(style_reference_urls) if style_reference_urls else []
 
-        if actual_model.startswith("flux-2/"):
-            # Flux image-to-image: поле input_urls, нужны aspect_ratio и resolution
+        if actual_model.startswith("grok-imagine"):
+            # Grok редактирует через task_id предыдущей генерации, не через image URL
+            if not provider_task_id:
+                raise ProviderUnavailableError(
+                    "Grok Image: для редактирования нужно сначала сгенерировать фото этой же моделью"
+                )
             input_data: dict = {
+                "prompt": prompt,
+                "task_id": provider_task_id,
+            }
+        elif actual_model.startswith("flux-2/"):
+            if not image_url:
+                raise ProviderUnavailableError("KIE edit_image: не передан URL изображения")
+            input_data = {
                 "prompt": prompt,
                 "input_urls": [image_url] + _srefs,
                 "aspect_ratio": "auto",
                 "resolution": "1K",
             }
         elif actual_model.startswith("seedream/") and "image-to-image" in actual_model:
+            if not image_url:
+                raise ProviderUnavailableError("KIE edit_image: не передан URL изображения")
             input_data = {
                 "prompt": prompt,
                 "image_urls": [image_url] + _srefs,
@@ -353,25 +367,16 @@ class KieProvider(OpenAICompatProvider):
                 "output_format": "png",
             }
         elif actual_model == "nano-banana-2-lite":
-            # Lite: image_urls без output_format и без aspect_ratio (определяется источником)
+            if not image_url:
+                raise ProviderUnavailableError("KIE edit_image: не передан URL изображения")
             input_data = {
                 "prompt": prompt,
                 "image_urls": [image_url] + _srefs,
                 "aspect_ratio": "auto",
             }
-        elif actual_model.startswith("grok-imagine"):
-            # Grok image edit: исходное фото — image_url (top-level),
-            # дополнительные ориентиры — image_input.image_list
-            input_data = {
-                "prompt": prompt,
-                "aspect_ratio": "1:1",
-                "image_url": image_url,
-            }
-            if _srefs:
-                input_data["image_input"] = {
-                    "image_list": [{"image_url": u} for u in _srefs]
-                }
         else:
+            if not image_url:
+                raise ProviderUnavailableError("KIE edit_image: не передан URL изображения")
             # google/nano-banana-edit и прочие — поддерживает несколько ориентиров
             input_data = {
                 "prompt": prompt,

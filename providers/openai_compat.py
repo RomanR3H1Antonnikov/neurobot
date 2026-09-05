@@ -139,6 +139,7 @@ class OpenAICompatProvider(AbstractProvider):
     async def edit_image(
         self, image_bytes: bytes, prompt: str, model: str | None = None,
         image_url: str | None = None, style_reference_urls: list[str] | None = None,
+        provider_task_id: str | None = None,
     ) -> GenerationResult:
         actual_model = model or self.image_edit_model
         _refs = "\n".join(f"Reference image: {u}" for u in (style_reference_urls or []))
