@@ -849,7 +849,8 @@ async def _show_confirm_after_reference(message: Message, state: FSMContext) -> 
 async def receive_reference_photo(message: Message, state: FSMContext) -> None:
     data = await state.get_data()
     if data.get("media_type") == "video_edit":
-        await message.answer("Для редактирования видео пришли видеофайл, а не фото.", reply_markup=back_to_model_kb())
+        sent = await message.answer("Для редактирования видео пришли видеофайл, а не фото.", reply_markup=back_to_model_kb())
+        await _track_msg(state, sent.message_id)
         return
     photo = message.photo[-1]
     if data.get("adding_style_ref"):
@@ -896,8 +897,10 @@ async def receive_reference_photo(message: Message, state: FSMContext) -> None:
 async def receive_reference_video(message: Message, state: FSMContext) -> None:
     data = await state.get_data()
     if data.get("media_type") == "photo_edit":
-        await message.answer("Для редактирования фото пришли изображение, а не видео.", reply_markup=back_to_model_kb())
+        sent = await message.answer("Для редактирования фото пришли изображение, а не видео.", reply_markup=back_to_model_kb())
+        await _track_msg(state, sent.message_id)
         return
+    await message.delete()
     await state.update_data(reference_file_id=message.video.file_id, reference_type="video")
     await _show_confirm_after_reference(message, state)
 
@@ -908,21 +911,26 @@ async def receive_reference_document(message: Message, state: FSMContext) -> Non
     mime = message.document.mime_type or ""
     if mime.startswith("video/"):
         if data.get("media_type") == "photo_edit":
-            await message.answer("Для редактирования фото пришли изображение, а не видео.", reply_markup=back_to_model_kb())
+            sent = await message.answer("Для редактирования фото пришли изображение, а не видео.", reply_markup=back_to_model_kb())
+            await _track_msg(state, sent.message_id)
             return
+        await message.delete()
         await state.update_data(reference_file_id=message.document.file_id, reference_type="video")
         await _show_confirm_after_reference(message, state)
     elif mime.startswith("image/"):
         if data.get("media_type") == "video_edit":
-            await message.answer("Для редактирования видео пришли видеофайл, а не фото.", reply_markup=back_to_model_kb())
+            sent = await message.answer("Для редактирования видео пришли видеофайл, а не фото.", reply_markup=back_to_model_kb())
+            await _track_msg(state, sent.message_id)
             return
+        await message.delete()
         await state.update_data(reference_file_id=message.document.file_id, reference_type="photo")
         await _show_confirm_after_reference(message, state)
     else:
-        await message.answer(
+        sent = await message.answer(
             "Пожалуйста, пришли подходящий файл для редактирования.",
             reply_markup=back_to_model_kb(),
         )
+        await _track_msg(state, sent.message_id)
 
 
 @router.message(MediaStates.enter_reference, F.text, ~F.text.in_(MENU_BUTTONS))
@@ -932,14 +940,16 @@ async def enter_reference_text_input(message: Message, state: FSMContext) -> Non
     managing = data.get("managing_style_ref")
 
     if data.get("adding_style_ref") and not managing:
-        await message.answer("Текст не принимается в качестве ориентира — пришли фото 📎")
+        sent = await message.answer("Текст не принимается в качестве ориентира — пришли фото 📎")
+        await _track_msg(state, sent.message_id)
         return
 
     if not managing or not data.get("adding_style_ref"):
-        await message.answer(
+        sent = await message.answer(
             "Пожалуйста, пришли фото или видео для редактирования.",
             reply_markup=back_to_model_kb(),
         )
+        await _track_msg(state, sent.message_id)
         return
 
     srefs = list(data.get("style_reference_file_ids") or [])
@@ -948,10 +958,12 @@ async def enter_reference_text_input(message: Message, state: FSMContext) -> Non
     try:
         idx = int(message.text.strip()) - 1
         if idx < 0 or idx >= len(srefs):
-            await message.answer(f"Номер должен быть от 1 до {len(srefs)}.")
+            sent = await message.answer(f"Номер должен быть от 1 до {len(srefs)}.")
+            await _track_msg(state, sent.message_id)
             return
     except ValueError:
-        await message.answer(f"Введи число от 1 до {len(srefs)}.")
+        sent = await message.answer(f"Введи число от 1 до {len(srefs)}.")
+        await _track_msg(state, sent.message_id)
         return
 
     if managing == "delete":
@@ -987,10 +999,11 @@ async def reference_wrong_type(message: Message, state: FSMContext) -> None:
             style_ref_collecting_kb(count, max_refs),
         )
     else:
-        await message.answer(
+        sent = await message.answer(
             "Пожалуйста, пришли фото или видео для редактирования.",
             reply_markup=back_to_model_kb(),
         )
+        await _track_msg(state, sent.message_id)
 
 
 # ─── Ввод описания ───────────────────────────────────────────────────────────
@@ -1065,8 +1078,9 @@ async def enter_prompt_wrong_input(message: Message, state: FSMContext) -> None:
     data = await state.get_data()
     media_type = data.get("media_type", "")
 
+    await message.delete()
     if message.photo and media_type == "image":
-        await message.answer(
+        sent = await message.answer(
             "Этот раздел создаёт фото с нуля по текстовому описанию. "
             "Если хочешь изменить готовое фото — перейди в редактирование:",
             reply_markup=InlineKeyboardMarkup(inline_keyboard=[
@@ -1075,17 +1089,18 @@ async def enter_prompt_wrong_input(message: Message, state: FSMContext) -> None:
             ]),
         )
     elif (message.video or message.video_note) and media_type == "video":
-        await message.answer(
+        sent = await message.answer(
             "Этот раздел создаёт видео с нуля по описанию. "
             "Если хочешь изменить готовое видео — используй раздел «✏️ Редактировать видео».\n\n"
             + _PROMPT_HINTS["video"],
             reply_markup=back_to_confirm_kb(),
         )
     else:
-        await message.answer(
+        sent = await message.answer(
             _PROMPT_HINTS.get(media_type, "Введи текстовое описание:"),
             reply_markup=back_to_confirm_kb(),
         )
+    await _track_msg(state, sent.message_id)
 
 
 # ─── Ввод/изменение описания прямо из confirm карточки ───────────────────────
@@ -1106,13 +1121,15 @@ async def update_prompt_in_confirm(message: Message, state: FSMContext) -> None:
         try:
             val = int(message.text.strip())
             if not (min_d <= val <= max_d):
-                await message.answer(f"Введи целое число от {min_d} до {max_d} секунд:")
+                sent = await message.answer(f"Введи целое число от {min_d} до {max_d} секунд:")
+                await _track_msg(state, sent.message_id)
                 return
             await state.update_data(duration=val, entering_duration=False)
             await message.delete()
             await _update_confirm_card(message, state)
         except ValueError:
-            await message.answer(f"Нужно целое число от {min_d} до {max_d} секунд:")
+            sent = await message.answer(f"Нужно целое число от {min_d} до {max_d} секунд:")
+            await _track_msg(state, sent.message_id)
         return
 
     # Повторное редактирование уже отредактированного фото
@@ -1346,6 +1363,7 @@ async def set_ratio(callback: CallbackQuery, state: FSMContext) -> None:
     await state.update_data(aspect_ratio=ratio)
     data = await state.get_data()
     await callback.message.edit_text(_confirm_card_text(data), parse_mode="HTML", reply_markup=_confirm_kb(data))
+    await _delete_msgs_below(callback.bot, callback.message.chat.id, state, callback.message.message_id)
     await callback.answer()
 
 
@@ -1355,6 +1373,7 @@ async def set_resolution(callback: CallbackQuery, state: FSMContext) -> None:
     await state.update_data(resolution=resolution)
     data = await state.get_data()
     await callback.message.edit_text(_confirm_card_text(data), parse_mode="HTML", reply_markup=_confirm_kb(data))
+    await _delete_msgs_below(callback.bot, callback.message.chat.id, state, callback.message.message_id)
     await callback.answer()
 
 
@@ -1364,6 +1383,7 @@ async def set_duration(callback: CallbackQuery, state: FSMContext) -> None:
     await state.update_data(duration=duration, entering_duration=False)
     data = await state.get_data()
     await callback.message.edit_text(_confirm_card_text(data), parse_mode="HTML", reply_markup=_confirm_kb(data))
+    await _delete_msgs_below(callback.bot, callback.message.chat.id, state, callback.message.message_id)
     await callback.answer()
 
 
