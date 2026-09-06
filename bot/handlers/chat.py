@@ -51,15 +51,18 @@ async def enter_chat(message: Message, state: FSMContext) -> None:
     await state.clear()
     await safe_delete(message, "BTN_CHAT")
     models = get_models_for_task(TaskType.CHAT)
+    logger.info("[NAV] enter_chat models found: %s", [m['id'] for m in models] if models else [])
     if not models:
         await message.answer("⚠️ Чат временно недоступен. Попробуй позже.")
         return
     await state.set_state(ChatStates.select_model)
-    await message.answer(
+    logger.info("[NAV] enter_chat state set to select_model")
+    sent = await message.answer(
         "💬 <b>Выбери модель для чата:</b>",
         parse_mode="HTML",
         reply_markup=_chat_model_kb(models),
     )
+    logger.info("[NAV] enter_chat sent model kb msg_id=%s", sent.message_id)
 
 
 @router.callback_query(ChatStates.select_model, F.data == "chat:back:menu")
@@ -89,6 +92,7 @@ async def menu_to_chat(callback: CallbackQuery, state: FSMContext) -> None:
 
 @router.callback_query(ChatStates.select_model, F.data.startswith("chat:model:"))
 async def select_chat_model(callback: CallbackQuery, state: FSMContext) -> None:
+    logger.info("[NAV] select_chat_model called, data=%s", callback.data)
     model_slug = callback.data[len("chat:model:"):]
     models = get_models_for_task(TaskType.CHAT)
     model_cfg = next((m for m in models if m["id"] == model_slug), None)
