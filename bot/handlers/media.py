@@ -226,7 +226,8 @@ async def media_menu(message: Message, state: FSMContext) -> None:
     await cleanup_tracked_messages(message.bot, message.chat.id, state)
     await state.clear()
     await state.set_state(MediaStates.select_type)
-    await message.answer(MEDIA_MENU_TEXT, parse_mode="HTML", reply_markup=media_type_kb())
+    sent = await message.answer(MEDIA_MENU_TEXT, parse_mode="HTML", reply_markup=media_type_kb())
+    await state.update_data(_tracked_msg_ids=[sent.message_id])
 
 
 # ─── Выбор типа ──────────────────────────────────────────────────────────────
@@ -531,10 +532,12 @@ async def switch_to_photo_edit(callback: CallbackQuery, state: FSMContext) -> No
 @router.callback_query(F.data == "menu:media")
 async def menu_to_media(callback: CallbackQuery, state: FSMContext) -> None:
     await callback.answer()
+    await cleanup_tracked_messages(callback.bot, callback.message.chat.id, state)
     await callback.message.delete()
     await state.clear()
     await state.set_state(MediaStates.select_type)
-    await callback.message.answer(MEDIA_MENU_TEXT, parse_mode="HTML", reply_markup=media_type_kb())
+    sent = await callback.message.answer(MEDIA_MENU_TEXT, parse_mode="HTML", reply_markup=media_type_kb())
+    await state.update_data(_tracked_msg_ids=[sent.message_id])
 
 
 @router.callback_query(F.data == "media:again")
