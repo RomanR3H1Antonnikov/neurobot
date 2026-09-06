@@ -4,6 +4,7 @@ from aiogram.types import Message, CallbackQuery, PreCheckoutQuery, LabeledPrice
 from aiogram.fsm.context import FSMContext
 
 from bot.keyboards.main_menu import BTN_BALANCE, main_menu_kb, inline_main_menu_kb
+from bot.utils import cleanup_tracked_messages
 from bot.keyboards.billing import balance_kb, quick_topup_kb
 from config import config, reload_models
 from db.queries import get_or_create_user, add_credits, get_balance
@@ -14,6 +15,7 @@ router = Router()
 @router.message(F.text == BTN_BALANCE)
 @router.message(Command("balance"))
 async def show_balance(message: Message, state: FSMContext, db_user: dict) -> None:
+    await cleanup_tracked_messages(message.bot, message.chat.id, state)
     await state.clear()
     await message.answer(
         f"💳 <b>Твой баланс:</b> {db_user['balance']} кредитов\n\n"

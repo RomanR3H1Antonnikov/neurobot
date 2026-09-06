@@ -5,6 +5,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 
 from bot.keyboards.main_menu import BTN_DOCS, MENU_BUTTONS, main_menu_kb, inline_main_menu_kb
+from bot.utils import cleanup_tracked_messages
 from providers.base import ProviderError
 from services import document_service
 from services.media_service import InsufficientCreditsError, RateLimitError
@@ -38,6 +39,7 @@ def _task_kb() -> InlineKeyboardMarkup:
 
 @router.message(F.text == BTN_DOCS)
 async def enter_docs(message: Message, state: FSMContext) -> None:
+    await cleanup_tracked_messages(message.bot, message.chat.id, state)
     await state.clear()
     await state.set_state(DocumentStates.awaiting_file)
     await message.answer(AWAITING_FILE_TEXT, reply_markup=_file_kb())

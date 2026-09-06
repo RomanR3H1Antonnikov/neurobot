@@ -5,6 +5,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 
 from bot.keyboards.main_menu import BTN_CHAT, BTN_EXIT_CHAT, BTN_NEW_DIALOG, BTN_CHAT_PICK_MODEL, MENU_BUTTONS, main_menu_kb, inline_main_menu_kb
+from bot.utils import cleanup_tracked_messages
 from bot.keyboards.billing import quick_topup_kb
 from providers.base import ProviderError, TaskType
 from providers.router import get_models_for_task
@@ -42,6 +43,7 @@ def _chat_model_kb(models: list[dict]) -> InlineKeyboardMarkup:
 
 @router.message(F.text == BTN_CHAT)
 async def enter_chat(message: Message, state: FSMContext) -> None:
+    await cleanup_tracked_messages(message.bot, message.chat.id, state)
     await state.clear()
     models = get_models_for_task(TaskType.CHAT)
     if not models:

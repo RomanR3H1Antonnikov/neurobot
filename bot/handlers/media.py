@@ -10,6 +10,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 
 from bot.keyboards.main_menu import BTN_MEDIA, MENU_BUTTONS, main_menu_kb, inline_main_menu_kb
+from bot.utils import cleanup_tracked_messages
 from bot.keyboards.billing import quick_topup_kb
 from bot.keyboards.media import (
     media_type_kb, media_edit_kb, model_top_kb, model_variant_kb,
@@ -222,6 +223,7 @@ MEDIA_MENU_TEXT = (
 
 @router.message(F.text == BTN_MEDIA)
 async def media_menu(message: Message, state: FSMContext) -> None:
+    await cleanup_tracked_messages(message.bot, message.chat.id, state)
     await state.clear()
     await state.set_state(MediaStates.select_type)
     await message.answer(MEDIA_MENU_TEXT, parse_mode="HTML", reply_markup=media_type_kb())
