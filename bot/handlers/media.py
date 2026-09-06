@@ -236,7 +236,8 @@ async def media_menu(message: Message, state: FSMContext) -> None:
 # ─── Выбор типа ──────────────────────────────────────────────────────────────
 
 @router.callback_query(MediaStates.select_type, F.data == "media:edit_menu")
-async def edit_menu(callback: CallbackQuery) -> None:
+async def edit_menu(callback: CallbackQuery, state: FSMContext) -> None:
+    await _delete_msgs_below(callback.bot, callback.message.chat.id, state, callback.message.message_id)
     await callback.message.edit_text(
         "Выбери, что нужно изменить:",
         reply_markup=media_edit_kb(),
@@ -252,8 +253,9 @@ async def select_type(callback: CallbackQuery, state: FSMContext) -> None:
         "video": {"duration": 5},
         "audio": {"audio_type": "voice"},
     }
-    # Сбрасываем все данные предыдущего раздела (промпт, модель и т.д.),
-    # но сохраняем трекинг сообщений чтобы cleanup мог удалить верхнее сообщение.
+    # Удаляем сообщения ниже текущего (верхнего) прежде чем переходить дальше.
+    await _delete_msgs_below(callback.bot, callback.message.chat.id, state, callback.message.message_id)
+    # Сбрасываем данные предыдущего раздела, сохраняя обновлённый трекинг.
     _curr = await state.get_data()
     await state.set_data({
         "_tracked_msg_ids": _curr.get("_tracked_msg_ids"),
@@ -282,6 +284,7 @@ async def select_type(callback: CallbackQuery, state: FSMContext) -> None:
 
 @router.callback_query(MediaStates.select_model, F.data.startswith("media:model:"))
 async def select_model(callback: CallbackQuery, state: FSMContext) -> None:
+    await _delete_msgs_below(callback.bot, callback.message.chat.id, state, callback.message.message_id)
     model_slug = callback.data[len("media:model:"):]
     data = await state.get_data()
     media_type = data.get("media_type", "")
@@ -353,6 +356,7 @@ async def select_model(callback: CallbackQuery, state: FSMContext) -> None:
 
 @router.callback_query(MediaStates.select_model, F.data.startswith("media:group:"))
 async def select_group(callback: CallbackQuery, state: FSMContext) -> None:
+    await _delete_msgs_below(callback.bot, callback.message.chat.id, state, callback.message.message_id)
     group_id = callback.data[len("media:group:"):]
     data = await state.get_data()
     task_type = _TYPE_TO_TASK.get(data.get("media_type", ""))
@@ -377,6 +381,7 @@ async def select_group(callback: CallbackQuery, state: FSMContext) -> None:
 
 @router.callback_query(F.data == "media:back:type")
 async def back_to_type(callback: CallbackQuery, state: FSMContext) -> None:
+    await _delete_msgs_below(callback.bot, callback.message.chat.id, state, callback.message.message_id)
     await state.set_state(MediaStates.select_type)
     await callback.message.edit_text(MEDIA_MENU_TEXT, parse_mode="HTML", reply_markup=media_type_kb())
     await callback.answer()
