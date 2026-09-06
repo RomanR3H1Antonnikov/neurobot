@@ -881,8 +881,10 @@ async def receive_reference_photo(message: Message, state: FSMContext) -> None:
         frame_slot = data.get("adding_video_frame", "first")
         key = "video_first_frame_file_id" if frame_slot == "first" else "video_last_frame_file_id"
         await state.update_data(**{key: photo.file_id, "adding_video_frame": None})
+        await message.delete()
         await _show_confirm_after_reference(message, state)
         return
+    await message.delete()
     await state.update_data(reference_file_id=photo.file_id, reference_type="photo")
     await _show_confirm_after_reference(message, state)
 
@@ -1489,7 +1491,7 @@ async def _run_generation(send_msg: Message, tg_user, state: FSMContext, data: d
             current = await state.get_data()
             if current.get("_gen_nonce") == gen_nonce:
                 await state.update_data(generated_file_id=gen_file_id,
-                                        kie_gen_task_id=result.provider_task_id)
+                                        kie_gen_task_id=result.provider_image_url)
         else:
             file = BufferedInputFile(result.data, filename=result.filename)
             sent = await send_msg.answer_photo(file, reply_markup=after_generation_kb(is_image=True))
@@ -1497,7 +1499,7 @@ async def _run_generation(send_msg: Message, tg_user, state: FSMContext, data: d
             current = await state.get_data()
             if current.get("_gen_nonce") == gen_nonce:
                 await state.update_data(generated_file_id=sent.photo[-1].file_id,
-                                        kie_gen_task_id=result.provider_task_id)
+                                        kie_gen_task_id=result.provider_image_url)
 
     elif media_type == "video":
         first_frame_url = await _tg_file_url(send_msg.bot, data.get("video_first_frame_file_id"), _cfg.bot_token)

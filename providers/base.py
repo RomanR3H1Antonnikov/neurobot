@@ -31,7 +31,8 @@ class GenerationResult:
     mime_type: str       # например 'image/png', 'video/mp4', 'audio/mpeg'
     filename: str
     variants: list[bytes] = None  # доп. варианты (например, 4 картинки Midjourney)
-    provider_task_id: str = None  # task ID у провайдера (нужен Grok для редактирования)
+    provider_task_id: str = None  # task ID у провайдера (зарезервировано)
+    provider_image_url: str = None  # оригинальный CDN-URL результата (для провайдеров, не принимающих TG-URL)
 
 
 @dataclass

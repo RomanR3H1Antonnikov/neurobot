@@ -266,10 +266,10 @@ class KieProvider(OpenAICompatProvider):
             raise ProviderUnavailableError("KIE: не получен URL изображения")
 
         image_bytes = await self._download(url)
-        # Grok-модели используют task_id для последующего редактирования
-        kie_task_id = task_id if actual_model.startswith("grok-imagine") else None
+        # Grok не принимает TG-URL при редактировании — сохраняем оригинальный CDN URL
+        gen_image_url = url if actual_model.startswith("grok-imagine") else None
         return GenerationResult(data=image_bytes, mime_type="image/png", filename="image.png",
-                                provider_task_id=kie_task_id)
+                                provider_image_url=gen_image_url)
 
     # ─── Генерация видео ──────────────────────────────────────────────────────
 
@@ -338,16 +338,17 @@ class KieProvider(OpenAICompatProvider):
         _srefs = list(style_reference_urls) if style_reference_urls else []
 
         if actual_model.startswith("grok-imagine"):
-            # Grok редактирует через task_id предыдущей генерации, не через image URL.
-            # mask_indexs: [] — редактировать всё изображение (без сегментации)
-            if not provider_task_id:
+            # Grok не принимает TG-URL — нужен оригинальный CDN URL от KIE.
+            # provider_task_id здесь — это сохранённый CDN URL (provider_image_url из генерации).
+            src_url = provider_task_id or image_url
+            if not src_url:
                 raise ProviderUnavailableError(
                     "Grok Image: для редактирования нужно сначала сгенерировать фото этой же моделью"
                 )
             input_data: dict = {
                 "prompt": prompt,
-                "task_id": provider_task_id,
-                "mask_indexs": [],
+                "aspect_ratio": "1:1",
+                "image_urls": [src_url] + _srefs,
             }
         elif actual_model.startswith("flux-2/"):
             if not image_url:

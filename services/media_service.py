@@ -92,7 +92,7 @@ async def edit_image(
     result = await provider.edit_image(
         image_bytes, prompt, model=model_cfg["model_id"],
         image_url=image_url, style_reference_urls=style_reference_urls,
-        provider_task_id=provider_task_id,
+        provider_task_id=provider_task_id,  # для KIE Grok: CDN URL из генерации
     )
     await deduct_credits(user_id, model_cfg["cost_credits"], task.value)
     return result
