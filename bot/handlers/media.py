@@ -1007,6 +1007,7 @@ async def _update_confirm_card(message: Message, state: FSMContext) -> None:
                 parse_mode="HTML",
                 reply_markup=kb,
             )
+            await _delete_msgs_below(message.bot, message.chat.id, state, confirm_msg_id)
             return
         except Exception:
             pass
