@@ -1,10 +1,13 @@
+import logging
 from aiogram import Router, F
+
+logger = logging.getLogger(__name__)
 from aiogram.filters import Command
 from aiogram.types import Message, CallbackQuery, PreCheckoutQuery, LabeledPrice
 from aiogram.fsm.context import FSMContext
 
 from bot.keyboards.main_menu import BTN_BALANCE, main_menu_kb, inline_main_menu_kb
-from bot.utils import cleanup_tracked_messages
+from bot.utils import cleanup_tracked_messages, safe_delete
 from bot.keyboards.billing import balance_kb, quick_topup_kb
 from config import config, reload_models
 from db.queries import get_or_create_user, add_credits, get_balance
@@ -15,9 +18,10 @@ router = Router()
 @router.message(F.text == BTN_BALANCE)
 @router.message(Command("balance"))
 async def show_balance(message: Message, state: FSMContext, db_user: dict) -> None:
+    logger.info("[NAV] show_balance called, chat=%s user=%s", message.chat.id, message.from_user.id)
     await cleanup_tracked_messages(message.bot, message.chat.id, state)
     await state.clear()
-    await message.delete()
+    await safe_delete(message, "BTN_BALANCE")
     await message.answer(
         f"💳 <b>Твой баланс:</b> {db_user['balance']} кредитов\n\n"
         "Выбери пакет для пополнения:",

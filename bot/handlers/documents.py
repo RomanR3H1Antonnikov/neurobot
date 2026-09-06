@@ -1,11 +1,14 @@
+import logging
 from aiogram import Router, F
+
+logger = logging.getLogger(__name__)
 from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 
 from bot.keyboards.main_menu import BTN_DOCS, MENU_BUTTONS, main_menu_kb, inline_main_menu_kb
-from bot.utils import cleanup_tracked_messages
+from bot.utils import cleanup_tracked_messages, safe_delete
 from providers.base import ProviderError
 from services import document_service
 from services.media_service import InsufficientCreditsError, RateLimitError
@@ -39,11 +42,13 @@ def _task_kb() -> InlineKeyboardMarkup:
 
 @router.message(F.text == BTN_DOCS)
 async def enter_docs(message: Message, state: FSMContext) -> None:
+    logger.info("[NAV] enter_docs called, chat=%s user=%s", message.chat.id, message.from_user.id)
     await cleanup_tracked_messages(message.bot, message.chat.id, state)
     await state.clear()
-    await message.delete()
+    await safe_delete(message, "BTN_DOCS")
     await state.set_state(DocumentStates.awaiting_file)
-    await message.answer(AWAITING_FILE_TEXT, reply_markup=_file_kb())
+    sent = await message.answer(AWAITING_FILE_TEXT, reply_markup=_file_kb())
+    logger.info("[NAV] enter_docs sent msg_id=%s", sent.message_id)
 
 
 @router.callback_query(F.data == "docs:back:menu")
