@@ -92,6 +92,14 @@ async def add_chat_message(user_id: int, role: str, content: str) -> None:
         "INSERT INTO chat_history (user_id, role, content) VALUES (?, ?, ?)",
         (user_id, role, content),
     )
+    # Оставляем только последние CHAT_HISTORY_LIMIT сообщений на пользователя
+    await db.execute(
+        """DELETE FROM chat_history WHERE user_id = ? AND id NOT IN (
+               SELECT id FROM chat_history WHERE user_id = ?
+               ORDER BY created_at DESC LIMIT ?
+           )""",
+        (user_id, user_id, CHAT_HISTORY_LIMIT),
+    )
     await db.commit()
 
 
@@ -110,6 +118,7 @@ async def check_and_increment_rate_limit(user_id: int, task_type: str, limit: in
     """Проверяет лимит и инкрементирует счётчик. False = лимит превышен."""
     db = await get_db()
     window = int(time.time()) // HOUR * HOUR  # начало текущего часового окна
+    cutoff = window - 24 * HOUR  # окна старше 24 часов бесполезны
 
     await db.execute(
         """INSERT INTO rate_limits (user_id, task_type, window_start, count)
@@ -118,6 +127,8 @@ async def check_and_increment_rate_limit(user_id: int, task_type: str, limit: in
            DO UPDATE SET count = count + 1""",
         (user_id, task_type, window),
     )
+    # Удаляем устаревшие окна — они больше никогда не понадобятся
+    await db.execute("DELETE FROM rate_limits WHERE window_start < ?", (cutoff,))
     await db.commit()
 
     async with db.execute(
