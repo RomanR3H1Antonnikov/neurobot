@@ -1216,14 +1216,14 @@ async def confirm_unknown_input(message: Message, state: FSMContext) -> None:
             await _update_confirm_card(message, state)
             return
 
-        # image: если модель поддерживает ориентиры — добавляем туда.
-        # Фото удаляем молча, никаких сообщений не показываем.
+        # image: если модель поддерживает ориентиры — добавляем туда и обновляем карточку.
         if max_refs > 0:
             await message.delete()
             srefs = list(data.get("style_reference_file_ids") or [])
             if len(srefs) < max_refs:
                 srefs.append(photo.file_id)
                 await state.update_data(style_reference_file_ids=srefs)
+            await _update_confirm_card(message, state)
             return
 
         # image без поддержки ориентиров → подсказываем про редактирование
