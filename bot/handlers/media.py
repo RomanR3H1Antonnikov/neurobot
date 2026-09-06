@@ -471,6 +471,7 @@ async def back_to_model(callback: CallbackQuery, state: FSMContext) -> None:
         await callback.answer()
         return
 
+    await _delete_msgs_below(callback.bot, callback.message.chat.id, state, 0)
     await state.update_data(
         quick_edit=None,
         _gen_snapshot=None,
@@ -486,7 +487,7 @@ async def back_to_model(callback: CallbackQuery, state: FSMContext) -> None:
         style_reference_file_ids=None, adding_style_ref=None,
         managing_style_ref=None, managing_style_ref_index=None,
         video_first_frame_file_id=None, video_last_frame_file_id=None,
-        video_frames_expanded=None,
+        video_frames_expanded=None, _tracked_msg_ids=None,
     )
     await state.set_state(MediaStates.select_model)
     text = model_select_text(type_label, models)
