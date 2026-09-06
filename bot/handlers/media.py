@@ -1190,6 +1190,7 @@ async def confirm_unknown_input(message: Message, state: FSMContext) -> None:
 
     # Видео для редактирования
     if media_type == "video_edit" and message.video:
+        await message.delete()
         await state.update_data(reference_file_id=message.video.file_id, reference_type="video")
         await _update_confirm_card(message, state)
         return
@@ -1210,6 +1211,7 @@ async def confirm_unknown_input(message: Message, state: FSMContext) -> None:
         # photo_edit: прямая отправка фото всегда заменяет основное редактируемое фото
         # (ориентиры добавляются только через кнопку «Добавить ориентир»)
         if media_type == "photo_edit":
+            await message.delete()
             await state.update_data(reference_file_id=photo.file_id, reference_type="photo")
             await _update_confirm_card(message, state)
             return
@@ -1237,6 +1239,7 @@ async def confirm_unknown_input(message: Message, state: FSMContext) -> None:
             return
 
         # photo_edit, ориентиры не поддерживаются → заменяем основное фото
+        await message.delete()
         await state.update_data(reference_file_id=photo.file_id, reference_type="photo")
         await _update_confirm_card(message, state)
         return
