@@ -22,12 +22,13 @@ async def show_balance(message: Message, state: FSMContext, db_user: dict) -> No
     await cleanup_tracked_messages(message.bot, message.chat.id, state)
     await state.clear()
     await safe_delete(message, "BTN_BALANCE")
-    await message.answer(
+    sent = await message.answer(
         f"💳 <b>Твой баланс:</b> {db_user['balance']} кредитов\n\n"
         "Выбери пакет для пополнения:",
         parse_mode="HTML",
         reply_markup=balance_kb(),
     )
+    await state.update_data(_tracked_msg_ids=[sent.message_id])
 
 
 @router.callback_query(F.data.startswith("billing:topup:"))

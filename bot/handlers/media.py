@@ -252,8 +252,14 @@ async def select_type(callback: CallbackQuery, state: FSMContext) -> None:
         "video": {"duration": 5},
         "audio": {"audio_type": "voice"},
     }
-    # Сбрасываем все данные предыдущего раздела (промпт, модель и т.д.)
-    await state.set_data({"media_type": media_type, **defaults.get(media_type, {})})
+    # Сбрасываем все данные предыдущего раздела (промпт, модель и т.д.),
+    # но сохраняем трекинг сообщений чтобы cleanup мог удалить верхнее сообщение.
+    _curr = await state.get_data()
+    await state.set_data({
+        "_tracked_msg_ids": _curr.get("_tracked_msg_ids"),
+        "media_type": media_type,
+        **defaults.get(media_type, {}),
+    })
 
     task_type = _TYPE_TO_TASK.get(media_type)
     models = get_models_for_task(task_type) if task_type else []
@@ -493,12 +499,13 @@ async def back_to_model(callback: CallbackQuery, state: FSMContext) -> None:
         style_reference_file_ids=None, adding_style_ref=None,
         managing_style_ref=None, managing_style_ref_index=None,
         video_first_frame_file_id=None, video_last_frame_file_id=None,
-        video_frames_expanded=None, _tracked_msg_ids=None,
+        video_frames_expanded=None,
     )
     await state.set_state(MediaStates.select_model)
     text = model_select_text(type_label, models)
     try:
         await callback.message.edit_text(text, parse_mode="HTML", reply_markup=model_top_kb(models))
+        await _track_msg(state, callback.message.message_id)
     except Exception:
         # callback.message может быть фото (результат генерации) — edit_text на фото не работает
         try:
@@ -521,7 +528,8 @@ async def back_to_menu(callback: CallbackQuery, state: FSMContext) -> None:
 @router.callback_query(F.data == "media:switch_to_photo_edit")
 async def switch_to_photo_edit(callback: CallbackQuery, state: FSMContext) -> None:
     """Переключиться в режим редактирования фото прямо из подсказки."""
-    await state.set_data({"media_type": "photo_edit"})
+    _curr = await state.get_data()
+    await state.set_data({"_tracked_msg_ids": _curr.get("_tracked_msg_ids"), "media_type": "photo_edit"})
     models = get_models_for_task(TaskType.IMAGE_EDIT)
     await callback.message.edit_text(
         model_select_text("Изменить фото", models),
@@ -562,7 +570,7 @@ async def generate_again(callback: CallbackQuery, state: FSMContext) -> None:
 
     # В режиме быстрого редактирования «Попробовать снова» возвращает к вводу описания
     if data.get("quick_edit"):
-        await state.update_data(prompt=None, _tracked_msg_ids=None, _is_generating=None, _cleanup_warned_msg_id=None)
+        await state.update_data(prompt=None, _is_generating=None, _cleanup_warned_msg_id=None)
         await state.set_state(MediaStates.enter_prompt)
         try:
             await callback.message.edit_reply_markup(reply_markup=None)
@@ -588,7 +596,6 @@ async def generate_again(callback: CallbackQuery, state: FSMContext) -> None:
         managing_style_ref=None, managing_style_ref_index=None,
         video_frames_expanded=None,
         entering_duration=None,
-        _tracked_msg_ids=None,
         _is_generating=None,
         _cleanup_warned_msg_id=None,
     )
@@ -1300,7 +1307,9 @@ async def photo_with_caption_shortcut(message: Message, state: FSMContext) -> No
         await message.answer("⚠️ Редактирование фото временно недоступно.")
         return
 
+    _curr = await state.get_data()
     await state.set_data({
+        "_tracked_msg_ids": _curr.get("_tracked_msg_ids"),
         "media_type": "photo_edit",
         "reference_file_id": photo.file_id,
         "reference_type": "photo",

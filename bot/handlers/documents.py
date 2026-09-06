@@ -48,6 +48,7 @@ async def enter_docs(message: Message, state: FSMContext) -> None:
     await safe_delete(message, "BTN_DOCS")
     await state.set_state(DocumentStates.awaiting_file)
     sent = await message.answer(AWAITING_FILE_TEXT, reply_markup=_file_kb())
+    await state.update_data(_tracked_msg_ids=[sent.message_id])
     logger.info("[NAV] enter_docs sent msg_id=%s", sent.message_id)
 
 

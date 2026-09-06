@@ -62,6 +62,7 @@ async def enter_chat(message: Message, state: FSMContext) -> None:
         parse_mode="HTML",
         reply_markup=_chat_model_kb(models),
     )
+    await state.update_data(_tracked_msg_ids=[sent.message_id])
     logger.info("[NAV] enter_chat sent model kb msg_id=%s", sent.message_id)
 
 
