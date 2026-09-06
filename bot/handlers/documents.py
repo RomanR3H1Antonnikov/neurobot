@@ -41,6 +41,7 @@ def _task_kb() -> InlineKeyboardMarkup:
 async def enter_docs(message: Message, state: FSMContext) -> None:
     await cleanup_tracked_messages(message.bot, message.chat.id, state)
     await state.clear()
+    await message.delete()
     await state.set_state(DocumentStates.awaiting_file)
     await message.answer(AWAITING_FILE_TEXT, reply_markup=_file_kb())
 

@@ -225,6 +225,7 @@ MEDIA_MENU_TEXT = (
 async def media_menu(message: Message, state: FSMContext) -> None:
     await cleanup_tracked_messages(message.bot, message.chat.id, state)
     await state.clear()
+    await message.delete()
     await state.set_state(MediaStates.select_type)
     sent = await message.answer(MEDIA_MENU_TEXT, parse_mode="HTML", reply_markup=media_type_kb())
     await state.update_data(_tracked_msg_ids=[sent.message_id])

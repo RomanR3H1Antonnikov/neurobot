@@ -45,6 +45,7 @@ def _chat_model_kb(models: list[dict]) -> InlineKeyboardMarkup:
 async def enter_chat(message: Message, state: FSMContext) -> None:
     await cleanup_tracked_messages(message.bot, message.chat.id, state)
     await state.clear()
+    await message.delete()
     models = get_models_for_task(TaskType.CHAT)
     if not models:
         await message.answer("⚠️ Чат временно недоступен. Попробуй позже.")
