@@ -723,6 +723,7 @@ async def style_ref_done(callback: CallbackQuery, state: FSMContext) -> None:
     data = await state.get_data()
     await callback.message.edit_text(_confirm_card_text(data), parse_mode="HTML", reply_markup=_confirm_kb(data))
     await state.update_data(confirm_msg_id=callback.message.message_id)
+    await _delete_msgs_below(callback.bot, callback.message.chat.id, state, callback.message.message_id)
     await callback.answer()
 
 
@@ -816,6 +817,7 @@ async def back_to_confirm(callback: CallbackQuery, state: FSMContext) -> None:
     try:
         await callback.message.edit_text(text, parse_mode="HTML", reply_markup=kb)
         await state.update_data(confirm_msg_id=callback.message.message_id)
+        await _delete_msgs_below(callback.bot, callback.message.chat.id, state, callback.message.message_id)
     except Exception:
         try:
             await callback.message.edit_reply_markup(reply_markup=None)
@@ -1253,13 +1255,8 @@ async def confirm_unknown_input(message: Message, state: FSMContext) -> None:
         hint = "Не понял запроса. Введи текстовое описание или воспользуйся кнопками."
 
     await message.delete()
-    await message.answer(hint)
-    sent = await message.answer(
-        _confirm_card_text(data),
-        parse_mode="HTML",
-        reply_markup=_confirm_kb(data),
-    )
-    await state.update_data(confirm_msg_id=sent.message_id)
+    sent_hint = await message.answer(hint)
+    await _track_msg(state, sent_hint.message_id)
 
 
 # ─── Фото с подписью — быстрый запуск редактирования ─────────────────────────
