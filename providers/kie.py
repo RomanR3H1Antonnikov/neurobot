@@ -277,6 +277,7 @@ class KieProvider(OpenAICompatProvider):
         self, prompt: str, duration: int = 5, model: str | None = None,
         first_frame_url: str | None = None,
         last_frame_url: str | None = None,
+        style_reference_urls: list[str] | None = None,
     ) -> GenerationResult:
         actual_model = model or "kling-3.0/video"
         corr_id = uuid.uuid4().hex

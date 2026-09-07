@@ -158,6 +158,9 @@ def _confirm_card_text(data: dict) -> str:
             lines.append(f"<b>{'Ориентир' if len(_srefs) == 1 else 'Ориентиры'}:</b> {len(_srefs)} фото ✅")
     elif media_type == "video":
         lines.append(f"<b>Длительность:</b> {data.get('duration', 5)} сек")
+        _srefs = data.get("style_reference_file_ids") or []
+        if _srefs:
+            lines.append(f"<b>{'Ориентир' if len(_srefs) == 1 else 'Ориентиры'}:</b> {len(_srefs)} фото ✅")
     elif media_type == "audio":
         t = "Озвучка" if data.get("audio_type", "voice") == "voice" else "Музыка"
         lines.append(f"<b>Тип аудио:</b> {t}")
@@ -200,6 +203,8 @@ def _confirm_kb(data: dict):
             has_first_frame=bool(data.get("video_first_frame_file_id")),
             has_last_frame=bool(data.get("video_last_frame_file_id")),
             frames_expanded=bool(data.get("video_frames_expanded")),
+            style_ref_count=style_ref_count,
+            max_style_refs=data.get("model_max_style_refs", 0),
         )
     elif media_type == "audio":
         return audio_confirm_kb(has_prompt=has_prompt)
@@ -1245,7 +1250,7 @@ async def confirm_unknown_input(message: Message, state: FSMContext) -> None:
         return
 
     # Фото в confirm state
-    if message.photo and media_type in ("image", "photo_edit"):
+    if message.photo and media_type in ("image", "photo_edit", "video"):
         photo = message.photo[-1]
         max_refs = data.get("model_max_style_refs", 0)
 
@@ -1277,6 +1282,15 @@ async def confirm_unknown_input(message: Message, state: FSMContext) -> None:
                     [InlineKeyboardButton(text="✏️ Перейти в редактирование фото", callback_data="media:switch_to_photo_edit")],
                 ]),
             )
+            return
+
+        # video без поддержки ориентиров → подсказка
+        if media_type == "video":
+            await message.delete()
+            sent_hint = await message.answer(
+                "Введи текстовое описание видео или добавь кадры кнопками ниже."
+            )
+            await _track_msg(state, sent_hint.message_id)
             return
 
         # photo_edit, ориентиры не поддерживаются → заменяем основное фото
@@ -1552,6 +1566,7 @@ async def _run_generation(send_msg: Message, tg_user, state: FSMContext, data: d
             tg_user.id, tg_user.username, prompt, data.get("duration", 5), model_slug,
             first_frame_url=first_frame_url,
             last_frame_url=last_frame_url,
+            style_reference_urls=style_reference_urls,
         )
         file = BufferedInputFile(result.data, filename=result.filename)
         sent = await send_msg.answer_video(file, reply_markup=after_generation_kb())

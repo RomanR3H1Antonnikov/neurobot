@@ -53,7 +53,10 @@ class AbstractProvider(ABC):
         ...
 
     @abstractmethod
-    async def generate_video(self, prompt: str, duration: int = 5) -> GenerationResult:
+    async def generate_video(
+        self, prompt: str, duration: int = 5,
+        style_reference_urls: list[str] | None = None,
+    ) -> GenerationResult:
         ...
 
     @abstractmethod

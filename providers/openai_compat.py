@@ -87,7 +87,8 @@ class OpenAICompatProvider(AbstractProvider):
         return GenerationResult(data=image_bytes, mime_type="image/png", filename="image.png")
 
     async def generate_video(
-        self, prompt: str, duration: int = 5, model: str | None = None
+        self, prompt: str, duration: int = 5, model: str | None = None,
+        style_reference_urls: list[str] | None = None,
     ) -> GenerationResult:
         actual_model = model or self.video_model
 

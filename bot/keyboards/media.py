@@ -181,6 +181,8 @@ def video_confirm_kb(
     has_first_frame: bool = False,
     has_last_frame: bool = False,
     frames_expanded: bool = False,
+    style_ref_count: int = 0,
+    max_style_refs: int = 0,
 ) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     builder.row(InlineKeyboardButton(
@@ -194,6 +196,9 @@ def video_confirm_kb(
         builder.row(InlineKeyboardButton(text=last_text, callback_data="media:add_last_frame"))
     else:
         builder.row(InlineKeyboardButton(text="📎 Добавить кадры", callback_data="media:toggle_frames"))
+    if max_style_refs > 0:
+        ref_text = f"🖼 Ориентиры: {style_ref_count} фото ✅" if style_ref_count else "📎 Добавить ориентир"
+        builder.row(InlineKeyboardButton(text=ref_text, callback_data="media:add_style_ref"))
     edit_text = "✏️ Изменить описание" if has_prompt else "✏️ Ввести описание"
     builder.row(
         InlineKeyboardButton(text=edit_text, callback_data="media:edit_prompt"),

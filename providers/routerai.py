@@ -52,6 +52,7 @@ class RouteraiProvider(OpenAICompatProvider):
     async def generate_video(
         self, prompt: str, duration: int = 5, model: str | None = None,
         aspect_ratio: str = "16:9", resolution: str = "720p",
+        style_reference_urls: list[str] | None = None,
     ) -> GenerationResult:
         actual_model = model or "alibaba/happyhorse-1.1"
 
