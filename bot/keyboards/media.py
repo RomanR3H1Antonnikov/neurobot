@@ -240,9 +240,21 @@ def video_frames_menu_kb(
         first_text = "📎 Начало видео: фото ✅" if has_first_frame else "📎 Начало видео"
         last_text = "📎 Конец видео: фото ✅" if has_last_frame else "📎 Конец видео"
     if show_first_frame:
-        builder.row(InlineKeyboardButton(text=first_text, callback_data="media:add_first_frame"))
+        if has_first_frame:
+            builder.row(
+                InlineKeyboardButton(text=first_text, callback_data="media:add_first_frame"),
+                InlineKeyboardButton(text="🗑", callback_data="media:delete_first_frame"),
+            )
+        else:
+            builder.row(InlineKeyboardButton(text=first_text, callback_data="media:add_first_frame"))
     if show_last_frame:
-        builder.row(InlineKeyboardButton(text=last_text, callback_data="media:add_last_frame"))
+        if has_last_frame:
+            builder.row(
+                InlineKeyboardButton(text=last_text, callback_data="media:add_last_frame"),
+                InlineKeyboardButton(text="🗑", callback_data="media:delete_last_frame"),
+            )
+        else:
+            builder.row(InlineKeyboardButton(text=last_text, callback_data="media:add_last_frame"))
     if not motion_control and max_extra_refs > 0:
         extra_text = (
             f"📎 Остальные кадры: {extra_ref_count} фото ✅"
@@ -318,6 +330,12 @@ def edit_confirm_kb(
 def back_to_confirm_kb() -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     builder.row(InlineKeyboardButton(text="◀️ Назад", callback_data="media:back:confirm"))
+    return builder.as_markup()
+
+
+def back_to_frames_kb() -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    builder.row(InlineKeyboardButton(text="◀️ Назад", callback_data="media:back:frames"))
     return builder.as_markup()
 
 

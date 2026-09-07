@@ -14,7 +14,7 @@ from bot.utils import cleanup_tracked_messages, safe_delete
 from bot.keyboards.billing import quick_topup_kb
 from bot.keyboards.media import (
     media_type_kb, media_edit_kb, model_top_kb, model_variant_kb,
-    model_select_text, model_variant_text, back_to_model_kb, back_to_confirm_kb,
+    model_select_text, model_variant_text, back_to_model_kb, back_to_confirm_kb, back_to_frames_kb,
     image_confirm_kb, image_ratio_kb, image_resolution_kb,
     video_confirm_kb, video_frames_menu_kb, video_duration_picker_kb, audio_confirm_kb, edit_confirm_kb,
     style_ref_collecting_kb, after_generation_kb, gen_waiting_kb, error_kb,
@@ -1009,7 +1009,7 @@ async def add_first_frame(callback: CallbackQuery, state: FSMContext) -> None:
         hint = "📎 Отправь другое фото (начальный кадр):" if has else "📎 Отправь фото — оно станет начальным кадром для Motion Control:"
     else:
         hint = "📎 Отправь другое фото для начала видео:" if has else "📎 Отправь фото — оно будет первым кадром (начало видео):"
-    await callback.message.edit_text(hint, reply_markup=back_to_confirm_kb())
+    await callback.message.edit_text(hint, reply_markup=back_to_frames_kb())
     await state.set_state(MediaStates.enter_reference)
     await callback.answer()
 
@@ -1024,7 +1024,7 @@ async def add_last_frame(callback: CallbackQuery, state: FSMContext) -> None:
         hint = "📎 Отправь другое видео (движение):" if has else "📎 Отправь видео — оно задаст характер движения для Motion Control:"
     else:
         hint = "📎 Отправь другое фото для конца видео:" if has else "📎 Отправь фото — оно будет последним кадром (конец видео):"
-    await callback.message.edit_text(hint, reply_markup=back_to_confirm_kb())
+    await callback.message.edit_text(hint, reply_markup=back_to_frames_kb())
     await state.set_state(MediaStates.enter_reference)
     await callback.answer()
 
@@ -1059,6 +1059,29 @@ async def back_to_confirm(callback: CallbackQuery, state: FSMContext) -> None:
         await _track_msg(state, sent.message_id)
         await state.update_data(confirm_msg_id=sent.message_id)
     await callback.answer()
+
+
+@router.callback_query(F.data == "media:back:frames")
+async def back_to_frames(callback: CallbackQuery, state: FSMContext) -> None:
+    """Возврат в меню кадров из hint-сообщения (когда нажали 'Начало/Конец видео')."""
+    await state.update_data(adding_video_frame=None)
+    await state.set_state(MediaStates.confirm)
+    await _back_to_frames_menu(callback.bot, callback.message.chat.id, state)
+    await callback.answer()
+
+
+@router.callback_query(MediaStates.confirm, F.data == "media:delete_first_frame")
+async def delete_first_frame(callback: CallbackQuery, state: FSMContext) -> None:
+    await state.update_data(video_first_frame_file_id=None, _sref_msg_id=callback.message.message_id)
+    await _back_to_frames_menu(callback.bot, callback.message.chat.id, state)
+    await callback.answer("Фото удалено")
+
+
+@router.callback_query(MediaStates.confirm, F.data == "media:delete_last_frame")
+async def delete_last_frame(callback: CallbackQuery, state: FSMContext) -> None:
+    await state.update_data(video_last_frame_file_id=None, _sref_msg_id=callback.message.message_id)
+    await _back_to_frames_menu(callback.bot, callback.message.chat.id, state)
+    await callback.answer("Фото удалено")
 
 
 # ─── Загрузка референса (только для edit) ────────────────────────────────────
