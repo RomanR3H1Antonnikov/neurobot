@@ -79,25 +79,31 @@ class BratuhaProvider(AbstractProvider):
         raise ProviderUnavailableError("Bratuha: истекло время ожидания генерации")
 
     async def generate_video(
-        self,
-        prompt: str,
-        duration: int = 5,
-        model: str | None = None,
-        aspect_ratio: str | None = None,
-        resolution: str | None = None,
+        self, prompt: str, duration: int = 5, model: str | None = None,
         style_reference_urls: list[str] | None = None,
+        aspect_ratio: str | None = None, resolution: str | None = None,
         audio_reference_urls: list[str] | None = None,
+        first_frame_url: str | None = None, last_frame_url: str | None = None,
+        video_reference_urls: list[str] | None = None,
     ) -> GenerationResult:
         actual_model = model or "veo3.1-lite"
         tool = _MODEL_TOOLS.get(actual_model, "veo-3-1")
 
-        op_id = await self._create_operation(tool, {
+        input_payload: dict = {
             "generation_type": "text",
             "model": actual_model,
             "prompt": prompt,
             "aspect_ratio": aspect_ratio or "16:9",
             "resolution": resolution or "1080p",
-        })
+        }
+        # Veo Fast принимает до 3 изображений, Quality — только первое
+        if style_reference_urls:
+            if actual_model == "veo3.1-quality":
+                input_payload["image_url"] = style_reference_urls[0]
+            else:
+                input_payload["image_urls"] = list(style_reference_urls)
+
+        op_id = await self._create_operation(tool, input_payload)
         result = await self._poll_operation(op_id)
 
         url = (

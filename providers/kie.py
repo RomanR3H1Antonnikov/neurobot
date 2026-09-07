@@ -281,36 +281,55 @@ class KieProvider(OpenAICompatProvider):
         aspect_ratio: str | None = None,
         resolution: str | None = None,
         audio_reference_urls: list[str] | None = None,
+        video_reference_urls: list[str] | None = None,
     ) -> GenerationResult:
         actual_model = model or "kling-3.0/video"
         corr_id = uuid.uuid4().hex
         fut = register_pending(corr_id)
 
-        # Kling v3 Turbo и v3 требуют duration как строку и поле resolution
         is_kling = actual_model.startswith("kling")
+        is_bytedance = actual_model.startswith("bytedance/")
+        is_wan = actual_model.startswith("wan/")
+        is_pixverse = actual_model.startswith("pixverse")
+
         input_data: dict = {
             "prompt": prompt,
             "duration": str(duration) if is_kling else duration,
             "aspect_ratio": aspect_ratio or "16:9",
         }
-        if is_kling:
+        if is_kling or is_wan:
             input_data["resolution"] = resolution or "720p"
 
-        if first_frame_url or last_frame_url:
-            if actual_model.startswith("bytedance/"):
-                if first_frame_url:
-                    input_data["first_frame_url"] = first_frame_url
-                if last_frame_url:
-                    input_data["last_frame_url"] = last_frame_url
-            elif is_kling:
+        # ── Первый / последний кадр ──────────────────────────────────────────
+        if is_bytedance:
+            if first_frame_url:
+                input_data["first_frame_url"] = first_frame_url
+            if last_frame_url:
+                input_data["last_frame_url"] = last_frame_url
+        elif is_kling:
+            if first_frame_url or last_frame_url:
                 input_data["image_urls"] = [u for u in [first_frame_url, last_frame_url] if u]
-            else:
-                # minimax-h3, wan, pixverse — только первый кадр
-                if first_frame_url:
-                    input_data["image_url"] = first_frame_url
+        elif is_wan or is_pixverse:
+            if first_frame_url:
+                input_data["first_frame_url"] = first_frame_url
+            if last_frame_url:
+                input_data["last_frame_url"] = last_frame_url
 
-        if audio_reference_urls and actual_model.startswith("bytedance/"):
+        # ── Фото-референсы (extra style refs) ───────────────────────────────
+        if style_reference_urls:
+            if is_bytedance:
+                input_data["style_reference_urls"] = list(style_reference_urls)
+            else:
+                # minimax-h3, wan, pixverse, happyhorse и прочие
+                input_data["image_urls"] = list(style_reference_urls)
+
+        # ── Аудио-референсы ─────────────────────────────────────────────────
+        if audio_reference_urls:
             input_data["audio_urls"] = list(audio_reference_urls)
+
+        # ── Видео-референсы ──────────────────────────────────────────────────
+        if video_reference_urls:
+            input_data["video_urls"] = list(video_reference_urls)
 
         try:
             await self._create_job(actual_model, input_data, corr_id)
