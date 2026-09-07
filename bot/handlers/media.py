@@ -509,6 +509,54 @@ async def back_to_model(callback: CallbackQuery, state: FSMContext) -> None:
         await callback.answer()
         return
 
+    # Если модель входит в группу — сначала возвращаем к списку вариантов группы,
+    # а не сразу к полному списку моделей
+    model_slug = data.get("model_slug")
+    if model_slug and data.get("model_has_group"):
+        model_cfg_cur = next((m for m in models if m["id"] == model_slug), None)
+        group_id = model_cfg_cur.get("group") if model_cfg_cur else None
+        if group_id:
+            variants = [m for m in models if m.get("group") == group_id]
+            if variants:
+                group_label = variants[0].get("group_label", group_id)
+                description = variants[0].get("description", "")
+                # Сбрасываем данные модели — при повторном нажатии "Назад"
+                # из списка вариантов model_has_group уже будет None → пойдём к полному списку
+                await state.update_data(
+                    model_slug=None, model_label=None, model_description=None,
+                    model_variant_description=None, model_has_group=None,
+                    model_actual_id=None, model_aspect_ratios=None,
+                    model_duration_options=None, model_min_duration=None,
+                    model_max_duration=None, model_max_style_refs=None,
+                    model_resolutions=None, model_motion_control=None,
+                    entering_duration=None, confirm_msg_id=None,
+                    prompt=None, reference_file_id=None, reference_type=None,
+                    generated_file_id=None, style_reference_file_ids=None,
+                    adding_style_ref=None, video_first_frame_file_id=None,
+                    video_last_frame_file_id=None,
+                )
+                await state.set_state(MediaStates.select_model)
+                try:
+                    await callback.message.edit_text(
+                        model_variant_text(group_label, description),
+                        parse_mode="HTML",
+                        reply_markup=model_variant_kb(variants),
+                    )
+                    await _track_msg(state, callback.message.message_id)
+                except Exception:
+                    try:
+                        await callback.message.edit_reply_markup(reply_markup=None)
+                    except Exception:
+                        pass
+                    sent = await callback.message.answer(
+                        model_variant_text(group_label, description),
+                        parse_mode="HTML",
+                        reply_markup=model_variant_kb(variants),
+                    )
+                    await _track_msg(state, sent.message_id)
+                await callback.answer()
+                return
+
     await _delete_msgs_below(callback.bot, callback.message.chat.id, state, 0)
     await state.update_data(
         quick_edit=None,
