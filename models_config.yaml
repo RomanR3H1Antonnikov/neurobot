@@ -228,6 +228,7 @@ tasks:
         max_duration: 30
         aspect_ratios: ["16:9", "4:3", "1:1", "3:4", "9:16", "21:9"]
         resolutions: ["480p", "720p", "1080p"]
+        max_style_refs: 30
         model_id: bytedance/seedance-2-5
         provider: kie
         cost_credits: 1
@@ -238,13 +239,14 @@ tasks:
         label: "Seedance 2"
         description: >-
           Нейросеть для генерации кинематографических видео (до 35 секунд, до 4K) по тексту,
-          изображениям, видео- и аудиореференсам с синхронизированным звуком, контролем камеры
+          изображениями, видео- и аудиореференсам с синхронизированным звуком, контролем камеры
           и сохранением консистентности персонажей.
         duration_options: [5, 10, 15]
         min_duration: 4
         max_duration: 15
         aspect_ratios: ["16:9", "4:3", "1:1", "3:4", "9:16", "21:9"]
         resolutions: ["480p", "720p", "1080p", "4K"]
+        max_style_refs: 30
         model_id: bytedance/seedance-2
         provider: kie
         cost_credits: 1
@@ -318,6 +320,7 @@ tasks:
         duration_options: [5, 10, 15]
         min_duration: 4
         max_duration: 15
+        max_style_refs: 12
         model_id: minimax-h3/text-to-video
         provider: kie
         cost_credits: 1

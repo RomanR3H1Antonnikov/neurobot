@@ -180,8 +180,7 @@ def video_confirm_kb(
     duration_options: list[int] | None = None,
     has_first_frame: bool = False,
     has_last_frame: bool = False,
-    style_ref_count: int = 0,
-    max_style_refs: int = 0,
+    has_extra_refs: bool = False,
     aspect_ratio: str | None = None,
     has_aspect_ratios: bool = False,
     resolution: str | None = None,
@@ -201,11 +200,8 @@ def video_confirm_kb(
         builder.row(InlineKeyboardButton(text=f"📐 Масштаб: {aspect_ratio}", callback_data="media:pick_ratio"))
     elif has_resolutions and resolution:
         builder.row(InlineKeyboardButton(text=f"🖼 Качество: {resolution}", callback_data="media:pick_resolution"))
-    frames_text = "📎 Кадры ✅" if (has_first_frame or has_last_frame) else "📎 Кадры"
+    frames_text = "📎 Кадры ✅" if (has_first_frame or has_last_frame or has_extra_refs) else "📎 Кадры"
     builder.row(InlineKeyboardButton(text=frames_text, callback_data="media:toggle_frames"))
-    if max_style_refs > 0:
-        ref_text = f"🖼 Ориентиры: {style_ref_count} фото ✅" if style_ref_count else "📎 Добавить ориентир"
-        builder.row(InlineKeyboardButton(text=ref_text, callback_data="media:add_style_ref"))
     edit_text = "✏️ Изменить описание" if has_prompt else "✏️ Ввести описание"
     builder.row(
         InlineKeyboardButton(text=edit_text, callback_data="media:edit_prompt"),
@@ -219,6 +215,8 @@ def video_frames_menu_kb(
     has_first_frame: bool = False,
     has_last_frame: bool = False,
     motion_control: bool = False,
+    extra_ref_count: int = 0,
+    max_extra_refs: int = 0,
 ) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     if motion_control:
@@ -229,6 +227,13 @@ def video_frames_menu_kb(
         last_text = "📎 Последний кадр: фото ✅" if has_last_frame else "📎 Последний кадр"
     builder.row(InlineKeyboardButton(text=first_text, callback_data="media:add_first_frame"))
     builder.row(InlineKeyboardButton(text=last_text, callback_data="media:add_last_frame"))
+    if not motion_control and max_extra_refs > 0:
+        extra_text = (
+            f"📎 Остальные кадры: {extra_ref_count} фото ✅"
+            if extra_ref_count else
+            "📎 Остальные кадры"
+        )
+        builder.row(InlineKeyboardButton(text=extra_text, callback_data="media:add_style_ref"))
     builder.row(InlineKeyboardButton(text="◀️ Назад", callback_data="media:back:confirm"))
     return builder.as_markup()
 

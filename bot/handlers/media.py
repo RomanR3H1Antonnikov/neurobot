@@ -210,8 +210,7 @@ def _confirm_kb(data: dict):
             duration_options=data.get("model_duration_options"),
             has_first_frame=bool(data.get("video_first_frame_file_id")),
             has_last_frame=bool(data.get("video_last_frame_file_id")),
-            style_ref_count=style_ref_count,
-            max_style_refs=data.get("model_max_style_refs", 0),
+            has_extra_refs=bool(data.get("style_reference_file_ids")),
             aspect_ratio=data.get("aspect_ratio"),
             has_aspect_ratios=bool(data.get("model_aspect_ratios")),
             resolution=data.get("resolution"),
@@ -864,6 +863,8 @@ async def toggle_frames(callback: CallbackQuery, state: FSMContext) -> None:
     """Открывает меню выбора кадров видео."""
     data = await state.get_data()
     motion_control = bool(data.get("model_motion_control"))
+    max_extra_refs = data.get("model_max_style_refs", 0) if not motion_control else 0
+    extra_ref_count = len(data.get("style_reference_file_ids") or [])
     title = (
         "📎 <b>Motion Control</b>\n\nДобавь фото (начальный кадр) и видео (задаёт характер движения):"
         if motion_control else
@@ -876,6 +877,8 @@ async def toggle_frames(callback: CallbackQuery, state: FSMContext) -> None:
             has_first_frame=bool(data.get("video_first_frame_file_id")),
             has_last_frame=bool(data.get("video_last_frame_file_id")),
             motion_control=motion_control,
+            extra_ref_count=extra_ref_count,
+            max_extra_refs=max_extra_refs,
         ),
     )
     await callback.answer()
