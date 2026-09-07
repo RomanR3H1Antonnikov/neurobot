@@ -168,7 +168,7 @@ def _confirm_card_text(data: dict) -> str:
             lines.append(f"<b>Качество:</b> {_v_res}")
         _srefs = data.get("style_reference_file_ids") or []
         if _srefs:
-            lines.append(f"<b>{'Ориентир' if len(_srefs) == 1 else 'Ориентиры'}:</b> {len(_srefs)} фото ✅")
+            lines.append(f"<b>Доп. кадры:</b> {len(_srefs)} фото ✅")
     elif media_type == "audio":
         t = "Озвучка" if data.get("audio_type", "voice") == "voice" else "Музыка"
         lines.append(f"<b>Тип аудио:</b> {t}")
@@ -570,7 +570,7 @@ async def back_to_model(callback: CallbackQuery, state: FSMContext) -> None:
         entering_duration=None, confirm_msg_id=None,
         reference_file_id=None, reference_type=None,
         generated_file_id=None,
-        style_reference_file_ids=None, adding_style_ref=None,
+        style_reference_file_ids=None, adding_style_ref=None, adding_video_extra_frame=None,
         managing_style_ref=None, managing_style_ref_index=None,
         video_first_frame_file_id=None, video_last_frame_file_id=None,
         video_frames_expanded=None,
@@ -884,6 +884,23 @@ async def toggle_frames(callback: CallbackQuery, state: FSMContext) -> None:
     await callback.answer()
 
 
+@router.callback_query(MediaStates.confirm, F.data == "media:add_extra_frames")
+async def add_extra_frames(callback: CallbackQuery, state: FSMContext) -> None:
+    """Кнопка 'Остальные кадры' — принимает фото без отдельного раздела управления."""
+    data = await state.get_data()
+    count = len(data.get("style_reference_file_ids") or [])
+    max_refs = data.get("model_max_style_refs", 0)
+    hint = (
+        f"📎 Добавлено {count} фото. Отправь ещё (до {max_refs} всего). Когда закончишь — нажми «Назад»."
+        if count else
+        f"📎 Отправь фото — оно добавится как дополнительный кадр. Можно добавить до {max_refs} штук.\nКогда закончишь — нажми «Назад»."
+    )
+    await state.update_data(adding_video_extra_frame=True, _sref_msg_id=callback.message.message_id)
+    await callback.message.edit_text(hint, reply_markup=back_to_confirm_kb())
+    await state.set_state(MediaStates.enter_reference)
+    await callback.answer()
+
+
 @router.callback_query(MediaStates.confirm, F.data == "media:add_first_frame")
 async def add_first_frame(callback: CallbackQuery, state: FSMContext) -> None:
     """Кнопка 'Первый кадр' / 'Фото' на карточке видео-генерации."""
@@ -923,7 +940,10 @@ async def back_to_confirm(callback: CallbackQuery, state: FSMContext) -> None:
     if data.get("quick_edit") and await _restore_gen_snapshot(callback, state):
         return
 
-    await state.update_data(adding_style_ref=None, managing_style_ref=None, managing_style_ref_index=None)
+    await state.update_data(
+        adding_style_ref=None, adding_video_extra_frame=None,
+        managing_style_ref=None, managing_style_ref_index=None,
+    )
     await state.set_state(MediaStates.confirm)
     text = _confirm_card_text(data)
     kb = _confirm_kb(data)
@@ -965,6 +985,19 @@ async def receive_reference_photo(message: Message, state: FSMContext) -> None:
         await _track_msg(state, sent.message_id)
         return
     photo = message.photo[-1]
+    if data.get("adding_video_extra_frame"):
+        await message.delete()
+        srefs = list(data.get("style_reference_file_ids") or [])
+        max_refs = data.get("model_max_style_refs", 0)
+        if len(srefs) < max_refs:
+            srefs.append(photo.file_id)
+        await state.update_data(style_reference_file_ids=srefs)
+        await _update_sref_status(
+            message.bot, message.chat.id, state,
+            f"✅ Добавлено! Кадров: {len(srefs)}/{max_refs}. Отправь ещё или нажми «Назад».",
+            back_to_confirm_kb(),
+        )
+        return
     if data.get("adding_style_ref"):
         await message.delete()
         srefs = list(data.get("style_reference_file_ids") or [])
@@ -1110,6 +1143,15 @@ async def enter_reference_text_input(message: Message, state: FSMContext) -> Non
 @router.message(MediaStates.enter_reference, ~F.text.in_(MENU_BUTTONS))
 async def reference_wrong_type(message: Message, state: FSMContext) -> None:
     data = await state.get_data()
+    if data.get("adding_video_extra_frame"):
+        count = len(data.get("style_reference_file_ids") or [])
+        max_refs = data.get("model_max_style_refs", 0)
+        await _update_sref_status(
+            message.bot, message.chat.id, state,
+            f"Пожалуйста, пришли фото. Кадров: {count}/{max_refs}.",
+            back_to_confirm_kb(),
+        )
+        return
     if data.get("adding_style_ref"):
         count = len(data.get("style_reference_file_ids") or [])
         max_refs = data.get("model_max_style_refs", 14)
