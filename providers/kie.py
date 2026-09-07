@@ -278,6 +278,8 @@ class KieProvider(OpenAICompatProvider):
         first_frame_url: str | None = None,
         last_frame_url: str | None = None,
         style_reference_urls: list[str] | None = None,
+        aspect_ratio: str | None = None,
+        resolution: str | None = None,
     ) -> GenerationResult:
         actual_model = model or "kling-3.0/video"
         corr_id = uuid.uuid4().hex
@@ -288,10 +290,10 @@ class KieProvider(OpenAICompatProvider):
         input_data: dict = {
             "prompt": prompt,
             "duration": str(duration) if is_kling else duration,
-            "aspect_ratio": "16:9",
+            "aspect_ratio": aspect_ratio or "16:9",
         }
         if is_kling:
-            input_data["resolution"] = "720p"
+            input_data["resolution"] = resolution or "720p"
 
         if first_frame_url or last_frame_url:
             if actual_model.startswith("bytedance/"):

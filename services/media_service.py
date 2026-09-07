@@ -55,6 +55,8 @@ async def generate_video(
     first_frame_url: str | None = None,
     last_frame_url: str | None = None,
     style_reference_urls: list[str] | None = None,
+    aspect_ratio: str | None = None,
+    resolution: str | None = None,
 ) -> GenerationResult:
     task = TaskType.VIDEO_GENERATION
     provider, model_cfg = get_provider_by_model_id(task, model_slug)
@@ -65,6 +67,8 @@ async def generate_video(
         first_frame_url=first_frame_url,
         last_frame_url=last_frame_url,
         style_reference_urls=style_reference_urls,
+        aspect_ratio=aspect_ratio,
+        resolution=resolution,
     )
     await deduct_credits(user_id, model_cfg["cost_credits"], task.value)
     return result

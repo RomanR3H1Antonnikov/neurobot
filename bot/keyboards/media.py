@@ -182,12 +182,25 @@ def video_confirm_kb(
     has_last_frame: bool = False,
     style_ref_count: int = 0,
     max_style_refs: int = 0,
+    aspect_ratio: str | None = None,
+    has_aspect_ratios: bool = False,
+    resolution: str | None = None,
+    has_resolutions: bool = False,
 ) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     builder.row(InlineKeyboardButton(
         text=f"⏱ Длительность: {duration} сек",
         callback_data="media:pick_duration",
     ))
+    if has_aspect_ratios and has_resolutions and aspect_ratio and resolution:
+        builder.row(
+            InlineKeyboardButton(text=f"📐 Масштаб: {aspect_ratio}", callback_data="media:pick_ratio"),
+            InlineKeyboardButton(text=f"🖼 Качество: {resolution}", callback_data="media:pick_resolution"),
+        )
+    elif has_aspect_ratios and aspect_ratio:
+        builder.row(InlineKeyboardButton(text=f"📐 Масштаб: {aspect_ratio}", callback_data="media:pick_ratio"))
+    elif has_resolutions and resolution:
+        builder.row(InlineKeyboardButton(text=f"🖼 Качество: {resolution}", callback_data="media:pick_resolution"))
     frames_text = "📎 Кадры ✅" if (has_first_frame or has_last_frame) else "📎 Кадры"
     builder.row(InlineKeyboardButton(text=frames_text, callback_data="media:toggle_frames"))
     if max_style_refs > 0:
@@ -202,10 +215,18 @@ def video_confirm_kb(
     return builder.as_markup()
 
 
-def video_frames_menu_kb(has_first_frame: bool = False, has_last_frame: bool = False) -> InlineKeyboardMarkup:
+def video_frames_menu_kb(
+    has_first_frame: bool = False,
+    has_last_frame: bool = False,
+    motion_control: bool = False,
+) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
-    first_text = "📎 Первый кадр: фото ✅" if has_first_frame else "📎 Первый кадр"
-    last_text = "📎 Последний кадр: фото ✅" if has_last_frame else "📎 Последний кадр"
+    if motion_control:
+        first_text = "📎 Фото ✅" if has_first_frame else "📎 Фото"
+        last_text = "📎 Видео ✅" if has_last_frame else "📎 Видео"
+    else:
+        first_text = "📎 Первый кадр: фото ✅" if has_first_frame else "📎 Первый кадр"
+        last_text = "📎 Последний кадр: фото ✅" if has_last_frame else "📎 Последний кадр"
     builder.row(InlineKeyboardButton(text=first_text, callback_data="media:add_first_frame"))
     builder.row(InlineKeyboardButton(text=last_text, callback_data="media:add_last_frame"))
     builder.row(InlineKeyboardButton(text="◀️ Назад", callback_data="media:back:confirm"))

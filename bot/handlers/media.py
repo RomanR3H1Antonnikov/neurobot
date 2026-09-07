@@ -158,6 +158,14 @@ def _confirm_card_text(data: dict) -> str:
             lines.append(f"<b>{'Ориентир' if len(_srefs) == 1 else 'Ориентиры'}:</b> {len(_srefs)} фото ✅")
     elif media_type == "video":
         lines.append(f"<b>Длительность:</b> {data.get('duration', 5)} сек")
+        _v_ratio = data.get("aspect_ratio")
+        _v_res = data.get("resolution")
+        if data.get("model_aspect_ratios") and data.get("model_resolutions") and _v_ratio and _v_res:
+            lines.append(f"<b>Масштаб:</b> {_v_ratio}  |  <b>Качество:</b> {_v_res}")
+        elif data.get("model_aspect_ratios") and _v_ratio:
+            lines.append(f"<b>Масштаб:</b> {_v_ratio}")
+        elif data.get("model_resolutions") and _v_res:
+            lines.append(f"<b>Качество:</b> {_v_res}")
         _srefs = data.get("style_reference_file_ids") or []
         if _srefs:
             lines.append(f"<b>{'Ориентир' if len(_srefs) == 1 else 'Ориентиры'}:</b> {len(_srefs)} фото ✅")
@@ -204,6 +212,10 @@ def _confirm_kb(data: dict):
             has_last_frame=bool(data.get("video_last_frame_file_id")),
             style_ref_count=style_ref_count,
             max_style_refs=data.get("model_max_style_refs", 0),
+            aspect_ratio=data.get("aspect_ratio"),
+            has_aspect_ratios=bool(data.get("model_aspect_ratios")),
+            resolution=data.get("resolution"),
+            has_resolutions=bool(data.get("model_resolutions")),
         )
     elif media_type == "audio":
         return audio_confirm_kb(has_prompt=has_prompt)
@@ -318,14 +330,19 @@ async def select_model(callback: CallbackQuery, state: FSMContext) -> None:
         "model_max_duration": max_duration,
         "model_max_style_refs": model_cfg.get("max_style_refs", 14),
         "model_resolutions": model_cfg.get("resolutions"),
+        "model_motion_control": model_cfg.get("motion_control", False),
     }
-    # если текущий ratio недоступен у новой модели — сбрасываем на 1:1
-    if aspect_ratios and data.get("aspect_ratio", "1:1") not in aspect_ratios:
-        update["aspect_ratio"] = "1:1"
-    # если текущее разрешение недоступно у новой модели — сбрасываем на первое из списка
+    # если текущий ratio недоступен у новой модели (или не задан) — сбрасываем на первый из списка
+    if aspect_ratios:
+        current_ratio = data.get("aspect_ratio")
+        if not current_ratio or current_ratio not in aspect_ratios:
+            update["aspect_ratio"] = aspect_ratios[0]
+    # если текущее разрешение недоступно у новой модели (или не задано) — сбрасываем на первое
     allowed_res = model_cfg.get("resolutions")
-    if allowed_res and data.get("resolution", "1K") not in allowed_res:
-        update["resolution"] = allowed_res[0]
+    if allowed_res:
+        current_res = data.get("resolution")
+        if not current_res or current_res not in allowed_res:
+            update["resolution"] = allowed_res[0]
     # если текущая длительность вне допустимых опций — сбрасываем на первую
     if media_type == "video" and data.get("duration", 5) not in duration_options:
         update["duration"] = duration_options[0]
@@ -502,7 +519,8 @@ async def back_to_model(callback: CallbackQuery, state: FSMContext) -> None:
         model_description=None, model_variant_description=None,
         model_has_group=None, model_aspect_ratios=None,
         model_duration_options=None, model_min_duration=None, model_max_duration=None,
-        model_max_style_refs=None, model_resolutions=None, entering_duration=None, confirm_msg_id=None,
+        model_max_style_refs=None, model_resolutions=None, model_motion_control=None,
+        entering_duration=None, confirm_msg_id=None,
         reference_file_id=None, reference_type=None,
         generated_file_id=None,
         style_reference_file_ids=None, adding_style_ref=None,
@@ -797,12 +815,19 @@ async def style_ref_replace_start(callback: CallbackQuery, state: FSMContext) ->
 async def toggle_frames(callback: CallbackQuery, state: FSMContext) -> None:
     """Открывает меню выбора кадров видео."""
     data = await state.get_data()
+    motion_control = bool(data.get("model_motion_control"))
+    title = (
+        "📎 <b>Motion Control</b>\n\nДобавь фото (начальный кадр) и видео (задаёт характер движения):"
+        if motion_control else
+        "📎 <b>Кадры видео</b>\n\nДобавь фото для первого и/или последнего кадра:"
+    )
     await callback.message.edit_text(
-        "📎 <b>Кадры видео</b>\n\nДобавь фото для первого и/или последнего кадра:",
+        title,
         parse_mode="HTML",
         reply_markup=video_frames_menu_kb(
             has_first_frame=bool(data.get("video_first_frame_file_id")),
             has_last_frame=bool(data.get("video_last_frame_file_id")),
+            motion_control=motion_control,
         ),
     )
     await callback.answer()
@@ -810,11 +835,14 @@ async def toggle_frames(callback: CallbackQuery, state: FSMContext) -> None:
 
 @router.callback_query(MediaStates.confirm, F.data == "media:add_first_frame")
 async def add_first_frame(callback: CallbackQuery, state: FSMContext) -> None:
-    """Кнопка 'Первый кадр' на карточке видео-генерации."""
+    """Кнопка 'Первый кадр' / 'Фото' на карточке видео-генерации."""
     await state.update_data(adding_video_frame="first")
     data = await state.get_data()
     has = bool(data.get("video_first_frame_file_id"))
-    hint = "📎 Отправь другое фото для первого кадра:" if has else "📎 Отправь фото — оно станет первым кадром видео:"
+    if bool(data.get("model_motion_control")):
+        hint = "📎 Отправь другое фото (начальный кадр):" if has else "📎 Отправь фото — оно станет начальным кадром для Motion Control:"
+    else:
+        hint = "📎 Отправь другое фото для первого кадра:" if has else "📎 Отправь фото — оно станет первым кадром видео:"
     await callback.message.edit_text(hint, reply_markup=back_to_confirm_kb())
     await state.set_state(MediaStates.enter_reference)
     await callback.answer()
@@ -822,11 +850,14 @@ async def add_first_frame(callback: CallbackQuery, state: FSMContext) -> None:
 
 @router.callback_query(MediaStates.confirm, F.data == "media:add_last_frame")
 async def add_last_frame(callback: CallbackQuery, state: FSMContext) -> None:
-    """Кнопка 'Последний кадр' на карточке видео-генерации."""
+    """Кнопка 'Последний кадр' / 'Видео' на карточке видео-генерации."""
     await state.update_data(adding_video_frame="last")
     data = await state.get_data()
     has = bool(data.get("video_last_frame_file_id"))
-    hint = "📎 Отправь другое фото для последнего кадра:" if has else "📎 Отправь фото — оно станет последним кадром видео:"
+    if bool(data.get("model_motion_control")):
+        hint = "📎 Отправь другое видео (движение):" if has else "📎 Отправь видео — оно задаст характер движения для Motion Control:"
+    else:
+        hint = "📎 Отправь другое фото для последнего кадра:" if has else "📎 Отправь фото — оно станет последним кадром видео:"
     await callback.message.edit_text(hint, reply_markup=back_to_confirm_kb())
     await state.set_state(MediaStates.enter_reference)
     await callback.answer()
@@ -929,6 +960,14 @@ async def receive_reference_video(message: Message, state: FSMContext) -> None:
     if data.get("media_type") == "photo_edit":
         sent = await message.answer("Для редактирования фото пришли изображение, а не видео.", reply_markup=back_to_model_kb())
         await _track_msg(state, sent.message_id)
+        return
+    # Motion control: принимаем видео в слот последнего кадра
+    if (data.get("media_type") == "video"
+            and data.get("adding_video_frame") == "last"
+            and data.get("model_motion_control")):
+        await message.delete()
+        await state.update_data(video_last_frame_file_id=message.video.file_id, adding_video_frame=None)
+        await _show_confirm_after_reference(message, state)
         return
     await message.delete()
     await state.update_data(reference_file_id=message.video.file_id, reference_type="video")
@@ -1572,6 +1611,8 @@ async def _run_generation(send_msg: Message, tg_user, state: FSMContext, data: d
             first_frame_url=first_frame_url,
             last_frame_url=last_frame_url,
             style_reference_urls=style_reference_urls,
+            aspect_ratio=data.get("aspect_ratio"),
+            resolution=data.get("resolution"),
         )
         file = BufferedInputFile(result.data, filename=result.filename)
         sent = await send_msg.answer_video(file, reply_markup=after_generation_kb())

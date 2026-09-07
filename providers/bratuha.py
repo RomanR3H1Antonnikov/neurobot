@@ -83,8 +83,8 @@ class BratuhaProvider(AbstractProvider):
         prompt: str,
         duration: int = 5,
         model: str | None = None,
-        aspect_ratio: str = "16:9",
-        resolution: str = "1080p",
+        aspect_ratio: str | None = None,
+        resolution: str | None = None,
         style_reference_urls: list[str] | None = None,
     ) -> GenerationResult:
         actual_model = model or "veo3.1-lite"
@@ -94,8 +94,8 @@ class BratuhaProvider(AbstractProvider):
             "generation_type": "text",
             "model": actual_model,
             "prompt": prompt,
-            "aspect_ratio": aspect_ratio,
-            "resolution": resolution,
+            "aspect_ratio": aspect_ratio or "16:9",
+            "resolution": resolution or "1080p",
         })
         result = await self._poll_operation(op_id)
 
