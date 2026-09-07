@@ -345,11 +345,11 @@ def error_kb() -> InlineKeyboardMarkup:
     """Клавиатура под сообщением об ошибке генерации."""
     builder = InlineKeyboardBuilder()
     builder.row(
-        InlineKeyboardButton(text="🔄 Попробовать снова", callback_data="media:again"),
+        InlineKeyboardButton(text="🔁 Повторить", callback_data="media:back:confirm"),
         InlineKeyboardButton(text="🏠 Главное меню", callback_data="media:back:menu"),
     )
     builder.row(
-        InlineKeyboardButton(text="◀️ Назад", callback_data="media:back:confirm"),
+        InlineKeyboardButton(text="🔄 Начать заново", callback_data="media:again"),
         InlineKeyboardButton(text="📋 К моделям", callback_data="media:back:model"),
     )
     return builder.as_markup()
