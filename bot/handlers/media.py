@@ -910,7 +910,7 @@ async def add_first_frame(callback: CallbackQuery, state: FSMContext) -> None:
     if bool(data.get("model_motion_control")):
         hint = "📎 Отправь другое фото (начальный кадр):" if has else "📎 Отправь фото — оно станет начальным кадром для Motion Control:"
     else:
-        hint = "📎 Отправь другое фото для первого кадра:" if has else "📎 Отправь фото — оно станет первым кадром видео:"
+        hint = "📎 Отправь другое фото для начала видео:" if has else "📎 Отправь фото — оно будет первым кадром (начало видео):"
     await callback.message.edit_text(hint, reply_markup=back_to_confirm_kb())
     await state.set_state(MediaStates.enter_reference)
     await callback.answer()
@@ -918,14 +918,14 @@ async def add_first_frame(callback: CallbackQuery, state: FSMContext) -> None:
 
 @router.callback_query(MediaStates.confirm, F.data == "media:add_last_frame")
 async def add_last_frame(callback: CallbackQuery, state: FSMContext) -> None:
-    """Кнопка 'Последний кадр' / 'Видео' на карточке видео-генерации."""
+    """Кнопка 'Конец видео' / 'Видео' на карточке видео-генерации."""
     await state.update_data(adding_video_frame="last")
     data = await state.get_data()
     has = bool(data.get("video_last_frame_file_id"))
     if bool(data.get("model_motion_control")):
         hint = "📎 Отправь другое видео (движение):" if has else "📎 Отправь видео — оно задаст характер движения для Motion Control:"
     else:
-        hint = "📎 Отправь другое фото для последнего кадра:" if has else "📎 Отправь фото — оно станет последним кадром видео:"
+        hint = "📎 Отправь другое фото для конца видео:" if has else "📎 Отправь фото — оно будет последним кадром (конец видео):"
     await callback.message.edit_text(hint, reply_markup=back_to_confirm_kb())
     await state.set_state(MediaStates.enter_reference)
     await callback.answer()
@@ -1399,6 +1399,22 @@ async def confirm_unknown_input(message: Message, state: FSMContext) -> None:
             await _update_confirm_card(message, state)
             return
 
+        # video: последовательное авто-добавление кадров
+        # 1-е фото → начало видео, 2-е → конец видео, остальные → доп. кадры
+        if media_type == "video":
+            await message.delete()
+            if not data.get("video_first_frame_file_id"):
+                await state.update_data(video_first_frame_file_id=photo.file_id)
+            elif not data.get("video_last_frame_file_id"):
+                await state.update_data(video_last_frame_file_id=photo.file_id)
+            elif max_refs > 0:
+                srefs = list(data.get("style_reference_file_ids") or [])
+                if len(srefs) < max_refs:
+                    srefs.append(photo.file_id)
+                await state.update_data(style_reference_file_ids=srefs)
+            await _update_confirm_card(message, state)
+            return
+
         # image: если модель поддерживает ориентиры — добавляем туда и обновляем карточку.
         if max_refs > 0:
             await message.delete()
@@ -1419,15 +1435,6 @@ async def confirm_unknown_input(message: Message, state: FSMContext) -> None:
                     [InlineKeyboardButton(text="✏️ Перейти в редактирование фото", callback_data="media:switch_to_photo_edit")],
                 ]),
             )
-            return
-
-        # video без поддержки ориентиров → подсказка
-        if media_type == "video":
-            await message.delete()
-            sent_hint = await message.answer(
-                "Введи текстовое описание видео или добавь кадры кнопками ниже."
-            )
-            await _track_msg(state, sent_hint.message_id)
             return
 
         # photo_edit, ориентиры не поддерживаются → заменяем основное фото

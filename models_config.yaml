@@ -228,7 +228,7 @@ tasks:
         max_duration: 30
         aspect_ratios: ["16:9", "4:3", "1:1", "3:4", "9:16", "21:9"]
         resolutions: ["480p", "720p", "1080p"]
-        max_style_refs: 30
+        max_style_refs: 28
         model_id: bytedance/seedance-2-5
         provider: kie
         cost_credits: 1
@@ -246,7 +246,7 @@ tasks:
         max_duration: 15
         aspect_ratios: ["16:9", "4:3", "1:1", "3:4", "9:16", "21:9"]
         resolutions: ["480p", "720p", "1080p", "4K"]
-        max_style_refs: 30
+        max_style_refs: 28
         model_id: bytedance/seedance-2
         provider: kie
         cost_credits: 1
