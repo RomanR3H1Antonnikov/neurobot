@@ -280,6 +280,7 @@ class KieProvider(OpenAICompatProvider):
         style_reference_urls: list[str] | None = None,
         aspect_ratio: str | None = None,
         resolution: str | None = None,
+        audio_reference_urls: list[str] | None = None,
     ) -> GenerationResult:
         actual_model = model or "kling-3.0/video"
         corr_id = uuid.uuid4().hex
@@ -307,6 +308,9 @@ class KieProvider(OpenAICompatProvider):
                 # minimax-h3, wan, pixverse — только первый кадр
                 if first_frame_url:
                     input_data["image_url"] = first_frame_url
+
+        if audio_reference_urls and actual_model.startswith("bytedance/"):
+            input_data["audio_urls"] = list(audio_reference_urls)
 
         try:
             await self._create_job(actual_model, input_data, corr_id)

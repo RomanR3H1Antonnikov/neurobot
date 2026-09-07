@@ -185,6 +185,8 @@ def video_confirm_kb(
     has_aspect_ratios: bool = False,
     resolution: str | None = None,
     has_resolutions: bool = False,
+    audio_ref_count: int = 0,
+    max_audio_refs: int = 0,
 ) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     builder.row(InlineKeyboardButton(
@@ -202,6 +204,9 @@ def video_confirm_kb(
         builder.row(InlineKeyboardButton(text=f"🖼 Качество: {resolution}", callback_data="media:pick_resolution"))
     frames_text = "📎 Кадры ✅" if (has_first_frame or has_last_frame or has_extra_refs) else "📎 Кадры"
     builder.row(InlineKeyboardButton(text=frames_text, callback_data="media:toggle_frames"))
+    if max_audio_refs > 0:
+        audio_text = f"🎵 Аудио: {audio_ref_count} файл(а) ✅" if audio_ref_count else "🎵 Аудио"
+        builder.row(InlineKeyboardButton(text=audio_text, callback_data="media:add_audio_ref"))
     edit_text = "✏️ Изменить описание" if has_prompt else "✏️ Ввести описание"
     builder.row(
         InlineKeyboardButton(text=edit_text, callback_data="media:edit_prompt"),

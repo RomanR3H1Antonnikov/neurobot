@@ -86,6 +86,7 @@ class BratuhaProvider(AbstractProvider):
         aspect_ratio: str | None = None,
         resolution: str | None = None,
         style_reference_urls: list[str] | None = None,
+        audio_reference_urls: list[str] | None = None,
     ) -> GenerationResult:
         actual_model = model or "veo3.1-lite"
         tool = _MODEL_TOOLS.get(actual_model, "veo-3-1")

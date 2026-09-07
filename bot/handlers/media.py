@@ -169,6 +169,9 @@ def _confirm_card_text(data: dict) -> str:
         _srefs = data.get("style_reference_file_ids") or []
         if _srefs:
             lines.append(f"<b>Доп. кадры:</b> {len(_srefs)} фото ✅")
+        _audio_refs = data.get("audio_reference_file_ids") or []
+        if _audio_refs:
+            lines.append(f"<b>Аудио:</b> {len(_audio_refs)} файл(а) ✅")
     elif media_type == "audio":
         t = "Озвучка" if data.get("audio_type", "voice") == "voice" else "Музыка"
         lines.append(f"<b>Тип аудио:</b> {t}")
@@ -215,6 +218,8 @@ def _confirm_kb(data: dict):
             has_aspect_ratios=bool(data.get("model_aspect_ratios")),
             resolution=data.get("resolution"),
             has_resolutions=bool(data.get("model_resolutions")),
+            audio_ref_count=len(data.get("audio_reference_file_ids") or []),
+            max_audio_refs=data.get("model_max_audio_refs", 0),
         )
     elif media_type == "audio":
         return audio_confirm_kb(has_prompt=has_prompt)
@@ -328,6 +333,7 @@ async def select_model(callback: CallbackQuery, state: FSMContext) -> None:
         "model_min_duration": min_duration,
         "model_max_duration": max_duration,
         "model_max_style_refs": model_cfg.get("max_style_refs", 14),
+        "model_max_audio_refs": model_cfg.get("max_audio_refs", 0),
         "model_resolutions": model_cfg.get("resolutions"),
         "model_motion_control": model_cfg.get("motion_control", False),
     }
@@ -571,6 +577,7 @@ async def back_to_model(callback: CallbackQuery, state: FSMContext) -> None:
         reference_file_id=None, reference_type=None,
         generated_file_id=None,
         style_reference_file_ids=None, adding_style_ref=None, adding_video_extra_frame=None,
+        audio_reference_file_ids=None, adding_audio_ref=None, model_max_audio_refs=None,
         managing_style_ref=None, managing_style_ref_index=None,
         video_first_frame_file_id=None, video_last_frame_file_id=None,
         video_frames_expanded=None,
@@ -660,6 +667,7 @@ async def generate_again(callback: CallbackQuery, state: FSMContext) -> None:
         prompt=None,
         reference_file_id=None, reference_type=None,
         style_reference_file_ids=None,
+        audio_reference_file_ids=None,
         generated_file_id=None,
         kie_gen_task_id=None,
         video_first_frame_file_id=None, video_last_frame_file_id=None,
@@ -667,6 +675,8 @@ async def generate_again(callback: CallbackQuery, state: FSMContext) -> None:
         quick_edit=None,
         _gen_snapshot=None,
         adding_style_ref=None,
+        adding_video_extra_frame=None,
+        adding_audio_ref=None,
         managing_style_ref=None, managing_style_ref_index=None,
         video_frames_expanded=None,
         entering_duration=None,
@@ -901,6 +911,23 @@ async def add_extra_frames(callback: CallbackQuery, state: FSMContext) -> None:
     await callback.answer()
 
 
+@router.callback_query(MediaStates.confirm, F.data == "media:add_audio_ref")
+async def add_audio_ref(callback: CallbackQuery, state: FSMContext) -> None:
+    """Кнопка 'Аудио' на карточке видео-генерации."""
+    data = await state.get_data()
+    count = len(data.get("audio_reference_file_ids") or [])
+    max_refs = data.get("model_max_audio_refs", 0)
+    hint = (
+        f"🎵 Добавлено {count} аудио. Отправь ещё (до {max_refs} всего). Когда закончишь — нажми «Назад»."
+        if count else
+        f"🎵 Отправь аудиофайл — он добавится как звуковой референс для видео. Можно добавить до {max_refs} файлов.\nКогда закончишь — нажми «Назад»."
+    )
+    await state.update_data(adding_audio_ref=True, _sref_msg_id=callback.message.message_id)
+    await callback.message.edit_text(hint, reply_markup=back_to_confirm_kb())
+    await state.set_state(MediaStates.enter_reference)
+    await callback.answer()
+
+
 @router.callback_query(MediaStates.confirm, F.data == "media:add_first_frame")
 async def add_first_frame(callback: CallbackQuery, state: FSMContext) -> None:
     """Кнопка 'Первый кадр' / 'Фото' на карточке видео-генерации."""
@@ -941,7 +968,7 @@ async def back_to_confirm(callback: CallbackQuery, state: FSMContext) -> None:
         return
 
     await state.update_data(
-        adding_style_ref=None, adding_video_extra_frame=None,
+        adding_style_ref=None, adding_video_extra_frame=None, adding_audio_ref=None,
         managing_style_ref=None, managing_style_ref_index=None,
     )
     await state.set_state(MediaStates.confirm)
@@ -1058,6 +1085,31 @@ async def receive_reference_video(message: Message, state: FSMContext) -> None:
     await _show_confirm_after_reference(message, state)
 
 
+@router.message(MediaStates.enter_reference, F.audio | F.voice)
+async def receive_reference_audio(message: Message, state: FSMContext) -> None:
+    data = await state.get_data()
+    if not data.get("adding_audio_ref"):
+        sent = await message.answer(
+            "Аудиофайл принимается только при добавлении аудио-референсов. "
+            "Нажми кнопку «🎵 Аудио» на карточке.",
+            reply_markup=back_to_confirm_kb(),
+        )
+        await _track_msg(state, sent.message_id)
+        return
+    await message.delete()
+    file_id = message.audio.file_id if message.audio else message.voice.file_id
+    audio_refs = list(data.get("audio_reference_file_ids") or [])
+    max_refs = data.get("model_max_audio_refs", 0)
+    if len(audio_refs) < max_refs:
+        audio_refs.append(file_id)
+    await state.update_data(audio_reference_file_ids=audio_refs)
+    await _update_sref_status(
+        message.bot, message.chat.id, state,
+        f"✅ Аудио добавлено! Всего: {len(audio_refs)}/{max_refs}. Отправь ещё или нажми «Назад».",
+        back_to_confirm_kb(),
+    )
+
+
 @router.message(MediaStates.enter_reference, F.document)
 async def receive_reference_document(message: Message, state: FSMContext) -> None:
     data = await state.get_data()
@@ -1143,6 +1195,15 @@ async def enter_reference_text_input(message: Message, state: FSMContext) -> Non
 @router.message(MediaStates.enter_reference, ~F.text.in_(MENU_BUTTONS))
 async def reference_wrong_type(message: Message, state: FSMContext) -> None:
     data = await state.get_data()
+    if data.get("adding_audio_ref"):
+        count = len(data.get("audio_reference_file_ids") or [])
+        max_refs = data.get("model_max_audio_refs", 0)
+        await _update_sref_status(
+            message.bot, message.chat.id, state,
+            f"Пожалуйста, пришли аудиофайл. Добавлено: {count}/{max_refs}.",
+            back_to_confirm_kb(),
+        )
+        return
     if data.get("adding_video_extra_frame"):
         count = len(data.get("style_reference_file_ids") or [])
         max_refs = data.get("model_max_style_refs", 0)
@@ -1706,6 +1767,10 @@ async def _run_generation(send_msg: Message, tg_user, state: FSMContext, data: d
     elif media_type == "video":
         first_frame_url = await _tg_file_url(send_msg.bot, data.get("video_first_frame_file_id"), _cfg.bot_token)
         last_frame_url = await _tg_file_url(send_msg.bot, data.get("video_last_frame_file_id"), _cfg.bot_token)
+        _audio_ids = data.get("audio_reference_file_ids") or []
+        audio_reference_urls = [
+            u for u in [await _tg_file_url(send_msg.bot, fid, _cfg.bot_token) for fid in _audio_ids] if u
+        ] or None
         result = await media_service.generate_video(
             tg_user.id, tg_user.username, prompt, data.get("duration", 5), model_slug,
             first_frame_url=first_frame_url,
@@ -1713,6 +1778,7 @@ async def _run_generation(send_msg: Message, tg_user, state: FSMContext, data: d
             style_reference_urls=style_reference_urls,
             aspect_ratio=data.get("aspect_ratio"),
             resolution=data.get("resolution"),
+            audio_reference_urls=audio_reference_urls,
         )
         file = BufferedInputFile(result.data, filename=result.filename)
         sent = await send_msg.answer_video(file, reply_markup=after_generation_kb())

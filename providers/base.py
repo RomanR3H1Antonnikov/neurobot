@@ -58,6 +58,7 @@ class AbstractProvider(ABC):
         style_reference_urls: list[str] | None = None,
         aspect_ratio: str | None = None,
         resolution: str | None = None,
+        audio_reference_urls: list[str] | None = None,
     ) -> GenerationResult:
         ...
 

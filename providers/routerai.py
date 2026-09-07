@@ -53,6 +53,7 @@ class RouteraiProvider(OpenAICompatProvider):
         self, prompt: str, duration: int = 5, model: str | None = None,
         aspect_ratio: str | None = None, resolution: str | None = None,
         style_reference_urls: list[str] | None = None,
+        audio_reference_urls: list[str] | None = None,
     ) -> GenerationResult:
         actual_model = model or "alibaba/happyhorse-1.1"
 
