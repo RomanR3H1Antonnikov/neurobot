@@ -50,6 +50,40 @@ async def _update_sref_status(bot, chat_id: int, state: FSMContext, text: str, k
     await state.update_data(_sref_msg_id=sent.message_id)
 
 
+async def _back_to_frames_menu(bot, chat_id: int, state: FSMContext) -> None:
+    """После добавления кадра редактирует hint-сообщение обратно в меню кадров."""
+    await state.set_state(MediaStates.confirm)
+    data = await state.get_data()
+    motion_control = bool(data.get("model_motion_control"))
+    max_extra_refs = data.get("model_max_style_refs", 0) if not motion_control else 0
+    title = (
+        "📎 <b>Motion Control</b>\n\nДобавь фото (начальный кадр) и видео (задаёт характер движения):"
+        if motion_control else
+        "📎 <b>Кадры видео</b>\n\nДобавь фото для первого и/или последнего кадра:"
+    )
+    frames_kb = video_frames_menu_kb(
+        has_first_frame=bool(data.get("video_first_frame_file_id")),
+        has_last_frame=bool(data.get("video_last_frame_file_id")),
+        motion_control=motion_control,
+        extra_ref_count=len(data.get("style_reference_file_ids") or []),
+        max_extra_refs=max_extra_refs,
+        show_first_frame=data.get("model_has_first_frame", True),
+        show_last_frame=data.get("model_has_last_frame", True),
+    )
+    msg_id = data.get("_sref_msg_id")
+    if msg_id:
+        try:
+            await bot.edit_message_text(
+                title, chat_id=chat_id, message_id=msg_id,
+                parse_mode="HTML", reply_markup=frames_kb,
+            )
+            return
+        except Exception:
+            pass
+    sent = await bot.send_message(chat_id, title, parse_mode="HTML", reply_markup=frames_kb)
+    await state.update_data(_sref_msg_id=sent.message_id)
+
+
 async def _notify_generating(bot, chat_id: int, delay: float = 5.0) -> None:
     """Отправляет временное уведомление 'Идёт генерация' и удаляет его через delay секунд."""
     try:
@@ -968,7 +1002,7 @@ async def add_video_ref(callback: CallbackQuery, state: FSMContext) -> None:
 @router.callback_query(MediaStates.confirm, F.data == "media:add_first_frame")
 async def add_first_frame(callback: CallbackQuery, state: FSMContext) -> None:
     """Кнопка 'Первый кадр' / 'Фото' на карточке видео-генерации."""
-    await state.update_data(adding_video_frame="first")
+    await state.update_data(adding_video_frame="first", _sref_msg_id=callback.message.message_id)
     data = await state.get_data()
     has = bool(data.get("video_first_frame_file_id"))
     if bool(data.get("model_motion_control")):
@@ -983,7 +1017,7 @@ async def add_first_frame(callback: CallbackQuery, state: FSMContext) -> None:
 @router.callback_query(MediaStates.confirm, F.data == "media:add_last_frame")
 async def add_last_frame(callback: CallbackQuery, state: FSMContext) -> None:
     """Кнопка 'Конец видео' / 'Видео' на карточке видео-генерации."""
-    await state.update_data(adding_video_frame="last")
+    await state.update_data(adding_video_frame="last", _sref_msg_id=callback.message.message_id)
     data = await state.get_data()
     has = bool(data.get("video_last_frame_file_id"))
     if bool(data.get("model_motion_control")):
@@ -1096,7 +1130,7 @@ async def receive_reference_photo(message: Message, state: FSMContext) -> None:
         key = "video_first_frame_file_id" if frame_slot == "first" else "video_last_frame_file_id"
         await state.update_data(**{key: photo.file_id, "adding_video_frame": None})
         await message.delete()
-        await _show_confirm_after_reference(message, state)
+        await _back_to_frames_menu(message.bot, message.chat.id, state)
         return
     await message.delete()
     await state.update_data(reference_file_id=photo.file_id, reference_type="photo")
@@ -1130,7 +1164,7 @@ async def receive_reference_video(message: Message, state: FSMContext) -> None:
             and data.get("model_motion_control")):
         await message.delete()
         await state.update_data(video_last_frame_file_id=message.video.file_id, adding_video_frame=None)
-        await _show_confirm_after_reference(message, state)
+        await _back_to_frames_menu(message.bot, message.chat.id, state)
         return
     await message.delete()
     await state.update_data(reference_file_id=message.video.file_id, reference_type="video")
