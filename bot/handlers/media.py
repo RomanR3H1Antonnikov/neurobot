@@ -16,7 +16,7 @@ from bot.keyboards.media import (
     media_type_kb, media_edit_kb, model_top_kb, model_variant_kb,
     model_select_text, model_variant_text, back_to_model_kb, back_to_confirm_kb,
     image_confirm_kb, image_ratio_kb, image_resolution_kb,
-    video_confirm_kb, video_duration_picker_kb, audio_confirm_kb, edit_confirm_kb,
+    video_confirm_kb, video_frames_menu_kb, video_duration_picker_kb, audio_confirm_kb, edit_confirm_kb,
     style_ref_collecting_kb, after_generation_kb, gen_waiting_kb, error_kb,
 )
 from providers.base import ProviderError, ProviderContentPolicyError, TaskType
@@ -202,7 +202,6 @@ def _confirm_kb(data: dict):
             duration_options=data.get("model_duration_options"),
             has_first_frame=bool(data.get("video_first_frame_file_id")),
             has_last_frame=bool(data.get("video_last_frame_file_id")),
-            frames_expanded=bool(data.get("video_frames_expanded")),
             style_ref_count=style_ref_count,
             max_style_refs=data.get("model_max_style_refs", 0),
         )
@@ -796,10 +795,16 @@ async def style_ref_replace_start(callback: CallbackQuery, state: FSMContext) ->
 
 @router.callback_query(MediaStates.confirm, F.data == "media:toggle_frames")
 async def toggle_frames(callback: CallbackQuery, state: FSMContext) -> None:
-    """Раскрывает кнопки выбора кадров на карточке видео."""
-    await state.update_data(video_frames_expanded=True)
+    """Открывает меню выбора кадров видео."""
     data = await state.get_data()
-    await callback.message.edit_reply_markup(reply_markup=_confirm_kb(data))
+    await callback.message.edit_text(
+        "📎 <b>Кадры видео</b>\n\nДобавь фото для первого и/или последнего кадра:",
+        parse_mode="HTML",
+        reply_markup=video_frames_menu_kb(
+            has_first_frame=bool(data.get("video_first_frame_file_id")),
+            has_last_frame=bool(data.get("video_last_frame_file_id")),
+        ),
+    )
     await callback.answer()
 
 

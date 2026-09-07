@@ -180,7 +180,6 @@ def video_confirm_kb(
     duration_options: list[int] | None = None,
     has_first_frame: bool = False,
     has_last_frame: bool = False,
-    frames_expanded: bool = False,
     style_ref_count: int = 0,
     max_style_refs: int = 0,
 ) -> InlineKeyboardMarkup:
@@ -189,13 +188,8 @@ def video_confirm_kb(
         text=f"⏱ Длительность: {duration} сек",
         callback_data="media:pick_duration",
     ))
-    if frames_expanded or has_first_frame or has_last_frame:
-        first_text = "📎 Первый кадр: фото ✅" if has_first_frame else "📎 Первый кадр"
-        last_text = "📎 Последний кадр: фото ✅" if has_last_frame else "📎 Последний кадр"
-        builder.row(InlineKeyboardButton(text=first_text, callback_data="media:add_first_frame"))
-        builder.row(InlineKeyboardButton(text=last_text, callback_data="media:add_last_frame"))
-    else:
-        builder.row(InlineKeyboardButton(text="📎 Добавить кадры", callback_data="media:toggle_frames"))
+    frames_text = "📎 Кадры ✅" if (has_first_frame or has_last_frame) else "📎 Кадры"
+    builder.row(InlineKeyboardButton(text=frames_text, callback_data="media:toggle_frames"))
     if max_style_refs > 0:
         ref_text = f"🖼 Ориентиры: {style_ref_count} фото ✅" if style_ref_count else "📎 Добавить ориентир"
         builder.row(InlineKeyboardButton(text=ref_text, callback_data="media:add_style_ref"))
@@ -205,6 +199,16 @@ def video_confirm_kb(
         InlineKeyboardButton(text="◀️ Назад", callback_data="media:back:model"),
     )
     builder.row(InlineKeyboardButton(text="🚀 Начать генерацию", callback_data="media:start"))
+    return builder.as_markup()
+
+
+def video_frames_menu_kb(has_first_frame: bool = False, has_last_frame: bool = False) -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    first_text = "📎 Первый кадр: фото ✅" if has_first_frame else "📎 Первый кадр"
+    last_text = "📎 Последний кадр: фото ✅" if has_last_frame else "📎 Последний кадр"
+    builder.row(InlineKeyboardButton(text=first_text, callback_data="media:add_first_frame"))
+    builder.row(InlineKeyboardButton(text=last_text, callback_data="media:add_last_frame"))
+    builder.row(InlineKeyboardButton(text="◀️ Назад", callback_data="media:back:confirm"))
     return builder.as_markup()
 
 
