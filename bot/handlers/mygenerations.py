@@ -194,6 +194,6 @@ def _item_caption(item: dict) -> str:
         parts.append(item["model_label"])
     if item.get("prompt"):
         p = item["prompt"]
-        parts.append(p if len(p) <= 100 else p[:97] + "…")
+        parts.append("Описание: " + (p if len(p) <= 100 else p[:97] + "…"))
     parts.append(_relative_time(item["created_at"]))
     return " · ".join(parts)
