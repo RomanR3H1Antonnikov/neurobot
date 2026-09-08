@@ -114,6 +114,62 @@ async def clear_chat_history(user_id: int) -> None:
 HOUR = 3600
 
 
+# ─── История генераций ───────────────────────────────────────────────────────
+
+GENERATIONS_WINDOW_HOURS = 24
+GENERATIONS_PER_TYPE_LIMIT = 30  # не показываем больше N результатов на тип
+
+
+async def save_generation(
+    telegram_id: int,
+    media_type: str,
+    file_id: str,
+    prompt: str | None = None,
+    model_label: str | None = None,
+) -> None:
+    db = await get_db()
+    await db.execute(
+        "INSERT INTO generations (telegram_id, media_type, file_id, prompt, model_label) VALUES (?, ?, ?, ?, ?)",
+        (telegram_id, media_type, file_id, prompt, model_label),
+    )
+    await db.commit()
+
+
+async def get_recent_generations(
+    telegram_id: int,
+    media_type: str,
+    limit: int = GENERATIONS_PER_TYPE_LIMIT,
+) -> list[dict]:
+    cutoff = int(time.time()) - GENERATIONS_WINDOW_HOURS * 3600
+    db = await get_db()
+    async with db.execute(
+        """SELECT file_id, prompt, model_label, created_at
+           FROM generations
+           WHERE telegram_id = ? AND media_type = ? AND created_at >= ?
+           ORDER BY created_at DESC LIMIT ?""",
+        (telegram_id, media_type, cutoff, limit),
+    ) as cur:
+        rows = await cur.fetchall()
+    return [dict(r) for r in rows]
+
+
+async def get_generation_counts(telegram_id: int) -> dict[str, int]:
+    cutoff = int(time.time()) - GENERATIONS_WINDOW_HOURS * 3600
+    db = await get_db()
+    async with db.execute(
+        """SELECT media_type, COUNT(*) as cnt
+           FROM generations
+           WHERE telegram_id = ? AND created_at >= ?
+           GROUP BY media_type""",
+        (telegram_id, cutoff),
+    ) as cur:
+        rows = await cur.fetchall()
+    counts = {"photo": 0, "video": 0, "audio": 0}
+    for row in rows:
+        counts[row["media_type"]] = row["cnt"]
+    return counts
+
+
 async def check_and_increment_rate_limit(user_id: int, task_type: str, limit: int) -> bool:
     """Проверяет лимит и инкрементирует счётчик. False = лимит превышен."""
     db = await get_db()

@@ -56,5 +56,18 @@ async def _create_tables(db: aiosqlite.Connection) -> None:
             count        INTEGER NOT NULL DEFAULT 1,
             UNIQUE(user_id, task_type, window_start)
         );
+
+        CREATE TABLE IF NOT EXISTS generations (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            telegram_id INTEGER NOT NULL,
+            media_type  TEXT NOT NULL,
+            file_id     TEXT NOT NULL,
+            prompt      TEXT,
+            model_label TEXT,
+            created_at  INTEGER NOT NULL DEFAULT (strftime('%s', 'now'))
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_generations_user_type
+            ON generations (telegram_id, media_type, created_at DESC);
     """)
     await db.commit()

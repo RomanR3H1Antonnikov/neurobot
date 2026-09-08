@@ -23,6 +23,7 @@ from providers.base import ProviderError, ProviderContentPolicyError, TaskType
 from providers.router import get_models_for_task
 from services import media_service
 from services.media_service import InsufficientCreditsError, RateLimitError
+from db.queries import save_generation
 
 router = Router()
 
@@ -1869,8 +1870,10 @@ async def _run_generation(send_msg: Message, tg_user, state: FSMContext, data: d
                     reply_markup=after_generation_kb(is_image=True) if is_last else None,
                 )
                 await _track_msg(state, sent.message_id)
+                fid = sent.photo[-1].file_id
+                await save_generation(tg_user.id, "photo", fid, prompt=prompt, model_label=data.get("model_label"))
                 if i == 0:
-                    gen_file_id = sent.photo[-1].file_id
+                    gen_file_id = fid
             current = await state.get_data()
             if current.get("_gen_nonce") == gen_nonce:
                 await state.update_data(generated_file_id=gen_file_id,
@@ -1879,6 +1882,7 @@ async def _run_generation(send_msg: Message, tg_user, state: FSMContext, data: d
             file = BufferedInputFile(result.data, filename=result.filename)
             sent = await send_msg.answer_photo(file, reply_markup=after_generation_kb(is_image=True))
             await _track_msg(state, sent.message_id)
+            await save_generation(tg_user.id, "photo", sent.photo[-1].file_id, prompt=prompt, model_label=data.get("model_label"))
             current = await state.get_data()
             if current.get("_gen_nonce") == gen_nonce:
                 await state.update_data(generated_file_id=sent.photo[-1].file_id,
@@ -1908,6 +1912,7 @@ async def _run_generation(send_msg: Message, tg_user, state: FSMContext, data: d
         file = BufferedInputFile(result.data, filename=result.filename)
         sent = await send_msg.answer_video(file, reply_markup=after_generation_kb())
         await _track_msg(state, sent.message_id)
+        await save_generation(tg_user.id, "video", sent.video.file_id, prompt=prompt, model_label=data.get("model_label"))
 
     elif media_type == "audio":
         result = await media_service.generate_audio(
@@ -1916,6 +1921,7 @@ async def _run_generation(send_msg: Message, tg_user, state: FSMContext, data: d
         file = BufferedInputFile(result.data, filename=result.filename)
         sent = await send_msg.answer_audio(file, reply_markup=after_generation_kb())
         await _track_msg(state, sent.message_id)
+        await save_generation(tg_user.id, "audio", sent.audio.file_id, prompt=prompt, model_label=data.get("model_label"))
 
     elif media_type == "photo_edit":
         file_info = await send_msg.bot.get_file(data["reference_file_id"])
@@ -1930,8 +1936,9 @@ async def _run_generation(send_msg: Message, tg_user, state: FSMContext, data: d
         file = BufferedInputFile(result.data, filename=result.filename)
         sent = await send_msg.answer_photo(file, reply_markup=after_generation_kb(is_image=True))
         await _track_msg(state, sent.message_id)
-        # Сохраняем file_id результата, чтобы пользователь мог сразу редактировать снова
         new_file_id = sent.photo[-1].file_id
+        await save_generation(tg_user.id, "photo", new_file_id, prompt=prompt, model_label=data.get("model_label"))
+        # Сохраняем file_id результата, чтобы пользователь мог сразу редактировать снова
         await state.update_data(generated_file_id=new_file_id, reference_file_id=new_file_id)
 
     elif media_type == "video_edit":
@@ -1944,6 +1951,7 @@ async def _run_generation(send_msg: Message, tg_user, state: FSMContext, data: d
         file = BufferedInputFile(result.data, filename=result.filename)
         sent = await send_msg.answer_video(file, reply_markup=after_generation_kb())
         await _track_msg(state, sent.message_id)
+        await save_generation(tg_user.id, "video", sent.video.file_id, prompt=prompt, model_label=data.get("model_label"))
 
 
 @router.callback_query(MediaStates.confirm, F.data == "media:start")

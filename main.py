@@ -10,7 +10,7 @@ from config import config
 from db.database import get_db, close_db
 from bot.middlewares.user_middleware import UserMiddleware
 from bot.middlewares.cleanup import CallbackCleanupMiddleware
-from bot.handlers import start, media, chat, documents, billing, fallback
+from bot.handlers import start, media, chat, documents, billing, mygenerations, fallback
 from services.kie_webhook import start_webhook_server
 
 logging.basicConfig(
@@ -37,6 +37,7 @@ async def main() -> None:
     dp.include_router(media.router)
     dp.include_router(chat.router)
     dp.include_router(documents.router)
+    dp.include_router(mygenerations.router)
     dp.include_router(fallback.router)  # должен быть последним
 
     await get_db()  # инициализация БД при старте

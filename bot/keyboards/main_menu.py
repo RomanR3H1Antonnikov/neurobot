@@ -5,11 +5,12 @@ BTN_MEDIA = "🎨 Генерация медиа"
 BTN_CHAT = "💬 Чат с ИИ"
 BTN_DOCS = "📄 Работа с документами"
 BTN_BALANCE = "💳 Мой баланс"
+BTN_MY_GENS = "📁 Мои генерации"
 BTN_EXIT_CHAT = "🏠 Выйти в меню"
 BTN_NEW_DIALOG = "🔄 Новый диалог"
 BTN_CHAT_PICK_MODEL = "◀️ Сменить модель"
 
-MENU_BUTTONS = {BTN_MEDIA, BTN_CHAT, BTN_DOCS, BTN_BALANCE, BTN_EXIT_CHAT, BTN_NEW_DIALOG, BTN_CHAT_PICK_MODEL}
+MENU_BUTTONS = {BTN_MEDIA, BTN_CHAT, BTN_DOCS, BTN_BALANCE, BTN_MY_GENS, BTN_EXIT_CHAT, BTN_NEW_DIALOG, BTN_CHAT_PICK_MODEL}
 
 
 def inline_main_menu_kb() -> InlineKeyboardMarkup:
@@ -22,6 +23,9 @@ def inline_main_menu_kb() -> InlineKeyboardMarkup:
         InlineKeyboardButton(text=BTN_DOCS, callback_data="menu:docs"),
         InlineKeyboardButton(text=BTN_BALANCE, callback_data="menu:balance"),
     )
+    builder.row(
+        InlineKeyboardButton(text=BTN_MY_GENS, callback_data="menu:mygenerations"),
+    )
     return builder.as_markup()
 
 
@@ -30,6 +34,7 @@ def main_menu_kb() -> ReplyKeyboardMarkup:
         keyboard=[
             [KeyboardButton(text=BTN_MEDIA), KeyboardButton(text=BTN_CHAT)],
             [KeyboardButton(text=BTN_DOCS), KeyboardButton(text=BTN_BALANCE)],
+            [KeyboardButton(text=BTN_MY_GENS)],
         ],
         resize_keyboard=True,
         is_persistent=True,
