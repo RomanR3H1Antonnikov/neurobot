@@ -303,7 +303,7 @@ class KieProvider(OpenAICompatProvider):
             "duration": str(duration) if is_kling else duration,
             "aspect_ratio": _effective_ratio,
         }
-        if is_kling or is_wan:
+        if is_kling or is_wan or is_bytedance:
             input_data["resolution"] = resolution or "720p"
 
         # ── Первый / последний кадр ──────────────────────────────────────────
