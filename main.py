@@ -1,7 +1,9 @@
 import asyncio
 import logging
+import aiohttp
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
+from aiogram.client.session.aiohttp import AiohttpSession
 from aiogram.enums import ParseMode
 
 from config import config
@@ -19,9 +21,11 @@ logger = logging.getLogger(__name__)
 
 
 async def main() -> None:
+    # Увеличиваем таймаут сессии: дефолтные 60 сек не хватают для загрузки крупных видео в Telegram
     bot = Bot(
         token=config.bot_token,
         default=DefaultBotProperties(parse_mode=ParseMode.HTML),
+        session=AiohttpSession(timeout=aiohttp.ClientTimeout(total=300)),
     )
     dp = Dispatcher()
 

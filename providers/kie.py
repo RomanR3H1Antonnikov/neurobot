@@ -292,10 +292,16 @@ class KieProvider(OpenAICompatProvider):
         is_wan = actual_model.startswith("wan/")
         is_pixverse = actual_model.startswith("pixverse")
 
+        # Bytedance (Seedance) требует "adaptive" когда задан первый/последний кадр
+        _effective_ratio = (
+            "adaptive"
+            if is_bytedance and (first_frame_url or last_frame_url)
+            else (aspect_ratio or "16:9")
+        )
         input_data: dict = {
             "prompt": prompt,
             "duration": str(duration) if is_kling else duration,
-            "aspect_ratio": aspect_ratio or "16:9",
+            "aspect_ratio": _effective_ratio,
         }
         if is_kling or is_wan:
             input_data["resolution"] = resolution or "720p"
