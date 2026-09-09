@@ -4,11 +4,14 @@
 POST /api/v1/operations → polling GET /api/v1/operations/{id} → результат.
 """
 import asyncio
+import logging
 import aiohttp
 from providers.base import (
     AbstractProvider, GenerationResult, ChatResult,
     ProviderUnavailableError, ProviderContentPolicyError,
 )
+
+logger = logging.getLogger(__name__)
 
 # Маппинг model_id → tool slug на bratuha.ru
 _MODEL_TOOLS: dict[str, str] = {
@@ -74,6 +77,8 @@ class BratuhaProvider(AbstractProvider):
             if status == "completed":
                 return data.get("output") or data.get("result") or data
             if status in ("failed", "error"):
+                reason = data.get("error") or data.get("message") or data.get("reason") or ""
+                logger.error("Bratuha operation failed: op_id=%s status=%s reason=%s", operation_id, status, reason)
                 raise ProviderUnavailableError("Bratuha: генерация завершилась с ошибкой")
             await asyncio.sleep(10)
         raise ProviderUnavailableError("Bratuha: истекло время ожидания генерации")
