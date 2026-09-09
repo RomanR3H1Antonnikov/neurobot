@@ -62,6 +62,7 @@ def _image_input(
         payload: dict = {
             "prompt": prompt,
             "aspect_ratio": _kie_ratio(aspect_ratio),
+            "resolution": resolution,
         }
         if style_reference_urls:
             payload["image_input"] = {
@@ -387,7 +388,7 @@ class KieProvider(OpenAICompatProvider):
     async def edit_image(
         self, image_bytes: bytes, prompt: str, model: str | None = None,
         image_url: str | None = None, style_reference_urls: list[str] | None = None,
-        provider_task_id: str | None = None,
+        provider_task_id: str | None = None, resolution: str | None = None,
     ) -> GenerationResult:
         """Job-based редактирование через KIE createTask."""
         actual_model = model or "google/nano-banana-edit"
@@ -415,7 +416,7 @@ class KieProvider(OpenAICompatProvider):
                 "prompt": prompt,
                 "input_urls": [image_url] + _srefs,
                 "aspect_ratio": "auto",
-                "resolution": "1K",
+                "resolution": resolution or "1K",
             }
         elif actual_model.startswith("seedream/") and "image-to-image" in actual_model:
             if not image_url:
@@ -424,7 +425,7 @@ class KieProvider(OpenAICompatProvider):
                 "prompt": prompt,
                 "image_urls": [image_url] + _srefs,
                 "aspect_ratio": "1:1",
-                "quality": "basic",
+                "quality": _SEEDREAM_QUALITY.get(resolution or "2K", "basic"),
                 "output_format": "png",
             }
         elif actual_model == "nano-banana-2-lite":

@@ -146,7 +146,7 @@ class OpenAICompatProvider(AbstractProvider):
     async def edit_image(
         self, image_bytes: bytes, prompt: str, model: str | None = None,
         image_url: str | None = None, style_reference_urls: list[str] | None = None,
-        provider_task_id: str | None = None,
+        provider_task_id: str | None = None, resolution: str | None = None,
     ) -> GenerationResult:
         actual_model = model or self.image_edit_model
         _refs = "\n".join(f"Reference image: {u}" for u in (style_reference_urls or []))
@@ -157,6 +157,8 @@ class OpenAICompatProvider(AbstractProvider):
         form.add_field("prompt", effective_prompt)
         form.add_field("image", image_bytes, filename="image.png", content_type="image/png")
         form.add_field("response_format", "b64_json")
+        if resolution:
+            form.add_field("size", self._compute_size("1:1", resolution))
 
         headers = {"Authorization": f"Bearer {self._api_key}"}
         async with aiohttp.ClientSession(headers=headers, timeout=aiohttp.ClientTimeout(total=120)) as session:

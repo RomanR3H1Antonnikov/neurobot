@@ -33,14 +33,19 @@ class RouteraiProvider(OpenAICompatProvider):
         actual_model = model or self.image_model
 
         if actual_model.startswith("x-ai/"):
-            # Grok: aspect_ratio и ссылки идут в extra_body, size не нужен
             extra_body: dict = {"aspect_ratio": aspect_ratio}
             if style_reference_urls:
                 extra_body["input_references"] = [
                     {"type": "image_url", "image_url": {"url": u}}
                     for u in style_reference_urls
                 ]
-            body = {"model": actual_model, "prompt": prompt, "n": 1, "extra_body": extra_body}
+            body = {
+                "model": actual_model,
+                "prompt": prompt,
+                "n": 1,
+                "size": self._compute_size(aspect_ratio, resolution),
+                "extra_body": extra_body,
+            }
             async with self._session() as session:
                 async with session.post(f"{self.base_url}/images/generations", json=body) as resp:
                     data = await self._handle_response(resp)
@@ -134,7 +139,7 @@ class RouteraiProvider(OpenAICompatProvider):
     async def edit_image(
         self, image_bytes: bytes, prompt: str, model: str | None = None,
         image_url: str | None = None, style_reference_urls: list[str] | None = None,
-        provider_task_id: str | None = None,
+        provider_task_id: str | None = None, resolution: str | None = None,
     ) -> GenerationResult:
         actual_model = model or self.image_edit_model
 

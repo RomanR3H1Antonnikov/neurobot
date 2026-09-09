@@ -180,6 +180,7 @@ tasks:
         model_id: grok-imagine-image-2-0/text-to-image
         provider: kie
         max_style_refs: 3
+        resolutions: ["1K", "2K"]
         cost_credits: 4
         cost_usd: 0.03
         enabled: true
