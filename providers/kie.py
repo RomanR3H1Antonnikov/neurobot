@@ -291,6 +291,7 @@ class KieProvider(OpenAICompatProvider):
         is_bytedance = actual_model.startswith("bytedance/")
         is_wan = actual_model.startswith("wan/")
         is_pixverse = actual_model.startswith("pixverse")
+        is_google = actual_model.startswith("google/")
 
         # Bytedance (Seedance) требует "adaptive" когда задан первый/последний кадр
         _effective_ratio = (
@@ -300,10 +301,10 @@ class KieProvider(OpenAICompatProvider):
         )
         input_data: dict = {
             "prompt": prompt,
-            "duration": str(duration) if is_kling else duration,
+            "duration": str(duration) if (is_kling or is_google) else duration,
             "aspect_ratio": _effective_ratio,
         }
-        if is_kling or is_wan or is_bytedance:
+        if is_kling or is_wan or is_bytedance or is_google:
             input_data["resolution"] = resolution or "720p"
 
         # ── Первый / последний кадр ──────────────────────────────────────────
@@ -315,7 +316,7 @@ class KieProvider(OpenAICompatProvider):
         elif is_kling:
             if first_frame_url or last_frame_url:
                 input_data["image_urls"] = [u for u in [first_frame_url, last_frame_url] if u]
-        elif is_wan or is_pixverse:
+        elif is_wan or is_pixverse or is_google:
             if first_frame_url:
                 input_data["first_frame_url"] = first_frame_url
             if last_frame_url:
@@ -326,16 +327,27 @@ class KieProvider(OpenAICompatProvider):
             if is_bytedance:
                 input_data["style_reference_urls"] = list(style_reference_urls)
             else:
-                # minimax-h3, wan, pixverse, happyhorse и прочие
+                # minimax-h3, wan, pixverse, google и прочие
                 input_data["image_urls"] = list(style_reference_urls)
 
         # ── Аудио-референсы ─────────────────────────────────────────────────
         if audio_reference_urls:
-            input_data["audio_urls"] = list(audio_reference_urls)
+            if is_google:
+                # Gemini ожидает поле audio_ids
+                input_data["audio_ids"] = list(audio_reference_urls)
+            else:
+                input_data["audio_urls"] = list(audio_reference_urls)
 
         # ── Видео-референсы ──────────────────────────────────────────────────
         if video_reference_urls:
-            input_data["video_urls"] = list(video_reference_urls)
+            if is_google:
+                # Gemini ожидает video_list с объектами {url, start, ends}
+                input_data["video_list"] = [
+                    {"url": url, "start": 0, "ends": duration}
+                    for url in video_reference_urls
+                ]
+            else:
+                input_data["video_urls"] = list(video_reference_urls)
 
         try:
             await self._create_job(actual_model, input_data, corr_id)

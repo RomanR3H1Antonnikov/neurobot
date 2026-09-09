@@ -499,6 +499,27 @@ tasks:
         cost_usd: 0.20
         enabled: false  # bratuha.ru — нет публичного API
 
+      - id: gemini-omni-flash-1-1
+        label: "Gemini Omni Flash 1.1"
+        description: >-
+          Нейросеть Google для генерации коротких видео (до 10 сек, 4K) по тексту,
+          изображениям, видео- и аудиореференсам с поддержкой первого и последнего кадра.
+        duration_options: [4, 6, 8, 10]
+        min_duration: 4
+        max_duration: 10
+        aspect_ratios: ["16:9", "9:16"]
+        resolutions: ["360p", "720p", "1080p", "4K"]
+        first_frame: true
+        last_frame: true
+        max_style_refs: 5
+        max_video_refs: 1
+        max_audio_refs: 3
+        model_id: google/gemini-omni-flash-1-1
+        provider: kie
+        cost_credits: 1
+        cost_usd: 0.06
+        enabled: true
+
   # ─── Генерация аудио ─────────────────────────────────────────────────────────
   audio_generation:
     rate_limit_per_hour: 20
