@@ -294,17 +294,20 @@ class KieProvider(OpenAICompatProvider):
         is_google = actual_model.startswith("google/")
         is_grok_video = actual_model.startswith("grok-imagine-video")
 
-        # Bytedance (Seedance) требует "adaptive" когда задан первый/последний кадр
+        # Bytedance (Seedance) требует "adaptive" когда задан первый/последний кадр;
+        # Wan в image-to-video режиме (first/last frame) aspect_ratio не принимает вообще
+        _has_frame = bool(first_frame_url or last_frame_url)
         _effective_ratio = (
             "adaptive"
-            if is_bytedance and (first_frame_url or last_frame_url)
+            if is_bytedance and _has_frame
             else (aspect_ratio or "16:9")
         )
         input_data: dict = {
             "prompt": prompt,
             "duration": str(duration) if (is_kling or is_google) else duration,
-            "aspect_ratio": _effective_ratio,
         }
+        if not (is_wan and _has_frame):
+            input_data["aspect_ratio"] = _effective_ratio
         if is_kling or is_wan or is_bytedance or is_google or is_grok_video:
             input_data["resolution"] = resolution or "720p"
 
