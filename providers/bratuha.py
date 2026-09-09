@@ -100,6 +100,7 @@ class BratuhaProvider(AbstractProvider):
             "prompt": prompt,
             "aspect_ratio": aspect_ratio or "16:9",
             "resolution": resolution or "1080p",
+            "duration": duration,
         }
         # Veo Fast принимает до 3 изображений, Quality — только первое
         if style_reference_urls:
