@@ -24,7 +24,7 @@ async def main() -> None:
     bot = Bot(
         token=config.bot_token,
         default=DefaultBotProperties(parse_mode=ParseMode.HTML),
-        session=AiohttpSession(timeout=300),  # секунды, aiogram оборачивает сам
+        session=AiohttpSession(timeout=600),  # секунды, aiogram оборачивает сам
     )
     dp = Dispatcher()
 
