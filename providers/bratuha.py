@@ -78,7 +78,7 @@ class BratuhaProvider(AbstractProvider):
                 return data.get("output") or data.get("result") or data
             if status in ("failed", "error"):
                 reason = data.get("error") or data.get("message") or data.get("reason") or ""
-                logger.error("Bratuha operation failed: op_id=%s status=%s reason=%s", operation_id, status, reason)
+                logger.error("Bratuha operation failed: op_id=%s status=%s reason=%s full=%s", operation_id, status, reason, str(data)[:500])
                 raise ProviderUnavailableError("Bratuha: генерация завершилась с ошибкой")
             await asyncio.sleep(10)
         raise ProviderUnavailableError("Bratuha: истекло время ожидания генерации")
