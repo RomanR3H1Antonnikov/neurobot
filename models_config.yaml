@@ -271,6 +271,7 @@ tasks:
         max_duration: 15
         aspect_ratios: ["16:9", "9:16", "1:1", "21:9"]
         resolutions: ["720p", "1080p", "4K"]
+        max_style_refs: 0
         model_id: kling-3.0/video
         provider: kie
         cost_credits: 1
@@ -291,6 +292,7 @@ tasks:
         aspect_ratios: ["16:9", "9:16", "1:1"]
         resolutions: ["720p", "1080p"]
         last_frame: false
+        max_style_refs: 0
         model_id: kling/v3-turbo-text-to-video
         provider: kie
         cost_credits: 1
@@ -312,6 +314,7 @@ tasks:
         aspect_ratios: ["16:9", "9:16", "1:1"]
         resolutions: ["720p", "1080p"]
         motion_control: true
+        max_style_refs: 0
         model_id: kling-3.0/motion-control
         provider: kie
         cost_credits: 1
