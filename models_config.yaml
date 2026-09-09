@@ -197,9 +197,7 @@ tasks:
         model_id: x-ai/grok-imagine-image-quality
         provider: routerai
         max_style_refs: 3
-        resolutions: ["1K", "2K"]
         cost_credits: 8
-        cost_by_resolution: {"1K": 8, "2K": 10}
         cost_usd: 0.03
         enabled: true
 
@@ -682,9 +680,7 @@ tasks:
         model_id: x-ai/grok-imagine-image-quality
         provider: routerai
         max_style_refs: 3
-        resolutions: ["1K", "2K"]
         cost_credits: 8
-        cost_by_resolution: {"1K": 8, "2K": 10}
         cost_usd: 0.03
         enabled: true
 
