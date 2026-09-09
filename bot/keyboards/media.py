@@ -50,6 +50,14 @@ def _top_level_items(models: list[dict]) -> list[dict]:
     return result
 
 
+def _cost_label(model: dict) -> str:
+    by_res = model.get("cost_by_resolution")
+    if by_res:
+        lo, hi = min(by_res.values()), max(by_res.values())
+        return f"{lo}–{hi} кр." if lo != hi else f"{lo} кр."
+    return f"{model['cost_credits']} кр."
+
+
 def model_top_kb(models: list[dict]) -> InlineKeyboardMarkup:
     """Первый уровень выбора: группы со стрелкой + одиночные модели с ценой."""
     builder = InlineKeyboardBuilder()
@@ -61,7 +69,7 @@ def model_top_kb(models: list[dict]) -> InlineKeyboardMarkup:
             ))
         else:
             builder.row(InlineKeyboardButton(
-                text=f"{item['label']} — {item['cost_credits']} кр.",
+                text=f"{item['label']} — {_cost_label(item)}",
                 callback_data=f"media:model:{item['id']}",
             ))
     builder.row(InlineKeyboardButton(text="◀️ Назад", callback_data="media:back:type"))
@@ -73,7 +81,7 @@ def model_variant_kb(variants: list[dict]) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     for m in variants:
         builder.row(InlineKeyboardButton(
-            text=f"{m['label']} — {m['cost_credits']} кр.",
+            text=f"{m['label']} — {_cost_label(m)}",
             callback_data=f"media:model:{m['id']}",
         ))
     builder.row(InlineKeyboardButton(text="◀️ Назад", callback_data="media:back:model"))
