@@ -21,6 +21,8 @@ class Config:
     bratuha_api_key: str
     ranvikapi_api_key: str
 
+    yookassa_provider_token: str  # токен провайдера из BotFather → Payments
+
     models: dict = field(default_factory=dict)
 
 
@@ -47,6 +49,7 @@ def load_config() -> Config:
         polzaai_api_key=os.getenv("POLZAAI_API_KEY", ""),
         bratuha_api_key=os.getenv("BRATUHA_API_KEY", ""),
         ranvikapi_api_key=os.getenv("RANVIKAPI_API_KEY", ""),
+        yookassa_provider_token=os.getenv("YOOKASSA_PROVIDER_TOKEN", ""),
         models=models.get("tasks", {}),
     )
 

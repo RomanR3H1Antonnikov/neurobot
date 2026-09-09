@@ -10,6 +10,11 @@ from aiogram.fsm.state import State, StatesGroup
 from bot.keyboards.main_menu import BTN_CHAT, BTN_EXIT_CHAT, BTN_NEW_DIALOG, BTN_CHAT_PICK_MODEL, MENU_BUTTONS, main_menu_kb, inline_main_menu_kb
 from bot.utils import cleanup_tracked_messages, safe_delete
 from bot.keyboards.billing import quick_topup_kb
+from config import config as _billing_config
+
+
+def _has_yookassa() -> bool:
+    return bool(_billing_config.yookassa_provider_token)
 from providers.base import ProviderError, TaskType
 from providers.router import get_models_for_task
 from services import chat_service
@@ -163,7 +168,7 @@ async def chat_message(message: Message, state: FSMContext) -> None:
         await state.update_data(pending_retry_type="chat", pending_message=message.text)
         await message.answer(
             f"❌ {e}\n\nПополни баланс — я отвечу на твой вопрос автоматически:",
-            reply_markup=quick_topup_kb(),
+            reply_markup=quick_topup_kb(_has_yookassa()),
         )
     except RateLimitError as e:
         await thinking.delete()

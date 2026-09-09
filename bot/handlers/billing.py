@@ -1,19 +1,31 @@
 import logging
 from aiogram import Router, F
-
-logger = logging.getLogger(__name__)
 from aiogram.filters import Command
 from aiogram.types import Message, CallbackQuery, PreCheckoutQuery, LabeledPrice
 from aiogram.fsm.context import FSMContext
 
-from bot.keyboards.main_menu import BTN_BALANCE, main_menu_kb, inline_main_menu_kb
+from bot.keyboards.main_menu import BTN_BALANCE, main_menu_kb
+from bot.keyboards.billing import (
+    payment_method_kb, stars_packages_kb, rub_packages_kb, quick_topup_kb,
+    TOPUP_PACKAGES_STARS, TOPUP_PACKAGES_RUB,
+)
 from bot.utils import cleanup_tracked_messages, safe_delete
-from bot.keyboards.billing import balance_kb, quick_topup_kb
 from config import config, reload_models
-from db.queries import get_or_create_user, add_credits, get_balance
+from db.queries import get_or_create_user, add_credits
 
+logger = logging.getLogger(__name__)
 router = Router()
 
+
+def _has_yookassa() -> bool:
+    return bool(config.yookassa_provider_token)
+
+
+def _balance_text(balance: int) -> str:
+    return f"💳 <b>Твой баланс:</b> {balance} кредитов\n\nВыбери способ оплаты:"
+
+
+# ─── Показ баланса ────────────────────────────────────────────────────────────
 
 @router.message(F.text == BTN_BALANCE)
 @router.message(Command("balance"))
@@ -23,29 +35,94 @@ async def show_balance(message: Message, state: FSMContext, db_user: dict) -> No
     await state.clear()
     await safe_delete(message, "BTN_BALANCE")
     sent = await message.answer(
-        f"💳 <b>Твой баланс:</b> {db_user['balance']} кредитов\n\n"
-        "Выбери пакет для пополнения:",
+        _balance_text(db_user["balance"]),
         parse_mode="HTML",
-        reply_markup=balance_kb(),
+        reply_markup=payment_method_kb(_has_yookassa()),
     )
     await state.update_data(_tracked_msg_ids=[sent.message_id])
 
+
+@router.callback_query(F.data == "menu:balance")
+async def menu_to_balance(callback: CallbackQuery, state: FSMContext, db_user: dict) -> None:
+    await callback.answer()
+    await callback.message.delete()
+    await state.clear()
+    await callback.message.answer(
+        _balance_text(db_user["balance"]),
+        parse_mode="HTML",
+        reply_markup=payment_method_kb(_has_yookassa()),
+    )
+
+
+# ─── Выбор метода оплаты ─────────────────────────────────────────────────────
+
+@router.callback_query(F.data == "billing:method:stars")
+async def choose_stars(callback: CallbackQuery) -> None:
+    await callback.answer()
+    await callback.message.edit_text(
+        "⭐ <b>Оплата Telegram Stars</b>\n\nВыбери пакет:",
+        parse_mode="HTML",
+        reply_markup=stars_packages_kb(),
+    )
+
+
+@router.callback_query(F.data == "billing:method:rub")
+async def choose_rub(callback: CallbackQuery) -> None:
+    if not _has_yookassa():
+        await callback.answer("Оплата картой временно недоступна", show_alert=True)
+        return
+    await callback.answer()
+    await callback.message.edit_text(
+        "💳 <b>Оплата банковской картой</b>\n\nВыбери пакет:",
+        parse_mode="HTML",
+        reply_markup=rub_packages_kb(),
+    )
+
+
+@router.callback_query(F.data == "billing:method_back")
+async def method_back(callback: CallbackQuery, state: FSMContext, db_user: dict) -> None:
+    await callback.answer()
+    await callback.message.edit_text(
+        _balance_text(db_user["balance"]),
+        parse_mode="HTML",
+        reply_markup=payment_method_kb(_has_yookassa()),
+    )
+
+
+# ─── Выставление счёта ────────────────────────────────────────────────────────
 
 @router.callback_query(F.data.startswith("billing:topup:"))
 async def topup_selected(callback: CallbackQuery) -> None:
     parts = callback.data.split(":")
     credits = int(parts[2])
-    stars = int(parts[3])
+    amount = int(parts[3])
+    method = parts[4] if len(parts) > 4 else "stars"
 
     await callback.answer()
-    await callback.message.answer_invoice(
-        title="Пополнение баланса",
-        description=f"{credits} кредитов для генерации медиа, чата и работы с документами",
-        payload=f"topup:{credits}",
-        currency="XTR",
-        prices=[LabeledPrice(label=f"{credits} кредитов", amount=stars)],
-    )
 
+    if method == "rub":
+        if not _has_yookassa():
+            await callback.answer("Оплата картой временно недоступна", show_alert=True)
+            return
+        await callback.message.answer_invoice(
+            title="Пополнение баланса",
+            description=f"{credits} кредитов для генерации медиа, чата и работы с документами",
+            payload=f"topup:{credits}",
+            provider_token=config.yookassa_provider_token,
+            currency="RUB",
+            prices=[LabeledPrice(label=f"{credits} кредитов", amount=amount * 100)],  # в копейках
+        )
+    else:
+        await callback.message.answer_invoice(
+            title="Пополнение баланса",
+            description=f"{credits} кредитов для генерации медиа, чата и работы с документами",
+            payload=f"topup:{credits}",
+            currency="XTR",
+            prices=[LabeledPrice(label=f"{credits} кредитов", amount=amount)],
+        )
+
+
+# ─── Обработка платежей ───────────────────────────────────────────────────────
 
 @router.pre_checkout_query()
 async def pre_checkout(query: PreCheckoutQuery) -> None:
@@ -56,9 +133,11 @@ async def pre_checkout(query: PreCheckoutQuery) -> None:
 async def handle_successful_payment(message: Message, state: FSMContext) -> None:
     payload = message.successful_payment.invoice_payload
     credits = int(payload.split(":")[1])
+    currency = message.successful_payment.currency
 
     user = await get_or_create_user(message.from_user.id, message.from_user.username)
-    new_balance = await add_credits(user["id"], credits, description="Пополнение через Telegram Stars")
+    method_label = "Telegram Stars" if currency == "XTR" else "банковская карта"
+    new_balance = await add_credits(user["id"], credits, description=f"Пополнение через {method_label}")
 
     await message.answer(
         f"✅ <b>Баланс пополнен!</b>\n\n"
@@ -79,15 +158,18 @@ async def handle_successful_payment(message: Message, state: FSMContext) -> None
         from bot.handlers.chat import resume_chat_after_topup
         await resume_chat_after_topup(message, state)
     else:
+        from bot.keyboards.main_menu import main_menu_kb
         await message.answer("Выбери, что хочешь сделать:", reply_markup=main_menu_kb())
 
 
+# ─── Навигация ────────────────────────────────────────────────────────────────
+
 @router.callback_query(F.data == "billing:cancel_topup")
 async def cancel_topup(callback: CallbackQuery, state: FSMContext) -> None:
-    """Отмена пополнения из потока — возвращаем в меню, сбрасываем pending."""
     await state.update_data(pending_retry_type=None, pending_message=None)
     await state.clear()
     await callback.message.edit_text("Пополнение отменено.")
+    from bot.keyboards.main_menu import main_menu_kb
     await callback.message.answer("Главное меню:", reply_markup=main_menu_kb())
     await callback.answer()
 
@@ -96,20 +178,9 @@ async def cancel_topup(callback: CallbackQuery, state: FSMContext) -> None:
 async def billing_back_to_menu(callback: CallbackQuery, state: FSMContext) -> None:
     await state.clear()
     await callback.message.delete()
+    from bot.keyboards.main_menu import main_menu_kb
     await callback.message.answer("Главное меню:", reply_markup=main_menu_kb())
     await callback.answer()
-
-
-@router.callback_query(F.data == "menu:balance")
-async def menu_to_balance(callback: CallbackQuery, state: FSMContext, db_user: dict) -> None:
-    await callback.answer()
-    await callback.message.delete()
-    await state.clear()
-    await callback.message.answer(
-        f"💳 <b>Твой баланс:</b> {db_user['balance']} кредитов\n\nВыбери пакет для пополнения:",
-        parse_mode="HTML",
-        reply_markup=balance_kb(),
-    )
 
 
 # ─── Админские команды ────────────────────────────────────────────────────────

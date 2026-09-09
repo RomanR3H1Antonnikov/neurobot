@@ -12,6 +12,11 @@ from aiogram.fsm.state import State, StatesGroup
 from bot.keyboards.main_menu import BTN_MEDIA, MENU_BUTTONS, main_menu_kb, inline_main_menu_kb
 from bot.utils import cleanup_tracked_messages, safe_delete
 from bot.keyboards.billing import quick_topup_kb
+from config import config as _billing_cfg
+
+
+def _has_yookassa() -> bool:
+    return bool(_billing_cfg.yookassa_provider_token)
 from bot.keyboards.media import (
     media_type_kb, media_edit_kb, model_top_kb, model_variant_kb,
     model_select_text, model_variant_text, back_to_model_kb, back_to_confirm_kb, back_to_frames_kb,
@@ -1398,7 +1403,7 @@ async def receive_prompt(message: Message, state: FSMContext) -> None:
             await state.update_data(pending_retry_type="media")
             await waiting.edit_text(
                 f"❌ {e}\n\nПополни баланс — редактирование продолжится автоматически:",
-                reply_markup=quick_topup_kb(),
+                reply_markup=quick_topup_kb(_has_yookassa()),
             )
         except RateLimitError as e:
             await waiting.edit_text(f"⏱ {e}", reply_markup=error_kb())
@@ -1494,7 +1499,7 @@ async def update_prompt_in_confirm(message: Message, state: FSMContext) -> None:
             await state.update_data(pending_retry_type="media")
             await waiting.edit_text(
                 f"❌ {e}\n\nПополни баланс — редактирование продолжится автоматически:",
-                reply_markup=quick_topup_kb(),
+                reply_markup=quick_topup_kb(_has_yookassa()),
             )
         except RateLimitError as e:
             await waiting.edit_text(f"⏱ {e}", reply_markup=error_kb())
@@ -1524,7 +1529,7 @@ async def update_prompt_in_confirm(message: Message, state: FSMContext) -> None:
                 await state.update_data(pending_retry_type="media")
                 await waiting.edit_text(
                     f"❌ {e}\n\nПополни баланс — редактирование продолжится автоматически:",
-                    reply_markup=quick_topup_kb(),
+                    reply_markup=quick_topup_kb(_has_yookassa()),
                 )
             except RateLimitError as e:
                 await waiting.edit_text(f"⏱ {e}", reply_markup=error_kb())
@@ -1994,7 +1999,7 @@ async def start_generation(callback: CallbackQuery, state: FSMContext) -> None:
         await state.update_data(pending_retry_type="media")
         await callback.message.edit_text(
             f"❌ {e}\n\nПополни баланс — генерация продолжится автоматически:",
-            reply_markup=quick_topup_kb(),
+            reply_markup=quick_topup_kb(_has_yookassa()),
         )
     except RateLimitError as e:
         await callback.message.edit_text(f"⏱ {e}", reply_markup=error_kb())
