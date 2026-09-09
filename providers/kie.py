@@ -374,10 +374,16 @@ class KieProvider(OpenAICompatProvider):
             unregister_pending(corr_id)
 
         if _is_failed(callback_body):
+            _data = callback_body.get("data", {})
+            _fail_msg = (_data.get("failMsg") or _data.get("fail_msg") or "").lower()
+            logger.error("KIE video failed: model=%s failMsg=%s", actual_model, _fail_msg)
+            if any(k in _fail_msg for k in ("validation", "policy", "safety", "content")):
+                raise ProviderContentPolicyError("Изображение не прошло проверку безопасности — попробуйте другое фото")
             raise ProviderUnavailableError("KIE: генерация видео завершилась с ошибкой")
 
         url = _extract_url(callback_body)
         if not url:
+            logger.error("KIE video: URL not found. data keys=%s", list(callback_body.get("data", {}).keys()))
             raise ProviderUnavailableError("KIE: не получен URL видео")
 
         video_bytes = await self._download(url)

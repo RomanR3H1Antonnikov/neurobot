@@ -1403,7 +1403,7 @@ async def receive_prompt(message: Message, state: FSMContext) -> None:
         except RateLimitError as e:
             await waiting.edit_text(f"⏱ {e}", reply_markup=error_kb())
         except ProviderContentPolicyError:
-            await waiting.edit_text("❌ Запрос не прошёл проверку безопасности. Попробуй изменить описание.", reply_markup=error_kb())
+            await waiting.edit_text("❌ Запрос не прошёл проверку безопасности — попробуй изменить описание или использовать другое изображение.", reply_markup=error_kb())
         except ProviderError:
             await waiting.edit_text("⚠️ Сервис временно недоступен. Кредиты не списаны — попробуй ещё раз.", reply_markup=error_kb())
         except Exception:
@@ -1499,7 +1499,7 @@ async def update_prompt_in_confirm(message: Message, state: FSMContext) -> None:
         except RateLimitError as e:
             await waiting.edit_text(f"⏱ {e}", reply_markup=error_kb())
         except ProviderContentPolicyError:
-            await waiting.edit_text("❌ Запрос не прошёл проверку безопасности. Попробуй изменить описание.", reply_markup=error_kb())
+            await waiting.edit_text("❌ Запрос не прошёл проверку безопасности — попробуй изменить описание или использовать другое изображение.", reply_markup=error_kb())
         except ProviderError:
             await waiting.edit_text("⚠️ Сервис временно недоступен. Кредиты не списаны — попробуй ещё раз.", reply_markup=error_kb())
         except Exception:
@@ -1529,7 +1529,7 @@ async def update_prompt_in_confirm(message: Message, state: FSMContext) -> None:
             except RateLimitError as e:
                 await waiting.edit_text(f"⏱ {e}", reply_markup=error_kb())
             except ProviderContentPolicyError:
-                await waiting.edit_text("❌ Запрос не прошёл проверку безопасности. Попробуй изменить описание.", reply_markup=error_kb())
+                await waiting.edit_text("❌ Запрос не прошёл проверку безопасности — попробуй изменить описание или использовать другое изображение.", reply_markup=error_kb())
             except ProviderError:
                 await waiting.edit_text("⚠️ Сервис временно недоступен. Кредиты не списаны — попробуй ещё раз.", reply_markup=error_kb())
             except Exception:
@@ -2000,7 +2000,7 @@ async def start_generation(callback: CallbackQuery, state: FSMContext) -> None:
         await callback.message.edit_text(f"⏱ {e}", reply_markup=error_kb())
     except ProviderContentPolicyError:
         await callback.message.edit_text(
-            "❌ Запрос не прошёл проверку безопасности. Попробуй изменить описание.",
+            "❌ Запрос не прошёл проверку безопасности — попробуй изменить описание или использовать другое изображение.",
             reply_markup=error_kb(),
         )
     except ProviderError as e:
@@ -2036,7 +2036,7 @@ async def resume_generation_after_topup(message: Message, state: FSMContext) -> 
     except RateLimitError as e:
         await waiting.edit_text(f"⏱ {e}", reply_markup=error_kb())
     except ProviderContentPolicyError:
-        await waiting.edit_text("❌ Запрос не прошёл проверку безопасности. Попробуй изменить описание.", reply_markup=error_kb())
+        await waiting.edit_text("❌ Запрос не прошёл проверку безопасности — попробуй изменить описание или использовать другое изображение.", reply_markup=error_kb())
     except ProviderError:
         await waiting.edit_text("⚠️ Сервис временно недоступен. Кредиты не списаны — попробуй ещё раз.", reply_markup=error_kb())
     except Exception:
