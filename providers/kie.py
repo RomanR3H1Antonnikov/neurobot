@@ -293,10 +293,12 @@ class KieProvider(OpenAICompatProvider):
         is_pixverse = actual_model.startswith("pixverse")
         is_google = actual_model.startswith("google/")
         is_grok_video = actual_model.startswith("grok-imagine-video")
+        is_minimax = actual_model.startswith("minimax")
 
         # Bytedance (Seedance) требует "adaptive" когда задан первый/последний кадр;
-        # Wan в image-to-video режиме (first/last frame) aspect_ratio не принимает вообще
+        # Wan в image/reference-режиме не принимает aspect_ratio и resolution
         _has_frame = bool(first_frame_url or last_frame_url)
+        _wan_with_images = is_wan and (_has_frame or bool(style_reference_urls))
         _effective_ratio = (
             "adaptive"
             if is_bytedance and _has_frame
@@ -306,9 +308,9 @@ class KieProvider(OpenAICompatProvider):
             "prompt": prompt,
             "duration": str(duration) if (is_kling or is_google) else duration,
         }
-        if not (is_wan and _has_frame):
+        if not _wan_with_images:
             input_data["aspect_ratio"] = _effective_ratio
-        if is_kling or is_wan or is_bytedance or is_google or is_grok_video:
+        if (is_kling or is_wan or is_bytedance or is_google or is_grok_video) and not _wan_with_images:
             input_data["resolution"] = resolution or "720p"
 
         # ── Первый / последний кадр ──────────────────────────────────────────
@@ -320,7 +322,7 @@ class KieProvider(OpenAICompatProvider):
         elif is_kling:
             if first_frame_url or last_frame_url:
                 input_data["image_urls"] = [u for u in [first_frame_url, last_frame_url] if u]
-        elif is_wan or is_pixverse or is_google:
+        elif is_wan or is_pixverse or is_google or is_minimax:
             if first_frame_url:
                 input_data["first_frame_url"] = first_frame_url
             if last_frame_url:

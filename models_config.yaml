@@ -330,8 +330,8 @@ tasks:
         duration_options: [5, 10, 15]
         min_duration: 4
         max_duration: 15
-        first_frame: false
-        last_frame: false
+        first_frame: true
+        last_frame: true
         max_style_refs: 9
         max_video_refs: 3
         max_audio_refs: 3
