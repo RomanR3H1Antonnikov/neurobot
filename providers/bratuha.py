@@ -117,9 +117,11 @@ class BratuhaProvider(AbstractProvider):
         url = (
             result.get("url")
             or result.get("video_url")
+            or ((result.get("urls") or [None])[0])
             or ((result.get("videos") or [{}])[0]).get("url")
         )
         if not url:
+            logger.error("Bratuha video: URL not found, op_id=%s full_result=%s", op_id, str(result)[:800])
             raise ProviderUnavailableError("Bratuha: не получен URL видео")
 
         async with aiohttp.ClientSession() as s:
@@ -152,6 +154,7 @@ class BratuhaProvider(AbstractProvider):
         url = (
             result.get("url")
             or result.get("image_url")
+            or ((result.get("urls") or [None])[0])
             or ((result.get("images") or [{}])[0]).get("url")
         )
         if not url:
