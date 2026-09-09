@@ -292,6 +292,7 @@ class KieProvider(OpenAICompatProvider):
         is_wan = actual_model.startswith("wan/")
         is_pixverse = actual_model.startswith("pixverse")
         is_google = actual_model.startswith("google/")
+        is_grok_video = actual_model.startswith("grok-imagine-video")
 
         # Bytedance (Seedance) требует "adaptive" когда задан первый/последний кадр
         _effective_ratio = (
@@ -304,7 +305,7 @@ class KieProvider(OpenAICompatProvider):
             "duration": str(duration) if (is_kling or is_google) else duration,
             "aspect_ratio": _effective_ratio,
         }
-        if is_kling or is_wan or is_bytedance or is_google:
+        if is_kling or is_wan or is_bytedance or is_google or is_grok_video:
             input_data["resolution"] = resolution or "720p"
 
         # ── Первый / последний кадр ──────────────────────────────────────────
@@ -321,11 +322,19 @@ class KieProvider(OpenAICompatProvider):
                 input_data["first_frame_url"] = first_frame_url
             if last_frame_url:
                 input_data["last_frame_url"] = last_frame_url
+        elif is_grok_video:
+            # Grok uses image_urls for all images; first_frame occupies slot 0
+            if first_frame_url:
+                input_data["image_urls"] = [first_frame_url]
 
         # ── Фото-референсы (extra style refs) ───────────────────────────────
         if style_reference_urls:
             if is_bytedance:
                 input_data["style_reference_urls"] = list(style_reference_urls)
+            elif is_grok_video:
+                # Append after first_frame (if any) — total cap 7 images
+                existing = input_data.get("image_urls", [])
+                input_data["image_urls"] = existing + list(style_reference_urls)
             else:
                 # minimax-h3, wan, pixverse, google и прочие
                 input_data["image_urls"] = list(style_reference_urls)

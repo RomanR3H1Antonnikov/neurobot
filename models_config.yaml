@@ -520,6 +520,25 @@ tasks:
         cost_usd: 0.06
         enabled: true
 
+      - id: grok-video-1-5
+        label: "Grok Video 1.5"
+        description: >-
+          Нейросеть от xAI для генерации видео (до 15 сек, 1080p) по тексту и изображениям
+          с нативным звуком; первое добавленное изображение становится начальным кадром анимации.
+        duration_options: [5, 10, 15]
+        min_duration: 1
+        max_duration: 15
+        aspect_ratios: ["1:1", "9:16", "16:9", "2:3", "3:2"]
+        resolutions: ["480p", "720p", "1080p"]
+        first_frame: true
+        last_frame: false
+        max_style_refs: 7
+        model_id: grok-imagine-video-1-5-preview
+        provider: kie
+        cost_credits: 1
+        cost_usd: 0.06
+        enabled: true
+
   # ─── Генерация аудио ─────────────────────────────────────────────────────────
   audio_generation:
     rate_limit_per_hour: 20
