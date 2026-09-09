@@ -75,7 +75,9 @@ class BratuhaProvider(AbstractProvider):
                     data = await self._handle_response(resp)
             status = data.get("status", "")
             if status == "completed":
-                return data.get("output") or data.get("result") or data
+                output = data.get("output") or data.get("result") or data
+                logger.info("Bratuha completed: op_id=%s output_keys=%s", operation_id, list(output.keys()) if isinstance(output, dict) else type(output).__name__)
+                return output
             if status in ("failed", "error"):
                 reason = data.get("error") or data.get("message") or data.get("reason") or ""
                 logger.error("Bratuha operation failed: op_id=%s status=%s reason=%s full=%s", operation_id, status, reason, str(data)[:500])
@@ -153,6 +155,7 @@ class BratuhaProvider(AbstractProvider):
             or ((result.get("images") or [{}])[0]).get("url")
         )
         if not url:
+            logger.error("Bratuha image: URL not found, op_id=%s full_result=%s", op_id, str(result)[:800])
             raise ProviderUnavailableError("Bratuha: не получен URL изображения")
 
         async with aiohttp.ClientSession() as s:
