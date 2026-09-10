@@ -269,7 +269,13 @@ def video_frames_menu_kb(
             if extra_ref_count else
             "📎 Остальные кадры"
         )
-        builder.row(InlineKeyboardButton(text=extra_text, callback_data="media:add_extra_frames"))
+        if extra_ref_count > 0:
+            builder.row(
+                InlineKeyboardButton(text=extra_text, callback_data="media:add_extra_frames"),
+                InlineKeyboardButton(text="🗑", callback_data="media:delete_extra_frames"),
+            )
+        else:
+            builder.row(InlineKeyboardButton(text=extra_text, callback_data="media:add_extra_frames"))
     builder.row(InlineKeyboardButton(text="◀️ Назад", callback_data="media:back:confirm"))
     return builder.as_markup()
 

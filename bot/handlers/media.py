@@ -1093,6 +1093,13 @@ async def delete_last_frame(callback: CallbackQuery, state: FSMContext) -> None:
     await callback.answer("Фото удалено")
 
 
+@router.callback_query(MediaStates.confirm, F.data == "media:delete_extra_frames")
+async def delete_extra_frames(callback: CallbackQuery, state: FSMContext) -> None:
+    await state.update_data(style_reference_file_ids=[], _sref_msg_id=callback.message.message_id)
+    await _back_to_frames_menu(callback.bot, callback.message.chat.id, state)
+    await callback.answer("Кадры удалены")
+
+
 # ─── Загрузка референса (только для edit) ────────────────────────────────────
 
 async def _show_confirm_after_reference(message: Message, state: FSMContext) -> None:
