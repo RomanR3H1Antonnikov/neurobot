@@ -97,19 +97,25 @@ class BratuhaProvider(AbstractProvider):
         tool = _MODEL_TOOLS.get(actual_model, "veo-3-1")
 
         input_payload: dict = {
-            "generation_type": "text",
             "model": actual_model,
             "prompt": prompt,
             "aspect_ratio": aspect_ratio or "16:9",
             "resolution": resolution or "1080p",
             "duration": duration,
         }
-        # Veo Fast принимает до 3 изображений, Quality — только первое
-        if style_reference_urls:
+        if first_frame_url:
+            # Image-to-video: первый кадр задаёт начало видео
+            input_payload["generation_type"] = "image"
+            input_payload["image_url"] = first_frame_url
+        elif style_reference_urls:
+            # Text-to-video с фото-референсами стиля
+            input_payload["generation_type"] = "text"
             if actual_model == "veo3.1-quality":
                 input_payload["image_url"] = style_reference_urls[0]
             else:
                 input_payload["image_urls"] = list(style_reference_urls)
+        else:
+            input_payload["generation_type"] = "text"
 
         op_id = await self._create_operation(tool, input_payload)
         result = await self._poll_operation(op_id)
