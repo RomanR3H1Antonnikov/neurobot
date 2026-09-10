@@ -314,6 +314,7 @@ class KieProvider(OpenAICompatProvider):
         resolution: str | None = None,
         audio_reference_urls: list[str] | None = None,
         video_reference_urls: list[str] | None = None,
+        output_format: str | None = None,
     ) -> GenerationResult:
         actual_model = model or "kling-3.0/video"
         corr_id = uuid.uuid4().hex
@@ -376,6 +377,10 @@ class KieProvider(OpenAICompatProvider):
             else:
                 # minimax-h3, wan, pixverse, google и прочие
                 input_data["image_urls"] = list(style_reference_urls)
+
+        # ── Формат вывода ────────────────────────────────────────────────────
+        if output_format and is_bytedance:
+            input_data["output_format"] = output_format
 
         # ── Аудио-референсы ─────────────────────────────────────────────────
         if audio_reference_urls:
@@ -442,6 +447,8 @@ class KieProvider(OpenAICompatProvider):
             raise ProviderUnavailableError("KIE: не получен URL видео")
 
         video_bytes = await self._download(url)
+        if output_format == "mov":
+            return GenerationResult(data=video_bytes, mime_type="video/quicktime", filename="video.mov")
         return GenerationResult(data=video_bytes, mime_type="video/mp4", filename="video.mp4")
 
     # ─── Редактирование изображений ───────────────────────────────────────────

@@ -68,6 +68,7 @@ async def generate_video(
     resolution: str | None = None,
     audio_reference_urls: list[str] | None = None,
     video_reference_urls: list[str] | None = None,
+    output_format: str | None = None,
 ) -> GenerationResult:
     task = TaskType.VIDEO_GENERATION
     provider, model_cfg = get_provider_by_model_id(task, model_slug)
@@ -82,6 +83,7 @@ async def generate_video(
         resolution=resolution,
         audio_reference_urls=audio_reference_urls,
         video_reference_urls=video_reference_urls,
+        output_format=output_format,
     )
     await deduct_credits(user_id, get_cost(model_cfg), task.value)
     return result

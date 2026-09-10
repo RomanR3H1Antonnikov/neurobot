@@ -234,6 +234,7 @@ tasks:
         max_style_refs: 28
         max_video_refs: 10
         max_audio_refs: 10
+        output_formats: ["mp4", "mov"]
         model_id: bytedance/seedance-2-5
         provider: kie
         cost_credits: 1

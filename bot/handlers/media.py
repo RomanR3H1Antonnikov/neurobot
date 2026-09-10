@@ -21,7 +21,7 @@ from bot.keyboards.media import (
     media_type_kb, media_edit_kb, model_top_kb, model_variant_kb,
     model_select_text, model_variant_text, back_to_model_kb, back_to_confirm_kb, back_to_frames_kb,
     image_confirm_kb, image_ratio_kb, image_resolution_kb,
-    video_confirm_kb, video_frames_menu_kb, video_duration_picker_kb, audio_confirm_kb, edit_confirm_kb,
+    video_confirm_kb, video_format_kb, video_frames_menu_kb, video_duration_picker_kb, audio_confirm_kb, edit_confirm_kb,
     style_ref_collecting_kb, after_generation_kb, gen_waiting_kb, error_kb,
 )
 from providers.base import ProviderError, ProviderContentPolicyError, TaskType
@@ -271,6 +271,8 @@ def _confirm_kb(data: dict):
             video_ref_count=len(data.get("video_style_reference_file_ids") or []),
             max_video_refs=_max_video,
             show_frames_button=_show_frames,
+            output_format=data.get("video_output_format"),
+            output_formats=data.get("model_output_formats"),
         )
     elif media_type == "audio":
         return audio_confirm_kb(has_prompt=has_prompt)
@@ -390,7 +392,16 @@ async def select_model(callback: CallbackQuery, state: FSMContext) -> None:
         "model_motion_control": model_cfg.get("motion_control", False),
         "model_has_first_frame": model_cfg.get("first_frame", True),
         "model_has_last_frame": model_cfg.get("last_frame", True),
+        "model_output_formats": model_cfg.get("output_formats"),
     }
+    # если output_format не задан или недоступен у новой модели — сбрасываем
+    allowed_formats = model_cfg.get("output_formats")
+    if allowed_formats:
+        current_fmt = data.get("video_output_format")
+        if not current_fmt or current_fmt not in allowed_formats:
+            update["video_output_format"] = allowed_formats[0]
+    else:
+        update["video_output_format"] = None
     # если текущий ratio недоступен у новой модели (или не задан) — сбрасываем на первый из списка
     if aspect_ratios:
         current_ratio = data.get("aspect_ratio")
@@ -1754,6 +1765,31 @@ async def set_resolution(callback: CallbackQuery, state: FSMContext) -> None:
     await callback.answer()
 
 
+@router.callback_query(MediaStates.confirm, F.data == "media:pick_format")
+async def pick_format(callback: CallbackQuery, state: FSMContext) -> None:
+    data = await state.get_data()
+    formats = data.get("model_output_formats") or ["mp4"]
+    current = data.get("video_output_format") or formats[0]
+    await callback.message.edit_text(
+        "<b>Выбери формат видео:</b>\n\n"
+        "MP4 — универсальный формат, подходит для большинства платформ.\n"
+        "MOV — высокое цветовое качество для профессионального монтажа.",
+        parse_mode="HTML",
+        reply_markup=video_format_kb(current, formats),
+    )
+    await callback.answer()
+
+
+@router.callback_query(MediaStates.confirm, F.data.startswith("media:format:"))
+async def set_format(callback: CallbackQuery, state: FSMContext) -> None:
+    fmt = callback.data[len("media:format:"):]
+    await state.update_data(video_output_format=fmt)
+    data = await state.get_data()
+    await callback.message.edit_text(_confirm_card_text(data), parse_mode="HTML", reply_markup=_confirm_kb(data))
+    await _delete_msgs_below(callback.bot, callback.message.chat.id, state, callback.message.message_id)
+    await callback.answer()
+
+
 @router.callback_query(MediaStates.confirm, F.data.startswith("media:duration:"))
 async def set_duration(callback: CallbackQuery, state: FSMContext) -> None:
     duration = int(callback.data.split(":")[2])
@@ -1923,11 +1959,17 @@ async def _run_generation(send_msg: Message, tg_user, state: FSMContext, data: d
             resolution=data.get("resolution"),
             audio_reference_urls=audio_reference_urls,
             video_reference_urls=video_reference_urls,
+            output_format=data.get("video_output_format"),
         )
         file = BufferedInputFile(result.data, filename=result.filename)
-        sent = await send_msg.answer_video(file, reply_markup=after_generation_kb())
-        await _track_msg(state, sent.message_id)
-        await save_generation(tg_user.id, "video", sent.video.file_id, prompt=prompt, model_label=data.get("model_label"))
+        if result.mime_type == "video/quicktime":
+            sent = await send_msg.answer_document(file, reply_markup=after_generation_kb())
+            await _track_msg(state, sent.message_id)
+            await save_generation(tg_user.id, "video", sent.document.file_id, prompt=prompt, model_label=data.get("model_label"))
+        else:
+            sent = await send_msg.answer_video(file, reply_markup=after_generation_kb())
+            await _track_msg(state, sent.message_id)
+            await save_generation(tg_user.id, "video", sent.video.file_id, prompt=prompt, model_label=data.get("model_label"))
 
     elif media_type == "audio":
         result = await media_service.generate_audio(

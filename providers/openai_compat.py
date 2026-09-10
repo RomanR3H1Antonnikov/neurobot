@@ -95,6 +95,7 @@ class OpenAICompatProvider(AbstractProvider):
         first_frame_url: str | None = None,
         last_frame_url: str | None = None,
         video_reference_urls: list[str] | None = None,
+        output_format: str | None = None,
     ) -> GenerationResult:
         actual_model = model or self.video_model
 

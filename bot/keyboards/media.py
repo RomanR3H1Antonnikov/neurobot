@@ -198,6 +198,8 @@ def video_confirm_kb(
     video_ref_count: int = 0,
     max_video_refs: int = 0,
     show_frames_button: bool = True,
+    output_format: str | None = None,
+    output_formats: list[str] | None = None,
 ) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     builder.row(InlineKeyboardButton(
@@ -213,6 +215,11 @@ def video_confirm_kb(
         builder.row(InlineKeyboardButton(text=f"📐 Масштаб: {aspect_ratio}", callback_data="media:pick_ratio"))
     elif has_resolutions and resolution:
         builder.row(InlineKeyboardButton(text=f"🖼 Качество: {resolution}", callback_data="media:pick_resolution"))
+    if output_formats and len(output_formats) > 1 and output_format:
+        builder.row(InlineKeyboardButton(
+            text=f"📁 Формат: {output_format.upper()}",
+            callback_data="media:pick_format",
+        ))
     if show_frames_button:
         frames_text = "📎 Кадры ✅" if (has_first_frame or has_last_frame or has_extra_refs) else "📎 Кадры"
         builder.row(InlineKeyboardButton(text=frames_text, callback_data="media:toggle_frames"))
@@ -228,6 +235,16 @@ def video_confirm_kb(
         InlineKeyboardButton(text="◀️ Назад", callback_data="media:back:model"),
     )
     builder.row(InlineKeyboardButton(text="🚀 Начать генерацию", callback_data="media:start"))
+    return builder.as_markup()
+
+
+def video_format_kb(current: str, formats: list[str]) -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    for fmt in formats:
+        prefix = "✅ " if fmt == current else ""
+        builder.add(InlineKeyboardButton(text=f"{prefix}{fmt.upper()}", callback_data=f"media:format:{fmt}"))
+    builder.adjust(len(formats))
+    builder.row(InlineKeyboardButton(text="◀️ Назад", callback_data="media:back:confirm"))
     return builder.as_markup()
 
 
