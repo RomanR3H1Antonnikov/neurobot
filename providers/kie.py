@@ -189,6 +189,27 @@ class KieProvider(OpenAICompatProvider):
             unregister_pending(corr_id)
         return result
 
+    async def _create_veo_job(self, model: str, input_data: dict, corr_id: str) -> str:
+        """Создаёт Veo-задачу через /veo/generate (отдельный endpoint KIE)."""
+        callback_url = f"{self._get_callback_base()}/kie/callback/{corr_id}"
+        payload = {"model": model, "callBackUrl": callback_url, "input": input_data}
+        async with self._session(timeout=30) as session:
+            async with session.post(f"{_KIE_API_BASE}/veo/generate", json=payload) as resp:
+                if resp.status == 402:
+                    raise ProviderUnavailableError("Недостаточно средств на балансе KIE")
+                if resp.status == 400:
+                    body = await resp.text()
+                    raise ProviderUnavailableError(f"KIE Veo ошибка запроса: {body[:200]}")
+                if resp.status >= 400:
+                    raise ProviderUnavailableError(f"KIE Veo ответил HTTP {resp.status}")
+                data = await resp.json()
+        if data.get("code") != 200:
+            logger.error("KIE Veo create failed: code=%s msg=%s model=%s", data.get("code"), data.get("msg"), model)
+            raise ProviderUnavailableError(f"KIE Veo: {data.get('msg', 'неизвестная ошибка')}")
+        task_id = data["data"]["taskId"]
+        logger.info("KIE Veo task created: model=%s taskId=%s", model, task_id)
+        return task_id
+
     # ─── Генерация аудио ──────────────────────────────────────────────────────
 
     async def generate_audio(
@@ -288,6 +309,7 @@ class KieProvider(OpenAICompatProvider):
         corr_id = uuid.uuid4().hex
         fut = register_pending(corr_id)
 
+        is_veo = actual_model.startswith("veo")
         is_kling = actual_model.startswith("kling")
         is_bytedance = actual_model.startswith("bytedance/")
         is_wan = actual_model.startswith("wan/")
@@ -365,7 +387,23 @@ class KieProvider(OpenAICompatProvider):
                 input_data["video_urls"] = list(video_reference_urls)
 
         try:
-            await self._create_job(actual_model, input_data, corr_id)
+            if is_veo:
+                veo_input: dict = {
+                    "prompt": prompt,
+                    "duration": duration,
+                    "resolution": resolution or "1080p",
+                    "aspect_ratio": aspect_ratio or "16:9",
+                }
+                if first_frame_url:
+                    veo_input["generation_type"] = "image"
+                    veo_input["image_url"] = first_frame_url
+                else:
+                    veo_input["generation_type"] = "text"
+                    if style_reference_urls:
+                        veo_input["image_urls"] = list(style_reference_urls)
+                await self._create_veo_job(actual_model, veo_input, corr_id)
+            else:
+                await self._create_job(actual_model, input_data, corr_id)
 
             callback_body = await asyncio.wait_for(fut, timeout=_JOB_TIMEOUT)
         except asyncio.TimeoutError:
