@@ -190,9 +190,11 @@ class KieProvider(OpenAICompatProvider):
         return result
 
     async def _create_veo_job(self, model: str, input_data: dict, corr_id: str) -> str:
-        """Создаёт Veo-задачу через /veo/generate (отдельный endpoint KIE)."""
+        """Создаёт Veo-задачу через /veo/generate (отдельный endpoint KIE).
+        Этот endpoint принимает поля на верхнем уровне, не вложенными в 'input'."""
         callback_url = f"{self._get_callback_base()}/kie/callback/{corr_id}"
-        payload = {"model": model, "callBackUrl": callback_url, "input": input_data}
+        # /veo/generate — поля на корневом уровне, не внутри "input"
+        payload = {"model": model, "callBackUrl": callback_url, **input_data}
         async with self._session(timeout=30) as session:
             async with session.post(f"{_KIE_API_BASE}/veo/generate", json=payload) as resp:
                 if resp.status == 402:
