@@ -518,37 +518,40 @@ async def _restore_gen_snapshot(callback: CallbackQuery, state: FSMContext) -> b
 async def back_to_model(callback: CallbackQuery, state: FSMContext) -> None:
     data = await state.get_data()
 
-    # Если пришли из быстрого редактирования — возвращаем к карточке генерации
-    if data.get("quick_edit"):
+    # Если есть снапшот генерации — возвращаем к карточке генерации
+    # (quick_edit = явное нажатие «Редактировать», _gen_snapshot без quick_edit = авто-редактирование)
+    if data.get("quick_edit") or data.get("_gen_snapshot"):
         logger.info(
-            "back_to_model: quick_edit=True, has_snapshot=%s, media_type=%s",
-            bool(data.get("_gen_snapshot")), data.get("media_type"),
+            "back_to_model: quick_edit=%s, has_snapshot=%s, media_type=%s",
+            bool(data.get("quick_edit")), bool(data.get("_gen_snapshot")), data.get("media_type"),
         )
         if await _restore_gen_snapshot(callback, state):
             return
-        # Снапшот не найден (старая сессия) — fallback: список моделей генерации фото
-        models_img = get_models_for_task(TaskType.IMAGE_GENERATION)
-        await state.update_data(
-            quick_edit=None, _gen_snapshot=None,
-            media_type="image",
-            model_slug=None, model_label=None, model_description=None,
-            model_variant_description=None, model_has_group=None,
-            model_aspect_ratios=None, model_actual_id=None,
-            reference_file_id=None, reference_type=None,
-        )
-        await state.set_state(MediaStates.select_model)
-        text = model_select_text("Фото", models_img)
-        try:
-            await callback.message.edit_text(text, parse_mode="HTML", reply_markup=model_top_kb(models_img))
-        except Exception:
+        if data.get("quick_edit"):
+            # Снапшот не найден (старая сессия) — fallback: список моделей генерации фото
+            models_img = get_models_for_task(TaskType.IMAGE_GENERATION)
+            await state.update_data(
+                quick_edit=None, _gen_snapshot=None,
+                media_type="image",
+                model_slug=None, model_label=None, model_description=None,
+                model_variant_description=None, model_has_group=None,
+                model_aspect_ratios=None, model_actual_id=None,
+                reference_file_id=None, reference_type=None,
+            )
+            await state.set_state(MediaStates.select_model)
+            text = model_select_text("Фото", models_img)
             try:
-                await callback.message.edit_reply_markup(reply_markup=None)
+                await callback.message.edit_text(text, parse_mode="HTML", reply_markup=model_top_kb(models_img))
             except Exception:
-                pass
-            sent = await callback.message.answer(text, parse_mode="HTML", reply_markup=model_top_kb(models_img))
-            await _track_msg(state, sent.message_id)
-        await callback.answer()
-        return
+                try:
+                    await callback.message.edit_reply_markup(reply_markup=None)
+                except Exception:
+                    pass
+                sent = await callback.message.answer(text, parse_mode="HTML", reply_markup=model_top_kb(models_img))
+                await _track_msg(state, sent.message_id)
+            await callback.answer()
+            return
+        # _gen_snapshot был, но восстановление не удалось — переходим к обычной логике
 
     media_type = data.get("media_type", "")
     task_type = _TYPE_TO_TASK.get(media_type)
