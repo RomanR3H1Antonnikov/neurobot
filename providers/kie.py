@@ -85,6 +85,14 @@ def _extract_url(body: dict) -> str | None:
     import json as _json
     data = body.get("data") or body
 
+    # Veo 3.1 формат: data.info.resultUrls (объект, не строка)
+    info = data.get("info")
+    if isinstance(info, dict):
+        for key in ("resultUrls", "originUrls"):
+            urls = info.get(key)
+            if isinstance(urls, list) and urls:
+                return urls[0]
+
     # Основной формат KIE: data.resultJson — JSON-строка {"resultUrls": ["url", ...]}
     result_json_str = data.get("resultJson")
     if result_json_str:
