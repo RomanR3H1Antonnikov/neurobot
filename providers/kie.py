@@ -390,19 +390,26 @@ class KieProvider(OpenAICompatProvider):
 
         try:
             if is_veo:
+                # KIE Veo: resolution передаётся строчной (4k, не 4K)
+                _veo_res = (resolution or "1080p").replace("K", "k")
                 veo_input: dict = {
                     "prompt": prompt,
                     "duration": duration,
-                    "resolution": resolution or "1080p",
+                    "resolution": _veo_res,
                     "aspect_ratio": aspect_ratio or "16:9",
                 }
                 if first_frame_url:
-                    veo_input["generation_type"] = "image"
-                    veo_input["image_url"] = first_frame_url
+                    veo_input["generationType"] = "FIRST_AND_LAST_FRAMES_2_VIDEO"
+                    veo_input["imageUrls"] = [first_frame_url]
+                elif style_reference_urls:
+                    if actual_model == "veo3":
+                        # Quality не поддерживает REFERENCE_2_VIDEO
+                        veo_input["generationType"] = "FIRST_AND_LAST_FRAMES_2_VIDEO"
+                    else:
+                        veo_input["generationType"] = "REFERENCE_2_VIDEO"
+                    veo_input["imageUrls"] = list(style_reference_urls)
                 else:
-                    veo_input["generation_type"] = "text"
-                    if style_reference_urls:
-                        veo_input["image_urls"] = list(style_reference_urls)
+                    veo_input["generationType"] = "TEXT_2_VIDEO"
                 await self._create_veo_job(actual_model, veo_input, corr_id)
             else:
                 await self._create_job(actual_model, input_data, corr_id)
