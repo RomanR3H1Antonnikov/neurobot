@@ -441,7 +441,7 @@ tasks:
         last_frame: false
         max_style_refs: 0
         resolutions: ["720p", "1080p", "4K"]
-        model_id: veo3.1-lite
+        model_id: veo-3-1-lite
         provider: kie
         cost_credits: 1
         cost_usd: 0.06
@@ -464,7 +464,7 @@ tasks:
         last_frame: false
         max_style_refs: 3
         resolutions: ["720p", "1080p", "4K"]
-        model_id: veo3.1-fast
+        model_id: veo-3-1-fast
         provider: kie
         cost_credits: 1
         cost_usd: 0.08
@@ -483,7 +483,7 @@ tasks:
         last_frame: false
         max_style_refs: 1
         resolutions: ["720p", "1080p", "4K"]
-        model_id: veo3.1-quality
+        model_id: veo-3-1-quality
         provider: kie
         cost_credits: 1
         cost_usd: 0.10
