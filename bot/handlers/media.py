@@ -1183,7 +1183,10 @@ async def receive_reference_photo(message: Message, state: FSMContext) -> None:
         await _back_to_frames_menu(message.bot, message.chat.id, state)
         return
     await message.delete()
-    await state.update_data(reference_file_id=photo.file_id, reference_type="photo")
+    _ref_upd: dict = {"reference_file_id": photo.file_id, "reference_type": "photo"}
+    if (message.caption or "").strip():
+        _ref_upd["prompt"] = message.caption.strip()
+    await state.update_data(**_ref_upd)
     await _show_confirm_after_reference(message, state)
 
 
@@ -1596,12 +1599,17 @@ async def confirm_unknown_input(message: Message, state: FSMContext) -> None:
     if message.photo and media_type in ("image", "photo_edit", "video"):
         photo = message.photo[-1]
         max_refs = data.get("model_max_style_refs", 0)
+        # Подпись к фото → используем как промпт в любом режиме
+        _caption = (message.caption or "").strip()
 
         # photo_edit: прямая отправка фото всегда заменяет основное редактируемое фото
         # (ориентиры добавляются только через кнопку «Добавить ориентир»)
         if media_type == "photo_edit":
             await message.delete()
-            await state.update_data(reference_file_id=photo.file_id, reference_type="photo")
+            _upd: dict = {"reference_file_id": photo.file_id, "reference_type": "photo"}
+            if _caption:
+                _upd["prompt"] = _caption
+            await state.update_data(**_upd)
             await _update_confirm_card(message, state)
             return
 
@@ -1620,6 +1628,8 @@ async def confirm_unknown_input(message: Message, state: FSMContext) -> None:
                 if len(srefs) < max_refs:
                     srefs.append(photo.file_id)
                 await state.update_data(style_reference_file_ids=srefs)
+            if _caption:
+                await state.update_data(prompt=_caption)
             await _update_confirm_card(message, state)
             return
 
@@ -1629,7 +1639,10 @@ async def confirm_unknown_input(message: Message, state: FSMContext) -> None:
             srefs = list(data.get("style_reference_file_ids") or [])
             if len(srefs) < max_refs:
                 srefs.append(photo.file_id)
-                await state.update_data(style_reference_file_ids=srefs)
+            _upd = {"style_reference_file_ids": srefs}
+            if _caption:
+                _upd["prompt"] = _caption
+            await state.update_data(**_upd)
             await _update_confirm_card(message, state)
             return
 
