@@ -685,8 +685,8 @@ tasks:
           Grok Image Pro — высокая детализация при редактировании, точное следование
           инструкциям, поддерживает фото-ориентиры (до 3 шт.).
         aspect_ratios: ["1:1", "2:3", "3:2", "16:9", "9:16"]
-        model_id: x-ai/grok-imagine-image-quality
-        provider: routerai
+        model_id: grok-imagine-image-quality/image-edit
+        provider: kie
         max_style_refs: 3
         cost_credits: 8
         cost_usd: 0.03
