@@ -640,8 +640,9 @@ tasks:
         group_label: "Nano Banana AI"
         description: ""
         variant_description: "Версия на базе Gemini — высокое качество и глубокое понимание сложных описаний."
-        model_id: gemini-3-pro-image
-        provider: aitunnel
+        model_id: nano-banana-pro
+        provider: kie
+        resolutions: ["1K", "2K"]
         cost_credits: 10
         cost_usd: 0.02
         enabled: true
