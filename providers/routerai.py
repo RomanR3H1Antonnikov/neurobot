@@ -2,7 +2,7 @@
 Адаптер для RouteAI (routerai.ru).
 Чат — OpenAI-compat (/chat/completions).
 Видео — асинхронный API: POST /videos → поллинг GET /videos/{id} → GET /videos/{id}/content.
-Grok Image — /images/generations с extra_body.aspect_ratio + extra_body.input_references.
+Grok Image — генерация через /images/generations, редактирование через /images/edits.
 """
 import asyncio
 import base64
@@ -145,20 +145,19 @@ class RouteraiProvider(OpenAICompatProvider):
         actual_model = model or self.image_edit_model
 
         if actual_model.startswith("x-ai/"):
-            # Grok не поддерживает /images/edits — передаём исходное фото и ориентиры
-            # как input_references в /images/generations с инструкцией как промптом
-            references = []
-            if image_url:
-                references.append({"type": "image_url", "image_url": {"url": image_url}})
-            for u in (style_reference_urls or []):
-                references.append({"type": "image_url", "image_url": {"url": u}})
-            extra_body: dict = {"aspect_ratio": "1:1"}
-            if references:
-                extra_body["input_references"] = references
-            body = {"model": actual_model, "prompt": prompt, "n": 1, "extra_body": extra_body}
+            if not image_url:
+                raise ProviderUnavailableError("Grok Image edit: не передан URL исходного изображения")
+            # x-ai /images/edits: основное фото в image, ориентиры в images (массив)
+            body: dict = {
+                "model": actual_model,
+                "prompt": prompt,
+                "image": {"url": image_url, "type": "image_url"},
+            }
+            if style_reference_urls:
+                body["images"] = [{"url": u, "type": "image_url"} for u in style_reference_urls]
             headers = {"Authorization": f"Bearer {self._api_key}", "Content-Type": "application/json"}
             async with aiohttp.ClientSession(headers=headers, timeout=aiohttp.ClientTimeout(total=120)) as session:
-                async with session.post(f"{_BASE_URL}/images/generations", json=body) as resp:
+                async with session.post(f"{_BASE_URL}/images/edits", json=body) as resp:
                     data = await self._handle_response(resp)
             image_out = base64.b64decode(data["data"][0]["b64_json"])
             return GenerationResult(data=image_out, mime_type="image/png", filename="edited.png")
