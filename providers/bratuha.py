@@ -182,7 +182,37 @@ class BratuhaProvider(AbstractProvider):
     async def edit_image(self, image_bytes: bytes, prompt: str, model: str | None = None,
                          image_url: str | None = None, style_reference_urls: list[str] | None = None,
                          provider_task_id: str | None = None, resolution: str | None = None) -> GenerationResult:
-        raise ProviderUnavailableError("Редактирование изображений через Bratuha не поддерживается")
+        actual_model = model or "nano-banana-pro"
+        tool = _MODEL_TOOLS.get(actual_model, actual_model)
+
+        input_data: dict = {
+            "mode": "edit",
+            "prompt": prompt,
+            "image_size": resolution or "1K",
+        }
+        if image_url:
+            input_data["image_url"] = image_url
+        if style_reference_urls:
+            input_data["image_urls"] = list(style_reference_urls)
+
+        op_id = await self._create_operation(tool, input_data)
+        result = await self._poll_operation(op_id)
+
+        url = (
+            result.get("url")
+            or result.get("image_url")
+            or ((result.get("urls") or [None])[0])
+            or ((result.get("images") or [{}])[0]).get("url")
+        )
+        if not url:
+            logger.error("Bratuha edit: URL not found, op_id=%s full_result=%s", op_id, str(result)[:800])
+            raise ProviderUnavailableError("Bratuha: не получен URL изображения после редактирования")
+
+        async with aiohttp.ClientSession() as s:
+            async with s.get(url) as iresp:
+                image_bytes = await iresp.read()
+
+        return GenerationResult(data=image_bytes, mime_type="image/png", filename="image.png")
 
     async def edit_video(self, video_bytes: bytes, prompt: str, model: str | None = None) -> GenerationResult:
         raise ProviderUnavailableError("Редактирование видео через Bratuha не поддерживается")
