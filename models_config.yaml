@@ -47,7 +47,7 @@ tasks:
         aspect_ratios: ["1:1", "2:3", "3:2", "1:4", "4:1", "3:4", "4:3", "4:5", "5:4", "1:8", "8:1", "9:16", "16:9"]
         model_id: nano-banana-pro
         provider: bratuha
-        resolutions: ["1K", "2K"]
+        resolutions: ["1K", "2K", "4K"]
         cost_credits: 10
         cost_usd: 0.01
         enabled: true
