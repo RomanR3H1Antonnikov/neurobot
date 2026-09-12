@@ -105,8 +105,8 @@ async def _deliver_orphaned(corr_id: str, body: dict) -> None:
     caption = f"✅ <b>Готово!</b> Ваш {_type_names.get(media_type, 'результат')} сгенерирован."
     if model_label:
         caption += f"\n<i>{model_label}</i>"
-    if media_type == "photo":
-        caption += "\n\nЧтобы отредактировать — скачайте фото и загрузите его в раздел «Редактировать медиа»."
+    if media_type in ("photo", "video"):
+        caption += "\n\nЧтобы отредактировать — скачайте файл и загрузите его в раздел «Редактировать медиа»."
 
     try:
         file = BufferedInputFile(media_data, filename=_media_filename(media_type))
