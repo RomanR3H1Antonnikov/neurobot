@@ -1907,9 +1907,21 @@ async def _tg_file_url(bot, file_id: str | None, bot_token: str) -> str | None:
 async def _run_generation(send_msg: Message, tg_user, state: FSMContext, data: dict) -> None:
     """Выполняет генерацию и отправляет результат. Пробрасывает исключения наверх."""
     from config import config as _cfg
+    from providers.kie import set_pending_job_ctx
     media_type = data["media_type"]
     prompt = (data.get("prompt") or "").strip()
     model_slug = data.get("model_slug", "")
+
+    # Сохраняем контекст в ContextVar — KIE provider запишет его в БД при создании job,
+    # чтобы orphaned callback (после таймаута или перезапуска) мог доставить результат
+    _storage_type = {"image": "photo", "photo_edit": "photo", "video_edit": "video"}.get(media_type, media_type)
+    set_pending_job_ctx(
+        telegram_id=tg_user.id,
+        chat_id=send_msg.chat.id,
+        model_label=data.get("model_label", ""),
+        media_type=_storage_type,
+        prompt=prompt or None,
+    )
 
     _sref_ids = data.get("style_reference_file_ids") or []
     style_reference_urls = [

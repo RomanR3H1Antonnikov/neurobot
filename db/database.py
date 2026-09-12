@@ -69,5 +69,15 @@ async def _create_tables(db: aiosqlite.Connection) -> None:
 
         CREATE INDEX IF NOT EXISTS idx_generations_user_type
             ON generations (telegram_id, media_type, created_at DESC);
+
+        CREATE TABLE IF NOT EXISTS pending_jobs (
+            corr_id     TEXT PRIMARY KEY,
+            telegram_id INTEGER NOT NULL,
+            chat_id     INTEGER NOT NULL,
+            model_label TEXT NOT NULL DEFAULT '',
+            media_type  TEXT NOT NULL DEFAULT 'video',
+            prompt      TEXT,
+            created_at  INTEGER NOT NULL DEFAULT (strftime('%s', 'now'))
+        );
     """)
     await db.commit()

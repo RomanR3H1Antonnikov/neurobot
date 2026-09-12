@@ -170,6 +170,39 @@ async def get_generation_counts(telegram_id: int) -> dict[str, int]:
     return counts
 
 
+async def save_pending_job(
+    corr_id: str, telegram_id: int, chat_id: int,
+    model_label: str, media_type: str, prompt: str | None,
+) -> None:
+    db = await get_db()
+    await db.execute(
+        """INSERT OR REPLACE INTO pending_jobs
+           (corr_id, telegram_id, chat_id, model_label, media_type, prompt)
+           VALUES (?, ?, ?, ?, ?, ?)""",
+        (corr_id, telegram_id, chat_id, model_label, media_type, prompt),
+    )
+    # Попутно удаляем устаревшие записи (>24 ч)
+    await db.execute(
+        "DELETE FROM pending_jobs WHERE created_at < ?",
+        (int(time.time()) - 86400,),
+    )
+    await db.commit()
+
+
+async def get_pending_job(corr_id: str):
+    db = await get_db()
+    async with db.execute(
+        "SELECT * FROM pending_jobs WHERE corr_id = ?", (corr_id,)
+    ) as cur:
+        return await cur.fetchone()
+
+
+async def delete_pending_job(corr_id: str) -> None:
+    db = await get_db()
+    await db.execute("DELETE FROM pending_jobs WHERE corr_id = ?", (corr_id,))
+    await db.commit()
+
+
 async def check_and_increment_rate_limit(user_id: int, task_type: str, limit: int) -> bool:
     """Проверяет лимит и инкрементирует счётчик. False = лимит превышен."""
     db = await get_db()

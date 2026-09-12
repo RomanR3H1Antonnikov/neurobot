@@ -10,7 +10,7 @@ from db.database import get_db, close_db
 from bot.middlewares.user_middleware import UserMiddleware
 from bot.middlewares.cleanup import CallbackCleanupMiddleware
 from bot.handlers import start, media, chat, documents, billing, mygenerations, fallback
-from services.kie_webhook import start_webhook_server
+from services.kie_webhook import start_webhook_server, set_bot
 
 logging.basicConfig(
     level=logging.INFO,
@@ -39,6 +39,7 @@ async def main() -> None:
     dp.include_router(mygenerations.router)
     dp.include_router(fallback.router)  # должен быть последним
 
+    set_bot(bot)
     await get_db()  # инициализация БД при старте
 
     webhook_runner = await start_webhook_server(host="0.0.0.0", port=8081)

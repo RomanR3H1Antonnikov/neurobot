@@ -7,9 +7,23 @@ import asyncio
 import logging
 import uuid
 import aiohttp
+from contextvars import ContextVar
 from providers.openai_compat import OpenAICompatProvider
 from providers.base import GenerationResult, ProviderUnavailableError, ProviderContentPolicyError
 from services.kie_webhook import register_pending, unregister_pending
+
+# Устанавливается в _run_generation перед вызовом generate_*; читается в _create_job
+_pending_job_ctx: ContextVar[dict | None] = ContextVar("_pending_job_ctx", default=None)
+
+
+def set_pending_job_ctx(
+    telegram_id: int, chat_id: int,
+    model_label: str, media_type: str, prompt: str | None,
+) -> None:
+    _pending_job_ctx.set({
+        "telegram_id": telegram_id, "chat_id": chat_id,
+        "model_label": model_label, "media_type": media_type, "prompt": prompt,
+    })
 
 logger = logging.getLogger(__name__)
 
@@ -184,6 +198,13 @@ class KieProvider(OpenAICompatProvider):
             raise ProviderUnavailableError(f"KIE: {data.get('msg', 'неизвестная ошибка')}")
         task_id = data["data"]["taskId"]
         logger.info("KIE task created: model=%s taskId=%s", model, task_id)
+        ctx = _pending_job_ctx.get()
+        if ctx:
+            try:
+                from db.queries import save_pending_job
+                await save_pending_job(corr_id, **ctx)
+            except Exception as _e:
+                logger.warning("KIE: не удалось сохранить контекст job %s: %s", corr_id, _e)
         return task_id
 
     async def _await_job(self, corr_id: str) -> dict:
@@ -218,6 +239,13 @@ class KieProvider(OpenAICompatProvider):
             raise ProviderUnavailableError(f"KIE Veo: {data.get('msg', 'неизвестная ошибка')}")
         task_id = data["data"]["taskId"]
         logger.info("KIE Veo task created: model=%s taskId=%s", model, task_id)
+        ctx = _pending_job_ctx.get()
+        if ctx:
+            try:
+                from db.queries import save_pending_job
+                await save_pending_job(corr_id, **ctx)
+            except Exception as _e:
+                logger.warning("KIE: не удалось сохранить контекст Veo job %s: %s", corr_id, _e)
         return task_id
 
     # ─── Генерация аудио ──────────────────────────────────────────────────────
