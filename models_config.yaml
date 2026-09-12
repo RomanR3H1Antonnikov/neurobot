@@ -688,10 +688,10 @@ tasks:
         group_label: "Grok Image AI"
         description: ""
         variant_description: >-
-          Grok Image Pro — высокая детализация при редактировании, точное следование
-          инструкциям, поддерживает фото-ориентиры (до 3 шт.).
+          Grok Image Pro — редактирование с поддержкой фото-ориентиров (до 3 шт.),
+          точное следование инструкциям.
         aspect_ratios: ["1:1", "2:3", "3:2", "16:9", "9:16"]
-        model_id: grok-imagine-image-quality/image-edit
+        model_id: grok-imagine-image-2-0/image-edit
         provider: kie
         max_style_refs: 3
         cost_credits: 8
