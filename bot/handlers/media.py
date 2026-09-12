@@ -239,7 +239,29 @@ def _confirm_card_text(data: dict) -> str:
     return "\n".join(lines)
 
 
+def _get_generation_cost(data: dict) -> int | None:
+    from providers.router import get_provider_by_model_id
+    from providers.base import TaskType
+    _task_map = {
+        "image": TaskType.IMAGE_GEN,
+        "video": TaskType.VIDEO_GEN,
+        "audio": TaskType.AUDIO_GEN,
+        "photo_edit": TaskType.IMAGE_EDIT,
+        "video_edit": TaskType.VIDEO_EDIT,
+    }
+    task_type = _task_map.get(data.get("media_type"))
+    model_slug = data.get("model_slug")
+    if not task_type or not model_slug:
+        return None
+    try:
+        _, model_cfg = get_provider_by_model_id(task_type, model_slug)
+        return media_service.get_cost(model_cfg, data.get("resolution"))
+    except Exception:
+        return None
+
+
 def _confirm_kb(data: dict):
+    cost = _get_generation_cost(data)
     has_prompt = bool(data.get("prompt"))
     style_ref_count = len(data.get("style_reference_file_ids") or [])
     media_type = data.get("media_type")
@@ -248,6 +270,7 @@ def _confirm_kb(data: dict):
             data.get("aspect_ratio", "1:1"), data.get("resolution", "1K"),
             has_prompt=has_prompt, style_ref_count=style_ref_count,
             max_style_refs=data.get("model_max_style_refs", 14),
+            cost_credits=cost,
         )
     elif media_type == "video":
         _show_first = data.get("model_has_first_frame", True)
@@ -273,15 +296,17 @@ def _confirm_kb(data: dict):
             show_frames_button=_show_frames,
             output_format=data.get("video_output_format"),
             output_formats=data.get("model_output_formats"),
+            cost_credits=cost,
         )
     elif media_type == "audio":
-        return audio_confirm_kb(has_prompt=has_prompt)
+        return audio_confirm_kb(has_prompt=has_prompt, cost_credits=cost)
     elif media_type in ("photo_edit", "video_edit"):
         return edit_confirm_kb(
             has_prompt=has_prompt,
             has_reference=bool(data.get("reference_file_id")),
             media_type=media_type,
             style_ref_count=style_ref_count,
+            cost_credits=cost,
         )
 
 

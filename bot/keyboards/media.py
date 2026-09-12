@@ -137,6 +137,7 @@ def style_ref_collecting_kb(count: int, max_refs: int = 14) -> InlineKeyboardMar
 def image_confirm_kb(
     aspect_ratio: str, resolution: str = "1K", has_prompt: bool = False,
     style_ref_count: int = 0, max_style_refs: int = 14,
+    cost_credits: int | None = None,
 ) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     builder.row(
@@ -151,7 +152,8 @@ def image_confirm_kb(
         InlineKeyboardButton(text=edit_text, callback_data="media:edit_prompt"),
         InlineKeyboardButton(text="◀️ Назад", callback_data="media:back:model"),
     )
-    builder.row(InlineKeyboardButton(text="🚀 Начать генерацию", callback_data="media:start"))
+    start_text = f"🚀 Начать генерацию — {cost_credits} кр." if cost_credits else "🚀 Начать генерацию"
+    builder.row(InlineKeyboardButton(text=start_text, callback_data="media:start"))
     return builder.as_markup()
 
 
@@ -200,6 +202,7 @@ def video_confirm_kb(
     show_frames_button: bool = True,
     output_format: str | None = None,
     output_formats: list[str] | None = None,
+    cost_credits: int | None = None,
 ) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     builder.row(InlineKeyboardButton(
@@ -234,7 +237,8 @@ def video_confirm_kb(
         InlineKeyboardButton(text=edit_text, callback_data="media:edit_prompt"),
         InlineKeyboardButton(text="◀️ Назад", callback_data="media:back:model"),
     )
-    builder.row(InlineKeyboardButton(text="🚀 Начать генерацию", callback_data="media:start"))
+    start_text = f"🚀 Начать генерацию — {cost_credits} кр." if cost_credits else "🚀 Начать генерацию"
+    builder.row(InlineKeyboardButton(text=start_text, callback_data="media:start"))
     return builder.as_markup()
 
 
@@ -321,14 +325,15 @@ def video_duration_picker_kb(
 
 # ─── Карточка подтверждения: аудио ───────────────────────────────────────────
 
-def audio_confirm_kb(has_prompt: bool = False) -> InlineKeyboardMarkup:
+def audio_confirm_kb(has_prompt: bool = False, cost_credits: int | None = None) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     edit_text = "✏️ Изменить описание" if has_prompt else "✏️ Ввести описание"
     builder.row(
         InlineKeyboardButton(text=edit_text, callback_data="media:edit_prompt"),
         InlineKeyboardButton(text="◀️ Назад", callback_data="media:back:model"),
     )
-    builder.row(InlineKeyboardButton(text="🚀 Начать генерацию", callback_data="media:start"))
+    start_text = f"🚀 Начать генерацию — {cost_credits} кр." if cost_credits else "🚀 Начать генерацию"
+    builder.row(InlineKeyboardButton(text=start_text, callback_data="media:start"))
     return builder.as_markup()
 
 
@@ -339,6 +344,7 @@ def edit_confirm_kb(
     has_reference: bool = False,
     media_type: str = "photo_edit",
     style_ref_count: int = 0,
+    cost_credits: int | None = None,
 ) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     if media_type == "photo_edit":
@@ -354,7 +360,8 @@ def edit_confirm_kb(
         InlineKeyboardButton(text=prompt_text, callback_data="media:edit_prompt"),
         InlineKeyboardButton(text="◀️ Назад", callback_data="media:back:model"),
     )
-    builder.row(InlineKeyboardButton(text="🚀 Начать обработку", callback_data="media:start"))
+    start_text = f"🚀 Начать обработку — {cost_credits} кр." if cost_credits else "🚀 Начать обработку"
+    builder.row(InlineKeyboardButton(text=start_text, callback_data="media:start"))
     return builder.as_markup()
 
 
