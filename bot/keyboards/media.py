@@ -12,7 +12,20 @@ def media_type_kb() -> InlineKeyboardMarkup:
         InlineKeyboardButton(text="🎵 Аудио", callback_data="media:type:audio"),
     )
     builder.row(InlineKeyboardButton(text="✏️ Редактировать медиа", callback_data="media:edit_menu"))
-    builder.row(InlineKeyboardButton(text="◀️ Назад", callback_data="media:back:menu"))
+    builder.row(
+        InlineKeyboardButton(text="ℹ️ Инфо", callback_data="media:info"),
+        InlineKeyboardButton(text="◀️ Назад", callback_data="media:back:menu"),
+    )
+    return builder.as_markup()
+
+
+def media_info_kb(expanded: bool = False) -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    if expanded:
+        builder.row(InlineKeyboardButton(text="Свернуть ▲", callback_data="media:info"))
+    else:
+        builder.row(InlineKeyboardButton(text="Развернуть ▼", callback_data="media:info:expand"))
+    builder.row(InlineKeyboardButton(text="◀️ Назад", callback_data="media:back:type"))
     return builder.as_markup()
 
 

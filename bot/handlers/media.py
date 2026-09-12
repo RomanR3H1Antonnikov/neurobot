@@ -18,7 +18,7 @@ from config import config as _billing_cfg
 def _has_yookassa() -> bool:
     return bool(_billing_cfg.yookassa_provider_token)
 from bot.keyboards.media import (
-    media_type_kb, media_edit_kb, model_top_kb, model_variant_kb,
+    media_type_kb, media_edit_kb, media_info_kb, model_top_kb, model_variant_kb,
     model_select_text, model_variant_text, back_to_model_kb, back_to_confirm_kb, back_to_frames_kb,
     image_confirm_kb, image_ratio_kb, image_resolution_kb,
     video_confirm_kb, video_format_kb, video_frames_menu_kb, video_duration_picker_kb, audio_confirm_kb, edit_confirm_kb,
@@ -318,6 +318,35 @@ MEDIA_MENU_TEXT = (
     "Выбери действие:"
 )
 
+_INFO_COLLAPSED = (
+    "💡 <b>Краткий гайд по работе с ИИ-генерацией</b>\n\n"
+    "Чтобы получить качественный результат — начни с детального промпта: опиши объект, "
+    "действие, освещение, ракурс и движение камеры. Вместо «красиво» — конкретика: "
+    "«кофейная кружка на столе, тёплый утренний свет, камера медленно приближается, "
+    "кинематографический стиль»..."
+)
+
+_INFO_FULL = (
+    "💡 <b>Гайд по работе с ИИ-генерацией</b>\n\n"
+    "<b>1. Пиши детальные промпты</b>\n"
+    "Описывай объект, действие, освещение, ракурс, стиль и движение камеры. Вместо «красиво» — "
+    "«кофейная кружка на деревянном столе, тёплый утренний свет из окна, камера медленно "
+    "приближается, кинематографический стиль, 16:9».\n\n"
+    "<b>2. Разбивай сложные сцены</b>\n"
+    "Не пытайся сгенерировать всё за раз — разбивай на короткие фрагменты и склеивай "
+    "в редакторе, так избежишь артефактов и потери логики между кадрами.\n\n"
+    "<b>3. Используй референсы и негативные указания</b>\n"
+    "Добавляй фото-ориентиры нужного стиля и исключения в промпт: "
+    "«без лишних пальцев», «без текста на заднем плане».\n\n"
+    "<b>4. Прописывай движение</b>\n"
+    "Если не указать как движется камера или объект — сцена получится статичной.\n\n"
+    "<b>5. Делай итерации</b>\n"
+    "Не жди идеального результата с первого раза — меняй по одному параметру и перегенерируй.\n\n"
+    "<b>6. Дорабатывай результат</b>\n"
+    "После генерации улучшай качество, добавляй звук, цветокоррекцию или титры.\n\n"
+    "<i>ИИ — это инструмент, не финал. Всегда проверяй результат и используй в рамках правил сервиса.</i>"
+)
+
 
 @router.message(F.text == BTN_MEDIA)
 async def media_menu(message: Message, state: FSMContext) -> None:
@@ -340,6 +369,18 @@ async def edit_menu(callback: CallbackQuery, state: FSMContext) -> None:
         "Выбери, что нужно изменить:",
         reply_markup=media_edit_kb(),
     )
+    await callback.answer()
+
+
+@router.callback_query(MediaStates.select_type, F.data == "media:info")
+async def media_info(callback: CallbackQuery) -> None:
+    await callback.message.edit_text(_INFO_COLLAPSED, parse_mode="HTML", reply_markup=media_info_kb(expanded=False))
+    await callback.answer()
+
+
+@router.callback_query(MediaStates.select_type, F.data == "media:info:expand")
+async def media_info_expand(callback: CallbackQuery) -> None:
+    await callback.message.edit_text(_INFO_FULL, parse_mode="HTML", reply_markup=media_info_kb(expanded=True))
     await callback.answer()
 
 
