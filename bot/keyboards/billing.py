@@ -1,14 +1,14 @@
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
-# Пакеты пополнения Stars (кредиты → Stars)
+# Пакеты пополнения Stars (рубли → Stars)
 TOPUP_PACKAGES_STARS = [
     (100,  99),
     (300,  249),
     (1000, 699),
 ]
 
-# Пакеты пополнения YooKassa (кредиты → рубли)
+# Пакеты пополнения YooKassa (рубли → рубли)
 TOPUP_PACKAGES_RUB = [
     (100,  100),
     (300,  280),
@@ -30,7 +30,7 @@ def stars_packages_kb() -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     for credits, stars in TOPUP_PACKAGES_STARS:
         builder.row(InlineKeyboardButton(
-            text=f"{credits} кредитов — {stars} ⭐",
+            text=f"{credits} ₽ — {stars} ⭐",
             callback_data=f"billing:topup:{credits}:{stars}:stars",
         ))
     builder.row(InlineKeyboardButton(text="◀️ Назад", callback_data="billing:method_back"))
@@ -41,7 +41,7 @@ def rub_packages_kb() -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     for credits, rub in TOPUP_PACKAGES_RUB:
         builder.row(InlineKeyboardButton(
-            text=f"{credits} кредитов — {rub} ₽",
+            text=f"{rub} ₽",
             callback_data=f"billing:topup:{credits}:{rub}:rub",
         ))
     builder.row(InlineKeyboardButton(text="◀️ Назад", callback_data="billing:method_back"))

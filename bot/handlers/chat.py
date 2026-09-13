@@ -42,7 +42,7 @@ def _chat_model_kb(models: list[dict]) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     for m in models:
         builder.row(InlineKeyboardButton(
-            text=f"{m['label']} — {m['cost_credits']} кр./сообщ.",
+            text=f"{m['label']} — {m['cost_credits']} ₽/сообщ.",
             callback_data=f"chat:model:{m['id']}",
         ))
     builder.row(InlineKeyboardButton(text="◀️ Назад", callback_data="chat:back:menu"))

@@ -1601,7 +1601,7 @@ async def receive_prompt(message: Message, state: FSMContext) -> None:
         except ProviderError:
             await waiting.edit_text("⚠️ Сервис временно недоступен. Кредиты не списаны — попробуй ещё раз.", reply_markup=error_kb())
         except Exception:
-            await waiting.edit_text("⚠️ Произошла непредвиденная ошибка при отправке результата. Если кредиты были списаны — обратись в поддержку.", reply_markup=error_kb())
+            await waiting.edit_text("⚠️ Произошла непредвиденная ошибка при отправке результата. Если рубли были списаны — обратись в поддержку.", reply_markup=error_kb())
         return
 
     await state.set_state(MediaStates.confirm)
@@ -1771,7 +1771,7 @@ async def update_prompt_in_confirm(message: Message, state: FSMContext) -> None:
         except ProviderError:
             await waiting.edit_text("⚠️ Сервис временно недоступен. Кредиты не списаны — попробуй ещё раз.", reply_markup=error_kb())
         except Exception:
-            await waiting.edit_text("⚠️ Произошла непредвиденная ошибка при отправке результата. Если кредиты были списаны — обратись в поддержку.", reply_markup=error_kb())
+            await waiting.edit_text("⚠️ Произошла непредвиденная ошибка при отправке результата. Если рубли были списаны — обратись в поддержку.", reply_markup=error_kb())
         return
 
     # После генерации фото — текст сразу запускает редактирование
@@ -2626,7 +2626,7 @@ async def start_generation(callback: CallbackQuery, state: FSMContext) -> None:
     except Exception:
         logger.exception("Unexpected error in start_generation")
         await callback.message.edit_text(
-            "⚠️ Произошла непредвиденная ошибка при отправке результата. Если кредиты были списаны — обратись в поддержку.",
+            "⚠️ Произошла непредвиденная ошибка при отправке результата. Если рубли были списаны — обратись в поддержку.",
             reply_markup=error_kb(),
         )
     finally:
@@ -2654,4 +2654,4 @@ async def resume_generation_after_topup(message: Message, state: FSMContext) -> 
     except ProviderError:
         await waiting.edit_text("⚠️ Сервис временно недоступен. Кредиты не списаны — попробуй ещё раз.", reply_markup=error_kb())
     except Exception:
-        await waiting.edit_text("⚠️ Произошла непредвиденная ошибка при отправке результата. Если кредиты были списаны — обратись в поддержку.", reply_markup=error_kb())
+        await waiting.edit_text("⚠️ Произошла непредвиденная ошибка при отправке результата. Если рубли были списаны — обратись в поддержку.", reply_markup=error_kb())

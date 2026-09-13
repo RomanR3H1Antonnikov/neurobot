@@ -67,8 +67,8 @@ def _cost_label(model: dict) -> str:
     by_res = model.get("cost_by_resolution")
     if by_res:
         lo, hi = min(by_res.values()), max(by_res.values())
-        return f"{lo}–{hi} кр." if lo != hi else f"{lo} кр."
-    return f"{model['cost_credits']} кр."
+        return f"{lo}–{hi} ₽" if lo != hi else f"{lo} ₽"
+    return f"{model['cost_credits']} ₽"
 
 
 def model_top_kb(models: list[dict]) -> InlineKeyboardMarkup:
@@ -165,7 +165,7 @@ def image_confirm_kb(
         InlineKeyboardButton(text=edit_text, callback_data="media:edit_prompt"),
         InlineKeyboardButton(text="◀️ Назад", callback_data="media:back:model"),
     )
-    start_text = f"🚀 Начать генерацию — {cost_credits} кр." if cost_credits else "🚀 Начать генерацию"
+    start_text = f"🚀 Начать генерацию — {cost_credits} ₽" if cost_credits else "🚀 Начать генерацию"
     builder.row(InlineKeyboardButton(text=start_text, callback_data="media:start"))
     return builder.as_markup()
 
@@ -259,7 +259,7 @@ def video_confirm_kb(
         InlineKeyboardButton(text=edit_text, callback_data="media:edit_prompt"),
         InlineKeyboardButton(text="◀️ Назад", callback_data="media:back:model"),
     )
-    start_text = f"🚀 Начать генерацию — {cost_credits} кр." if cost_credits else "🚀 Начать генерацию"
+    start_text = f"🚀 Начать генерацию — {cost_credits} ₽" if cost_credits else "🚀 Начать генерацию"
     builder.row(InlineKeyboardButton(text=start_text, callback_data="media:start"))
     return builder.as_markup()
 
@@ -360,7 +360,7 @@ def audio_confirm_kb(
         InlineKeyboardButton(text=edit_text, callback_data="media:edit_prompt"),
         InlineKeyboardButton(text="◀️ Назад", callback_data="media:back:model"),
     )
-    start_text = f"🚀 Начать генерацию — {cost_credits} кр." if cost_credits else "🚀 Начать генерацию"
+    start_text = f"🚀 Начать генерацию — {cost_credits} ₽" if cost_credits else "🚀 Начать генерацию"
     builder.row(InlineKeyboardButton(text=start_text, callback_data="media:start"))
     return builder.as_markup()
 
@@ -432,7 +432,7 @@ def music_confirm_kb(data: dict, cost_credits: int | None = None) -> InlineKeybo
     adv_text = "⚙️ Свернуть настройки ▲" if show_advanced else "⚙️ Дополнительные настройки ▼"
     builder.row(InlineKeyboardButton(text=adv_text, callback_data="media:music_adv"))
 
-    start_text = f"🚀 Начать генерацию — {cost_credits} кр." if cost_credits else "🚀 Начать генерацию"
+    start_text = f"🚀 Начать генерацию — {cost_credits} ₽" if cost_credits else "🚀 Начать генерацию"
     builder.row(InlineKeyboardButton(text=start_text, callback_data="media:start"))
     return builder.as_markup()
 
@@ -519,7 +519,7 @@ def udio_confirm_kb(data: dict, cost_credits: int | None = None) -> InlineKeyboa
     adv_text = "⚙️ Свернуть настройки ▲" if show_advanced else "⚙️ Дополнительные настройки ▼"
     builder.row(InlineKeyboardButton(text=adv_text, callback_data="media:udio_adv"))
 
-    start_text = f"🚀 Начать генерацию — {cost_credits} кр." if cost_credits else "🚀 Начать генерацию"
+    start_text = f"🚀 Начать генерацию — {cost_credits} ₽" if cost_credits else "🚀 Начать генерацию"
     builder.row(InlineKeyboardButton(text=start_text, callback_data="media:start"))
     return builder.as_markup()
 
@@ -565,7 +565,7 @@ def edit_confirm_kb(
         InlineKeyboardButton(text=prompt_text, callback_data="media:edit_prompt"),
         InlineKeyboardButton(text="◀️ Назад", callback_data="media:back:model"),
     )
-    start_text = f"🚀 Начать обработку — {cost_credits} кр." if cost_credits else "🚀 Начать обработку"
+    start_text = f"🚀 Начать обработку — {cost_credits} ₽" if cost_credits else "🚀 Начать обработку"
     builder.row(InlineKeyboardButton(text=start_text, callback_data="media:start"))
     return builder.as_markup()
 

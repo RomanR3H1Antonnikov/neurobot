@@ -14,7 +14,7 @@ async def cmd_start(message: Message, state: FSMContext, db_user: dict) -> None:
         f"Привет, {message.from_user.first_name}! 👋\n\n"
         "Я умею генерировать фото, видео и аудио, вести диалог с ИИ "
         "и работать с твоими документами.\n\n"
-        f"Твой баланс: <b>{db_user['balance']} кредитов</b>\n\n"
+        f"Твой баланс: <b>{db_user['balance']} ₽</b>\n\n"
         "Выбери, что хочешь сделать:",
         parse_mode="HTML",
         reply_markup=main_menu_kb(),
@@ -40,6 +40,6 @@ async def cmd_help(message: Message) -> None:
 @router.message(Command("balance"))
 async def cmd_balance(message: Message, db_user: dict) -> None:
     await message.answer(
-        f"💳 Твой баланс: <b>{db_user['balance']} кредитов</b>",
+        f"💳 Твой баланс: <b>{db_user['balance']} ₽</b>",
         parse_mode="HTML",
     )

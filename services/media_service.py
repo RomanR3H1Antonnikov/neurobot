@@ -38,7 +38,7 @@ async def _check_preconditions(
     cost = get_cost(model_cfg, resolution)
     if user["balance"] < cost:
         raise InsufficientCreditsError(
-            f"Недостаточно кредитов. Нужно: {cost}, у вас: {user['balance']}"
+            f"Недостаточно средств. Нужно: {cost} ₽, у вас: {user['balance']} ₽"
         )
     return user_id
 

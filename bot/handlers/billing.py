@@ -22,7 +22,7 @@ def _has_yookassa() -> bool:
 
 
 def _balance_text(balance: int) -> str:
-    return f"💳 <b>Твой баланс:</b> {balance} кредитов\n\nВыбери способ оплаты:"
+    return f"💳 <b>Твой баланс:</b> {balance} ₽\n\nВыбери способ оплаты:"
 
 
 # ─── Показ баланса ────────────────────────────────────────────────────────────
@@ -106,19 +106,19 @@ async def topup_selected(callback: CallbackQuery) -> None:
             return
         await callback.message.answer_invoice(
             title="Пополнение баланса",
-            description=f"{credits} кредитов для генерации медиа, чата и работы с документами",
+            description=f"Зачислим {credits} ₽ на ваш баланс для генерации медиа, чата и работы с документами",
             payload=f"topup:{credits}",
             provider_token=config.yookassa_provider_token,
             currency="RUB",
-            prices=[LabeledPrice(label=f"{credits} кредитов", amount=amount * 100)],  # в копейках
+            prices=[LabeledPrice(label=f"Пополнение баланса на {credits} ₽", amount=amount * 100)],
         )
     else:
         await callback.message.answer_invoice(
             title="Пополнение баланса",
-            description=f"{credits} кредитов для генерации медиа, чата и работы с документами",
+            description=f"Зачислим {credits} ₽ на ваш баланс для генерации медиа, чата и работы с документами",
             payload=f"topup:{credits}",
             currency="XTR",
-            prices=[LabeledPrice(label=f"{credits} кредитов", amount=amount)],
+            prices=[LabeledPrice(label=f"Пополнение баланса на {credits} ₽", amount=amount)],
         )
 
 
@@ -141,8 +141,8 @@ async def handle_successful_payment(message: Message, state: FSMContext) -> None
 
     await message.answer(
         f"✅ <b>Баланс пополнен!</b>\n\n"
-        f"Зачислено: <b>{credits} кредитов</b>\n"
-        f"Текущий баланс: <b>{new_balance} кредитов</b>",
+        f"Зачислено: <b>{credits} ₽</b>\n"
+        f"Текущий баланс: <b>{new_balance} ₽</b>",
         parse_mode="HTML",
     )
 
@@ -201,8 +201,8 @@ async def cmd_addcredits(message: Message) -> None:
     user = await get_or_create_user(target_id)
     new_balance = await add_credits(user["id"], amount, description="Ручное пополнение (тест)")
     await message.answer(
-        f"✅ Начислено {amount} кредитов пользователю {target_id}.\n"
-        f"Новый баланс: {new_balance} кредитов."
+        f"✅ Начислено {amount} ₽ пользователю {target_id}.\n"
+        f"Новый баланс: {new_balance} ₽."
     )
 
 

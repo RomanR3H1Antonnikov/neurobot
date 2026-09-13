@@ -32,7 +32,7 @@ async def send_message(
     cost = model_cfg["cost_credits"]
     if user["balance"] < cost:
         raise InsufficientCreditsError(
-            f"Недостаточно кредитов. Нужно: {cost}, у вас: {user['balance']}"
+            f"Недостаточно средств. Нужно: {cost} ₽, у вас: {user['balance']} ₽"
         )
 
     history = await get_chat_history(user_id)
