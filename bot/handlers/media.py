@@ -515,6 +515,7 @@ async def select_model(callback: CallbackQuery, state: FSMContext) -> None:
         "model_has_first_frame": model_cfg.get("first_frame", True),
         "model_has_last_frame": model_cfg.get("last_frame", True),
         "model_output_formats": model_cfg.get("output_formats"),
+        "video_frames_mode": None,
     }
     # если output_format не задан или недоступен у новой модели — сбрасываем
     allowed_formats = model_cfg.get("output_formats")
@@ -901,6 +902,7 @@ async def generate_again(callback: CallbackQuery, state: FSMContext) -> None:
         generated_file_id=None,
         kie_gen_task_id=None,
         video_first_frame_file_id=None, video_last_frame_file_id=None,
+        video_frames_mode=None,
         confirm_msg_id=None,
         quick_edit=None,
         _gen_snapshot=None,
