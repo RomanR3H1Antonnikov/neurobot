@@ -30,7 +30,7 @@ def stars_packages_kb() -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     for credits, stars in TOPUP_PACKAGES_STARS:
         builder.row(InlineKeyboardButton(
-            text=f"{credits} кредитов — {stars} ⭐",
+            text=f"{credits} ₽ — {stars} ⭐",
             callback_data=f"billing:topup:{credits}:{stars}:stars",
         ))
     builder.row(InlineKeyboardButton(text="◀️ Назад", callback_data="billing:method_back"))
