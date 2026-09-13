@@ -23,6 +23,7 @@ from bot.keyboards.media import (
     image_confirm_kb, image_ratio_kb, image_resolution_kb,
     video_confirm_kb, video_format_kb, video_frames_menu_kb, video_duration_picker_kb, audio_confirm_kb, edit_confirm_kb,
     music_confirm_kb, music_format_kb,
+    udio_confirm_kb, udio_lyrics_type_kb, udio_model_type_kb,
     style_ref_collecting_kb, after_generation_kb, gen_waiting_kb, error_kb,
 )
 from providers.base import ProviderError, ProviderContentPolicyError, TaskType
@@ -238,6 +239,28 @@ def _confirm_card_text(data: dict) -> str:
                 if data.get("music_respect_durations"):
                     lines.append("<b>Длит. секций:</b> Соблюдать")
                 lines.append(f"<b>Формат:</b> {data.get('music_format', 'mp3_44100_128')}")
+        if data.get("has_udio_settings") and data.get("udio_show_advanced"):
+            lt = data.get("udio_lyrics_type", "generate")
+            lt_label = {"generate": "Авто", "custom": "Свои тексты", "instrumental": "Инструментал"}.get(lt, lt)
+            if data.get("udio_translate_input"):
+                lines.append("<b>Перевод ввода:</b> Да")
+            lines.append(f"<b>Тип лирики:</b> {lt_label}")
+            if lt == "custom" and data.get("udio_lyrics"):
+                lyr = data["udio_lyrics"]
+                lines.append(f"<b>Текст песни:</b> <code>{lyr[:60]}{'...' if len(lyr) > 60 else ''}</code>")
+            lines.append(
+                f"<b>Сила промпта:</b> {data.get('udio_prompt_strength', 0.5):.2f}  |  "
+                f"<b>Сила лирики:</b> {data.get('udio_lyrics_strength', 0.5):.2f}"
+            )
+            lines.append(
+                f"<b>Качество:</b> {data.get('udio_generation_quality', 0.75):.2f}  |  "
+                f"<b>Чёткость:</b> {data.get('udio_clarity_strength', 0.25):.2f}"
+            )
+            lines.append(
+                f"<b>Лирика:</b> {data.get('udio_lyrics_placement_start', 0.2):.2f} – "
+                f"{data.get('udio_lyrics_placement_end', 0.9):.2f}"
+            )
+            lines.append(f"<b>Модель:</b> {data.get('udio_model_type', 'udio130-v1.5')}")
     elif media_type in ("photo_edit", "video_edit"):
         ref_type = data.get("reference_type")
         if ref_type:
@@ -321,6 +344,8 @@ def _confirm_kb(data: dict):
     elif media_type == "audio":
         if data.get("has_music_settings"):
             return music_confirm_kb(data, cost_credits=cost)
+        if data.get("has_udio_settings"):
+            return udio_confirm_kb(data, cost_credits=cost)
         return audio_confirm_kb(has_prompt=has_prompt, cost_credits=cost)
     elif media_type in ("photo_edit", "video_edit"):
         return edit_confirm_kb(
@@ -508,6 +533,7 @@ async def select_model(callback: CallbackQuery, state: FSMContext) -> None:
     if media_type == "audio":
         update["audio_type"] = model_cfg.get("audio_type", "voice")
         update["has_music_settings"] = bool(model_cfg.get("has_music_settings"))
+        update["has_udio_settings"] = bool(model_cfg.get("has_udio_settings"))
         if model_cfg.get("has_music_settings"):
             update["music_duration"] = 30
             update["music_positive_styles"] = []
@@ -521,6 +547,20 @@ async def select_model(callback: CallbackQuery, state: FSMContext) -> None:
             update["entering_music_pos_styles"] = False
             update["entering_music_neg_styles"] = False
             update["entering_music_sections"] = False
+        if model_cfg.get("has_udio_settings"):
+            update["udio_show_advanced"] = False
+            update["udio_translate_input"] = False
+            update["udio_lyrics"] = ""
+            update["udio_lyrics_type"] = "generate"
+            update["udio_prompt_strength"] = 0.5
+            update["udio_lyrics_strength"] = 0.5
+            update["udio_generation_quality"] = 0.75
+            update["udio_model_type"] = "udio130-v1.5"
+            update["udio_lyrics_placement_start"] = 0.2
+            update["udio_lyrics_placement_end"] = 0.9
+            update["udio_clarity_strength"] = 0.25
+            update["entering_udio_float"] = None
+            update["entering_udio_lyrics"] = False
 
     await state.update_data(**update)
     data = await state.get_data()
@@ -856,6 +896,7 @@ async def generate_again(callback: CallbackQuery, state: FSMContext) -> None:
         entering_duration=None,
         entering_music_duration=False, entering_music_pos_styles=False,
         entering_music_neg_styles=False, entering_music_sections=False,
+        entering_udio_float=None, entering_udio_lyrics=False,
         _is_generating=None,
         _cleanup_warned_msg_id=None,
     )
@@ -1168,6 +1209,7 @@ async def back_to_confirm(callback: CallbackQuery, state: FSMContext) -> None:
         managing_style_ref=None, managing_style_ref_index=None,
         entering_music_duration=False, entering_music_pos_styles=False,
         entering_music_neg_styles=False, entering_music_sections=False,
+        entering_udio_float=None, entering_udio_lyrics=False,
     )
     await state.set_state(MediaStates.confirm)
     data = await state.get_data()
@@ -1636,6 +1678,32 @@ async def update_prompt_in_confirm(message: Message, state: FSMContext) -> None:
             # поддерживаем разделители: новая строка, точка с запятой
             sections = [s.strip() for s in raw.replace(";", "\n").split("\n") if s.strip()]
         await state.update_data(music_sections=sections, entering_music_sections=False)
+        await message.delete()
+        await _update_confirm_card(message, state)
+        return
+
+    # Ввод float-параметров Udio
+    if data.get("entering_udio_float"):
+        field = data["entering_udio_float"]
+        try:
+            val = float(message.text.strip().replace(",", "."))
+            if not (0.0 <= val <= 1.0):
+                sent = await message.answer("Введи число от 0.0 до 1.0:")
+                await _track_msg(state, sent.message_id)
+                return
+            await state.update_data(**{f"udio_{field}": round(val, 2), "entering_udio_float": None})
+            await message.delete()
+            await _update_confirm_card(message, state)
+        except ValueError:
+            sent = await message.answer("Нужно число от 0.0 до 1.0 (например: 0.5):")
+            await _track_msg(state, sent.message_id)
+        return
+
+    if data.get("entering_udio_lyrics"):
+        lyrics = message.text.strip()
+        if lyrics.lower() in ("нет", "очистить", "-"):
+            lyrics = ""
+        await state.update_data(udio_lyrics=lyrics, entering_udio_lyrics=False)
         await message.delete()
         await _update_confirm_card(message, state)
         return
@@ -2126,6 +2194,122 @@ async def set_music_format(callback: CallbackQuery, state: FSMContext) -> None:
     await callback.answer()
 
 
+# ─── Udio: дополнительные настройки ─────────────────────────────────────────
+
+_UDIO_FLOAT_DEFAULTS = {
+    "prompt_strength": 0.5,
+    "lyrics_strength": 0.5,
+    "generation_quality": 0.75,
+    "clarity_strength": 0.25,
+    "lyrics_placement_start": 0.2,
+    "lyrics_placement_end": 0.9,
+}
+_UDIO_FLOAT_NAMES = {
+    "prompt_strength": "Сила промпта",
+    "lyrics_strength": "Сила лирики",
+    "generation_quality": "Качество генерации",
+    "clarity_strength": "Приоритет чёткости",
+    "lyrics_placement_start": "Начало размещения лирики",
+    "lyrics_placement_end": "Конец размещения лирики",
+}
+
+
+@router.callback_query(MediaStates.confirm, F.data == "media:udio_adv")
+async def toggle_udio_advanced(callback: CallbackQuery, state: FSMContext) -> None:
+    data = await state.get_data()
+    await state.update_data(udio_show_advanced=not bool(data.get("udio_show_advanced")))
+    data = await state.get_data()
+    await callback.message.edit_text(_confirm_card_text(data), parse_mode="HTML", reply_markup=_confirm_kb(data))
+    await callback.answer()
+
+
+@router.callback_query(MediaStates.confirm, F.data == "media:udio_translate")
+async def toggle_udio_translate(callback: CallbackQuery, state: FSMContext) -> None:
+    data = await state.get_data()
+    await state.update_data(udio_translate_input=not bool(data.get("udio_translate_input")))
+    data = await state.get_data()
+    await callback.message.edit_text(_confirm_card_text(data), parse_mode="HTML", reply_markup=_confirm_kb(data))
+    await callback.answer()
+
+
+@router.callback_query(MediaStates.confirm, F.data == "media:udio_lyrics_type")
+async def pick_udio_lyrics_type(callback: CallbackQuery, state: FSMContext) -> None:
+    data = await state.get_data()
+    current = data.get("udio_lyrics_type", "generate")
+    await callback.message.edit_text(
+        "🎤 <b>Выбери тип лирики:</b>",
+        parse_mode="HTML",
+        reply_markup=udio_lyrics_type_kb(current),
+    )
+    await callback.answer()
+
+
+@router.callback_query(MediaStates.confirm, F.data.startswith("media:udio_set_lyrics_type:"))
+async def set_udio_lyrics_type(callback: CallbackQuery, state: FSMContext) -> None:
+    lt = callback.data[len("media:udio_set_lyrics_type:"):]
+    await state.update_data(udio_lyrics_type=lt)
+    data = await state.get_data()
+    await callback.message.edit_text(_confirm_card_text(data), parse_mode="HTML", reply_markup=_confirm_kb(data))
+    await callback.answer()
+
+
+@router.callback_query(MediaStates.confirm, F.data == "media:udio_lyrics")
+async def enter_udio_lyrics(callback: CallbackQuery, state: FSMContext) -> None:
+    data = await state.get_data()
+    current = data.get("udio_lyrics") or ""
+    hint = f"Текущий текст:\n<code>{current[:200]}</code>\n\n" if current else ""
+    await state.update_data(entering_udio_lyrics=True)
+    await callback.message.edit_text(
+        f"{hint}📝 Введи текст песни (или «нет» чтобы очистить):",
+        parse_mode="HTML",
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=[[
+            InlineKeyboardButton(text="◀️ Назад", callback_data="media:back:confirm"),
+        ]]),
+    )
+    await callback.answer()
+
+
+@router.callback_query(MediaStates.confirm, F.data.startswith("media:udio_float:"))
+async def enter_udio_float(callback: CallbackQuery, state: FSMContext) -> None:
+    field = callback.data[len("media:udio_float:"):]
+    if field not in _UDIO_FLOAT_DEFAULTS:
+        await callback.answer()
+        return
+    default = _UDIO_FLOAT_DEFAULTS[field]
+    name = _UDIO_FLOAT_NAMES.get(field, field)
+    current = (await state.get_data()).get(f"udio_{field}", default)
+    await state.update_data(entering_udio_float=field)
+    await callback.message.edit_text(
+        f"<b>{name}</b>\nТекущее: {current:.2f}\n\nВведи число от 0.0 до 1.0:",
+        parse_mode="HTML",
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=[[
+            InlineKeyboardButton(text="◀️ Назад", callback_data="media:back:confirm"),
+        ]]),
+    )
+    await callback.answer()
+
+
+@router.callback_query(MediaStates.confirm, F.data == "media:udio_model_type")
+async def pick_udio_model_type(callback: CallbackQuery, state: FSMContext) -> None:
+    data = await state.get_data()
+    current = data.get("udio_model_type", "udio130-v1.5")
+    await callback.message.edit_text(
+        "🎛 <b>Выбери версию модели Udio:</b>",
+        parse_mode="HTML",
+        reply_markup=udio_model_type_kb(current),
+    )
+    await callback.answer()
+
+
+@router.callback_query(MediaStates.confirm, F.data.startswith("media:udio_set_model:"))
+async def set_udio_model_type(callback: CallbackQuery, state: FSMContext) -> None:
+    mt = callback.data[len("media:udio_set_model:"):]
+    await state.update_data(udio_model_type=mt)
+    data = await state.get_data()
+    await callback.message.edit_text(_confirm_card_text(data), parse_mode="HTML", reply_markup=_confirm_kb(data))
+    await callback.answer()
+
+
 @router.callback_query(F.data == "media:gen_why_long")
 async def gen_why_long(callback: CallbackQuery) -> None:
     await callback.answer(
@@ -2272,6 +2456,7 @@ async def _run_generation(send_msg: Message, tg_user, state: FSMContext, data: d
         music_params: dict | None = None
         if data.get("has_music_settings"):
             music_params = {
+                "_provider_model": "elevenlabs-music",
                 "music_duration": data.get("music_duration", 30),
                 "music_positive_styles": data.get("music_positive_styles") or [],
                 "music_negative_styles": data.get("music_negative_styles") or [],
@@ -2279,6 +2464,20 @@ async def _run_generation(send_msg: Message, tg_user, state: FSMContext, data: d
                 "music_instrumental": bool(data.get("music_instrumental")),
                 "music_respect_durations": bool(data.get("music_respect_durations")),
                 "music_format": data.get("music_format", "mp3_44100_128"),
+            }
+        elif data.get("has_udio_settings"):
+            music_params = {
+                "_provider_model": "udio",
+                "translate_input": bool(data.get("udio_translate_input")),
+                "lyrics": data.get("udio_lyrics") or None,
+                "lyrics_type": data.get("udio_lyrics_type", "generate"),
+                "prompt_strength": data.get("udio_prompt_strength", 0.5),
+                "lyrics_strength": data.get("udio_lyrics_strength", 0.5),
+                "generation_quality": data.get("udio_generation_quality", 0.75),
+                "model_type": data.get("udio_model_type", "udio130-v1.5"),
+                "lyrics_placement_start": data.get("udio_lyrics_placement_start", 0.2),
+                "lyrics_placement_end": data.get("udio_lyrics_placement_end", 0.9),
+                "clarity_strength": data.get("udio_clarity_strength", 0.25),
             }
         result = await media_service.generate_audio(
             tg_user.id, tg_user.username, prompt, data.get("audio_type", "voice"), model_slug,

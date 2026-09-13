@@ -420,6 +420,101 @@ def music_format_kb(current: str) -> InlineKeyboardMarkup:
     return builder.as_markup()
 
 
+# ─── Карточка подтверждения: Udio ────────────────────────────────────────────
+
+_UDIO_LYRICS_TYPES = [("generate", "Авто"), ("custom", "Свои тексты"), ("instrumental", "Инструментал")]
+_UDIO_MODEL_TYPES = ["udio130-v1.5"]
+
+_UDIO_FLOAT_FIELDS = {
+    "prompt_strength": ("💪 Сила промпта", 0.5),
+    "lyrics_strength": ("🎵 Сила лирики", 0.5),
+    "generation_quality": ("✨ Качество", 0.75),
+    "clarity_strength": ("🎯 Чёткость", 0.25),
+    "lyrics_placement_start": ("📍 Нач. лирики", 0.2),
+    "lyrics_placement_end": ("📍 Кон. лирики", 0.9),
+}
+
+
+def _udio_float_label(field: str, data: dict) -> str:
+    label, default = _UDIO_FLOAT_FIELDS[field]
+    val = data.get(f"udio_{field}", default)
+    return f"{label}: {val:.2f}"
+
+
+def udio_confirm_kb(data: dict, cost_credits: int | None = None) -> InlineKeyboardMarkup:
+    """Карточка подтверждения для Udio с дополнительными настройками."""
+    builder = InlineKeyboardBuilder()
+    has_prompt = bool(data.get("prompt"))
+    show_advanced = bool(data.get("udio_show_advanced"))
+
+    if show_advanced:
+        translate = "✅" if data.get("udio_translate_input") else "❌"
+        builder.row(InlineKeyboardButton(
+            text=f"🌐 Перевод ввода: {translate}",
+            callback_data="media:udio_translate",
+        ))
+
+        lt_label = {"generate": "Авто", "custom": "Свои тексты", "instrumental": "Инструментал"}.get(
+            data.get("udio_lyrics_type", "generate"), "Авто"
+        )
+        builder.row(InlineKeyboardButton(
+            text=f"🎤 Тип лирики: {lt_label}",
+            callback_data="media:udio_lyrics_type",
+        ))
+
+        if data.get("udio_lyrics_type") == "custom":
+            has_lyrics = bool(data.get("udio_lyrics"))
+            lyrics_text = "📝 Текст песни: задан ✅" if has_lyrics else "📝 Текст песни: не задан"
+            builder.row(InlineKeyboardButton(text=lyrics_text, callback_data="media:udio_lyrics"))
+
+        builder.row(
+            InlineKeyboardButton(text=_udio_float_label("prompt_strength", data), callback_data="media:udio_float:prompt_strength"),
+            InlineKeyboardButton(text=_udio_float_label("lyrics_strength", data), callback_data="media:udio_float:lyrics_strength"),
+        )
+        builder.row(
+            InlineKeyboardButton(text=_udio_float_label("generation_quality", data), callback_data="media:udio_float:generation_quality"),
+            InlineKeyboardButton(text=_udio_float_label("clarity_strength", data), callback_data="media:udio_float:clarity_strength"),
+        )
+        builder.row(
+            InlineKeyboardButton(text=_udio_float_label("lyrics_placement_start", data), callback_data="media:udio_float:lyrics_placement_start"),
+            InlineKeyboardButton(text=_udio_float_label("lyrics_placement_end", data), callback_data="media:udio_float:lyrics_placement_end"),
+        )
+
+        mt = data.get("udio_model_type", "udio130-v1.5")
+        builder.row(InlineKeyboardButton(text=f"🎛 Модель: {mt}", callback_data="media:udio_model_type"))
+
+    edit_text = "✏️ Изменить описание" if has_prompt else "✏️ Ввести описание"
+    builder.row(
+        InlineKeyboardButton(text=edit_text, callback_data="media:edit_prompt"),
+        InlineKeyboardButton(text="◀️ Назад", callback_data="media:back:model"),
+    )
+
+    adv_text = "⚙️ Свернуть настройки ▲" if show_advanced else "⚙️ Дополнительные настройки ▼"
+    builder.row(InlineKeyboardButton(text=adv_text, callback_data="media:udio_adv"))
+
+    start_text = f"🚀 Начать генерацию — {cost_credits} кр." if cost_credits else "🚀 Начать генерацию"
+    builder.row(InlineKeyboardButton(text=start_text, callback_data="media:start"))
+    return builder.as_markup()
+
+
+def udio_lyrics_type_kb(current: str) -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    for value, label in _UDIO_LYRICS_TYPES:
+        prefix = "✅ " if value == current else ""
+        builder.row(InlineKeyboardButton(text=f"{prefix}{label}", callback_data=f"media:udio_set_lyrics_type:{value}"))
+    builder.row(InlineKeyboardButton(text="◀️ Назад", callback_data="media:back:confirm"))
+    return builder.as_markup()
+
+
+def udio_model_type_kb(current: str) -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    for mt in _UDIO_MODEL_TYPES:
+        prefix = "✅ " if mt == current else ""
+        builder.row(InlineKeyboardButton(text=f"{prefix}{mt}", callback_data=f"media:udio_set_model:{mt}"))
+    builder.row(InlineKeyboardButton(text="◀️ Назад", callback_data="media:back:confirm"))
+    return builder.as_markup()
+
+
 # ─── Карточка подтверждения: редактирование ──────────────────────────────────
 
 def edit_confirm_kb(

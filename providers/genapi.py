@@ -147,7 +147,9 @@ class GenApiProvider(AbstractProvider):
     ) -> GenerationResult:
         actual_model = model or "udio"
         extra: dict | None = None
-        if music_params:
+        provider_model = (music_params or {}).get("_provider_model", "")
+
+        if music_params and provider_model == "elevenlabs-music":
             extra = {}
             duration = music_params.get("music_duration")
             if duration:
@@ -173,6 +175,23 @@ class GenApiProvider(AbstractProvider):
                 extra["composition_plan"] = composition_plan
             if not extra:
                 extra = None
+
+        elif music_params and provider_model == "udio":
+            extra = {}
+            if music_params.get("translate_input"):
+                extra["translate_input"] = True
+            lyrics = music_params.get("lyrics")
+            if lyrics:
+                extra["lyrics"] = lyrics
+            lt = music_params.get("lyrics_type", "generate")
+            extra["lyrics_type"] = lt
+            extra["prompt_strength"] = music_params.get("prompt_strength", 0.5)
+            extra["lyrics_strength"] = music_params.get("lyrics_strength", 0.5)
+            extra["generation_quality"] = music_params.get("generation_quality", 0.75)
+            extra["model_type"] = music_params.get("model_type", "udio130-v1.5")
+            extra["lyrics_placement_start"] = music_params.get("lyrics_placement_start", 0.2)
+            extra["lyrics_placement_end"] = music_params.get("lyrics_placement_end", 0.9)
+            extra["clarity_strength"] = music_params.get("clarity_strength", 0.25)
 
         data = await self._run(actual_model, prompt, extra=extra)
 
