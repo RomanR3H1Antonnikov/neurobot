@@ -323,7 +323,8 @@ def _confirm_kb(data: dict):
         _show_last = data.get("model_has_last_frame", True)
         _max_extra = data.get("model_max_style_refs", 0)
         _max_video = data.get("model_max_video_refs", 0)
-        _show_frames = bool(_show_first or _show_last or _max_extra > 0)
+        _show_constructor = bool(_show_last or _max_extra > 0)
+        _show_frames = bool(_show_first or _show_constructor)
         return video_confirm_kb(
             data.get("duration", 5),
             has_prompt=has_prompt,
@@ -340,6 +341,8 @@ def _confirm_kb(data: dict):
             video_ref_count=len(data.get("video_style_reference_file_ids") or []),
             max_video_refs=_max_video,
             show_frames_button=_show_frames,
+            show_first_frame_btn=_show_first,
+            show_constructor_btn=_show_constructor,
             output_format=data.get("video_output_format"),
             output_formats=data.get("model_output_formats"),
             cost_credits=cost,

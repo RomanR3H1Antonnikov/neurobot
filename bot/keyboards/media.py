@@ -213,6 +213,8 @@ def video_confirm_kb(
     video_ref_count: int = 0,
     max_video_refs: int = 0,
     show_frames_button: bool = True,
+    show_first_frame_btn: bool = True,
+    show_constructor_btn: bool = True,
     output_format: str | None = None,
     output_formats: list[str] | None = None,
     cost_credits: int | None = None,
@@ -237,8 +239,15 @@ def video_confirm_kb(
             callback_data="media:pick_format",
         ))
     if show_frames_button:
-        frames_text = "📎 Кадры ✅" if (has_first_frame or has_last_frame or has_extra_refs) else "📎 Кадры"
-        builder.row(InlineKeyboardButton(text=frames_text, callback_data="media:toggle_frames"))
+        row_btns = []
+        if show_first_frame_btn:
+            animate_text = "🖼 Оживить фото ✅" if has_first_frame else "🖼 Оживить фото"
+            row_btns.append(InlineKeyboardButton(text=animate_text, callback_data="media:add_first_frame"))
+        if show_constructor_btn:
+            constr_text = "🎬 Конструктор видео ✅" if (has_last_frame or has_extra_refs) else "🎬 Конструктор видео"
+            row_btns.append(InlineKeyboardButton(text=constr_text, callback_data="media:toggle_frames"))
+        if row_btns:
+            builder.row(*row_btns)
     if max_audio_refs > 0:
         audio_text = f"🎵 Аудио: {audio_ref_count} файл(а) ✅" if audio_ref_count else "🎵 Аудио"
         builder.row(InlineKeyboardButton(text=audio_text, callback_data="media:add_audio_ref"))
