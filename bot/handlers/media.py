@@ -289,9 +289,9 @@ def _get_generation_cost(data: dict) -> int | None:
     from providers.router import get_provider_by_model_id
     from providers.base import TaskType
     _task_map = {
-        "image": TaskType.IMAGE_GEN,
-        "video": TaskType.VIDEO_GEN,
-        "audio": TaskType.AUDIO_GEN,
+        "image": TaskType.IMAGE_GENERATION,
+        "video": TaskType.VIDEO_GENERATION,
+        "audio": TaskType.AUDIO_GENERATION,
         "photo_edit": TaskType.IMAGE_EDIT,
         "video_edit": TaskType.VIDEO_EDIT,
     }
