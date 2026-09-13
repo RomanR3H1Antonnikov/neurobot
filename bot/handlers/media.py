@@ -2012,10 +2012,14 @@ async def pick_ratio(callback: CallbackQuery, state: FSMContext) -> None:
 @router.callback_query(MediaStates.confirm, F.data == "media:pick_resolution")
 async def pick_resolution(callback: CallbackQuery, state: FSMContext) -> None:
     data = await state.get_data()
+    resolutions = data.get("model_resolutions") or []
+    if len(resolutions) <= 1:
+        await callback.answer()
+        return
     await callback.message.edit_text(
         "<b>Выбери качество:</b>",
         parse_mode="HTML",
-        reply_markup=image_resolution_kb(data.get("resolution", "1K"), data.get("model_resolutions")),
+        reply_markup=image_resolution_kb(data.get("resolution", "1K"), resolutions),
     )
     await callback.answer()
 
