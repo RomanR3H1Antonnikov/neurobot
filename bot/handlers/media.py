@@ -323,8 +323,9 @@ def _confirm_kb(data: dict):
         _show_last = data.get("model_has_last_frame", True)
         _max_extra = data.get("model_max_style_refs", 0)
         _max_video = data.get("model_max_video_refs", 0)
-        _show_constructor = bool(_show_last or _max_extra > 0)
-        _show_frames = bool(_show_first or _show_constructor)
+        _show_animate = bool(_show_first or _show_last)
+        _show_constructor = bool(_max_extra > 0)
+        _show_frames = bool(_show_animate or _show_constructor)
         return video_confirm_kb(
             data.get("duration", 5),
             has_prompt=has_prompt,
@@ -341,7 +342,7 @@ def _confirm_kb(data: dict):
             video_ref_count=len(data.get("video_style_reference_file_ids") or []),
             max_video_refs=_max_video,
             show_frames_button=_show_frames,
-            show_first_frame_btn=_show_first,
+            show_first_frame_btn=_show_animate,
             show_constructor_btn=_show_constructor,
             frames_mode=data.get("video_frames_mode"),
             output_format=data.get("video_output_format"),
@@ -1102,18 +1103,18 @@ async def style_ref_replace_start(callback: CallbackQuery, state: FSMContext) ->
     await callback.answer()
 
 
-@router.callback_query(MediaStates.confirm, F.data == "media:toggle_frames")
-async def toggle_frames(callback: CallbackQuery, state: FSMContext) -> None:
-    """Открывает меню выбора кадров видео."""
-    await state.update_data(video_frames_mode="constructor")
+@router.callback_query(MediaStates.confirm, F.data == "media:animate_photo")
+async def animate_photo(callback: CallbackQuery, state: FSMContext) -> None:
+    """Кнопка 'Оживить фото' — первый и/или последний кадр."""
+    await state.update_data(video_frames_mode="animate")
     data = await state.get_data()
     motion_control = bool(data.get("model_motion_control"))
-    max_extra_refs = data.get("model_max_style_refs", 0) if not motion_control else 0
-    extra_ref_count = len(data.get("style_reference_file_ids") or [])
+    show_first = data.get("model_has_first_frame", True)
+    show_last = data.get("model_has_last_frame", True)
     title = (
         "📎 <b>Motion Control</b>\n\nДобавь фото (начальный кадр) и видео (задаёт характер движения):"
         if motion_control else
-        "📎 <b>Кадры видео</b>\n\nДобавь фото для первого и/или последнего кадра:"
+        "🖼 <b>Оживить фото</b>\n\nДобавь первый и/или последний кадр:"
     )
     await callback.message.edit_text(
         title,
@@ -1122,13 +1123,33 @@ async def toggle_frames(callback: CallbackQuery, state: FSMContext) -> None:
             has_first_frame=bool(data.get("video_first_frame_file_id")),
             has_last_frame=bool(data.get("video_last_frame_file_id")),
             motion_control=motion_control,
-            extra_ref_count=extra_ref_count,
-            max_extra_refs=max_extra_refs,
-            show_first_frame=data.get("model_has_first_frame", True),
-            show_last_frame=data.get("model_has_last_frame", True),
+            max_extra_refs=0,
+            show_first_frame=show_first,
+            show_last_frame=show_last,
         ),
     )
     await callback.answer()
+
+
+@router.callback_query(MediaStates.confirm, F.data == "media:toggle_frames")
+async def toggle_frames(callback: CallbackQuery, state: FSMContext) -> None:
+    """Кнопка 'Конструктор видео' — референсные фото."""
+    await state.update_data(video_frames_mode="constructor")
+    data = await state.get_data()
+    max_extra_refs = data.get("model_max_style_refs", 0)
+    extra_ref_count = len(data.get("style_reference_file_ids") or [])
+    await callback.message.edit_text(
+        "🎬 <b>Конструктор видео</b>\n\nДобавь референсные фото:",
+        parse_mode="HTML",
+        reply_markup=video_frames_menu_kb(
+            extra_ref_count=extra_ref_count,
+            max_extra_refs=max_extra_refs,
+            show_first_frame=False,
+            show_last_frame=False,
+        ),
+    )
+    await callback.answer()
+
 
 
 @router.callback_query(MediaStates.confirm, F.data == "media:add_extra_frames")

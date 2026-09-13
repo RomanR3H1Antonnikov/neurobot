@@ -248,7 +248,7 @@ def video_confirm_kb(
                 animate_text = "🖼 Оживить фото ❌"
             else:
                 animate_text = "🖼 Оживить фото"
-            row_btns.append(InlineKeyboardButton(text=animate_text, callback_data="media:add_first_frame"))
+            row_btns.append(InlineKeyboardButton(text=animate_text, callback_data="media:animate_photo"))
         if show_constructor_btn:
             if frames_mode == "constructor":
                 constr_text = "🎬 Конструктор видео ✅"
