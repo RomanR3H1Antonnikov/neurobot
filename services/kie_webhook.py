@@ -101,8 +101,12 @@ async def _deliver_orphaned(corr_id: str, body: dict) -> None:
     model_label = job["model_label"] or ""
     prompt = job["prompt"]
 
-    _type_names = {"video": "видео", "photo": "фото", "audio": "аудио"}
-    caption = f"✅ <b>Готово!</b> Ваш {_type_names.get(media_type, 'результат')} сгенерирован."
+    _ready_phrases = {
+        "photo": "Ваше фото сгенерировано",
+        "video": "Ваше видео сгенерировано",
+        "audio": "Ваше аудио сгенерировано",
+    }
+    caption = f"✅ <b>Готово!</b> {_ready_phrases.get(media_type, 'Результат готов')}."
     if model_label:
         caption += f"\n<i>{model_label}</i>"
     if media_type in ("photo", "video"):
