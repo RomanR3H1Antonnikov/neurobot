@@ -578,6 +578,27 @@ tasks:
         cost_credits: 1
         cost_usd: 0.02
         enabled: true
+        voices:
+          - id: EkK5I93UQWFDigLMpZcX
+            label: "Стандартный"
+          - id: 21m00Tcm4TlvDq8ikWAM
+            label: "Rachel (нейтральный женский)"
+          - id: AZnzlk1XvdvUeBnXmlld
+            label: "Domi (уверенный женский)"
+          - id: EXAVITQu4vr4xnSDxMaL
+            label: "Sarah (мягкий женский)"
+          - id: MF3mGyEYCl7XYWbV9V6O
+            label: "Elli (эмоциональный женский)"
+          - id: ThT5KcBeYPX3keUQqHPh
+            label: "Dorothy (британский женский)"
+          - id: ErXwobaYiN019PkySvjV
+            label: "Antoni (универсальный мужской)"
+          - id: pNInz6obpgDQGcFmaJgB
+            label: "Adam (глубокий мужской)"
+          - id: TxGEqnHWrfWFTfGW9XjX
+            label: "Josh (насыщенный мужской)"
+          - id: N2lVS1w4EtoT3dr4eOWO
+            label: "Callum (интенсивный мужской)"
 
       - id: udio
         label: "Udio"

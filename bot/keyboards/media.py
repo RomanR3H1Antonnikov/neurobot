@@ -338,8 +338,14 @@ def video_duration_picker_kb(
 
 # ─── Карточка подтверждения: аудио ───────────────────────────────────────────
 
-def audio_confirm_kb(has_prompt: bool = False, cost_credits: int | None = None) -> InlineKeyboardMarkup:
+def audio_confirm_kb(
+    has_prompt: bool = False,
+    cost_credits: int | None = None,
+    voice_label: str | None = None,
+) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
+    if voice_label is not None:
+        builder.row(InlineKeyboardButton(text=f"🗣 Голос: {voice_label}", callback_data="media:pick_voice"))
     edit_text = "✏️ Изменить описание" if has_prompt else "✏️ Ввести описание"
     builder.row(
         InlineKeyboardButton(text=edit_text, callback_data="media:edit_prompt"),
@@ -347,6 +353,18 @@ def audio_confirm_kb(has_prompt: bool = False, cost_credits: int | None = None) 
     )
     start_text = f"🚀 Начать генерацию — {cost_credits} кр." if cost_credits else "🚀 Начать генерацию"
     builder.row(InlineKeyboardButton(text=start_text, callback_data="media:start"))
+    return builder.as_markup()
+
+
+def voice_picker_kb(voices: list[dict], current_id: str) -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    for v in voices:
+        prefix = "✅ " if v["id"] == current_id else ""
+        builder.row(InlineKeyboardButton(
+            text=f"{prefix}{v['label']}",
+            callback_data=f"media:set_voice:{v['id']}",
+        ))
+    builder.row(InlineKeyboardButton(text="◀️ Назад", callback_data="media:back:confirm"))
     return builder.as_markup()
 
 

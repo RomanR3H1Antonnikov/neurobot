@@ -259,8 +259,11 @@ class KieProvider(OpenAICompatProvider):
         fut = register_pending(corr_id)
 
         # elevenlabs/text-to-dialogue-v3 требует массив dialogue с voice ID
+        voice_id = "EkK5I93UQWFDigLMpZcX"  # default
+        if music_params and music_params.get("_provider_model") == "elevenlabs-v3":
+            voice_id = music_params.get("voice_id") or voice_id
         input_data = {
-            "dialogue": [{"text": prompt, "voice": "EkK5I93UQWFDigLMpZcX"}],
+            "dialogue": [{"text": prompt, "voice": voice_id}],
             "stability": 0.5,
         }
 

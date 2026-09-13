@@ -24,6 +24,7 @@ from bot.keyboards.media import (
     video_confirm_kb, video_format_kb, video_frames_menu_kb, video_duration_picker_kb, audio_confirm_kb, edit_confirm_kb,
     music_confirm_kb, music_format_kb,
     udio_confirm_kb, udio_lyrics_type_kb, udio_model_type_kb,
+    voice_picker_kb,
     style_ref_collecting_kb, after_generation_kb, gen_waiting_kb, error_kb,
 )
 from providers.base import ProviderError, ProviderContentPolicyError, TaskType
@@ -220,6 +221,8 @@ def _confirm_card_text(data: dict) -> str:
     elif media_type == "audio":
         t = "Озвучка" if data.get("audio_type", "voice") == "voice" else "Музыка"
         lines.append(f"<b>Тип аудио:</b> {t}")
+        if data.get("selected_voice_label"):
+            lines.append(f"<b>Голос:</b> {data['selected_voice_label']}")
         if data.get("has_music_settings"):
             lines.append(f"<b>Длительность:</b> {data.get('music_duration', 30)} сек")
             if data.get("music_show_advanced"):
@@ -346,7 +349,8 @@ def _confirm_kb(data: dict):
             return music_confirm_kb(data, cost_credits=cost)
         if data.get("has_udio_settings"):
             return udio_confirm_kb(data, cost_credits=cost)
-        return audio_confirm_kb(has_prompt=has_prompt, cost_credits=cost)
+        voice_label = data.get("selected_voice_label") if data.get("model_voices") else None
+        return audio_confirm_kb(has_prompt=has_prompt, cost_credits=cost, voice_label=voice_label)
     elif media_type in ("photo_edit", "video_edit"):
         return edit_confirm_kb(
             has_prompt=has_prompt,
@@ -561,6 +565,15 @@ async def select_model(callback: CallbackQuery, state: FSMContext) -> None:
             update["udio_clarity_strength"] = 0.25
             update["entering_udio_float"] = None
             update["entering_udio_lyrics"] = False
+        # Голоса для озвучки (elevenlabs-v3 и подобные)
+        voices = model_cfg.get("voices") or []
+        update["model_voices"] = voices if voices else None
+        if voices:
+            update["selected_voice_id"] = voices[0]["id"]
+            update["selected_voice_label"] = voices[0]["label"]
+        else:
+            update["selected_voice_id"] = None
+            update["selected_voice_label"] = None
 
     await state.update_data(**update)
     data = await state.get_data()
@@ -2310,6 +2323,34 @@ async def set_udio_model_type(callback: CallbackQuery, state: FSMContext) -> Non
     await callback.answer()
 
 
+# ─── Выбор голоса для озвучки ────────────────────────────────────────────────
+
+@router.callback_query(MediaStates.confirm, F.data == "media:pick_voice")
+async def pick_voice(callback: CallbackQuery, state: FSMContext) -> None:
+    data = await state.get_data()
+    voices = data.get("model_voices") or []
+    current_id = data.get("selected_voice_id", "")
+    await callback.message.edit_text(
+        "🗣 <b>Выбери голос озвучки:</b>",
+        parse_mode="HTML",
+        reply_markup=voice_picker_kb(voices, current_id),
+    )
+    await callback.answer()
+
+
+@router.callback_query(MediaStates.confirm, F.data.startswith("media:set_voice:"))
+async def set_voice(callback: CallbackQuery, state: FSMContext) -> None:
+    voice_id = callback.data[len("media:set_voice:"):]
+    data = await state.get_data()
+    voices = data.get("model_voices") or []
+    voice = next((v for v in voices if v["id"] == voice_id), None)
+    if voice:
+        await state.update_data(selected_voice_id=voice_id, selected_voice_label=voice["label"])
+    data = await state.get_data()
+    await callback.message.edit_text(_confirm_card_text(data), parse_mode="HTML", reply_markup=_confirm_kb(data))
+    await callback.answer()
+
+
 @router.callback_query(F.data == "media:gen_why_long")
 async def gen_why_long(callback: CallbackQuery) -> None:
     await callback.answer(
@@ -2464,6 +2505,11 @@ async def _run_generation(send_msg: Message, tg_user, state: FSMContext, data: d
                 "music_instrumental": bool(data.get("music_instrumental")),
                 "music_respect_durations": bool(data.get("music_respect_durations")),
                 "music_format": data.get("music_format", "mp3_44100_128"),
+            }
+        elif data.get("model_voices"):
+            music_params = {
+                "_provider_model": "elevenlabs-v3",
+                "voice_id": data.get("selected_voice_id", "EkK5I93UQWFDigLMpZcX"),
             }
         elif data.get("has_udio_settings"):
             music_params = {
