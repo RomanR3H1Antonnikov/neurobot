@@ -262,9 +262,6 @@ def video_confirm_kb(
     if max_audio_refs > 0:
         audio_text = f"🎵 Аудио: {audio_ref_count} файл(а) ✅" if audio_ref_count else "🎵 Аудио"
         builder.row(InlineKeyboardButton(text=audio_text, callback_data="media:add_audio_ref"))
-    if max_video_refs > 0:
-        video_text = f"🎬 Видео: {video_ref_count} файл(а) ✅" if video_ref_count else "🎬 Видео"
-        builder.row(InlineKeyboardButton(text=video_text, callback_data="media:add_video_ref"))
     edit_text = "✏️ Изменить описание" if has_prompt else "✏️ Ввести описание"
     builder.row(
         InlineKeyboardButton(text=edit_text, callback_data="media:edit_prompt"),
