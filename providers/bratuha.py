@@ -176,7 +176,7 @@ class BratuhaProvider(AbstractProvider):
 
     # ─── Методы, не поддерживаемые Bratuha в текущей версии ─────────────────
 
-    async def generate_audio(self, prompt: str, audio_type: str = "voice", model: str | None = None) -> GenerationResult:
+    async def generate_audio(self, prompt: str, audio_type: str = "voice", model: str | None = None, music_params: dict | None = None) -> GenerationResult:
         raise ProviderUnavailableError("Генерация аудио через Bratuha не поддерживается")
 
     async def edit_image(self, image_bytes: bytes, prompt: str, model: str | None = None,

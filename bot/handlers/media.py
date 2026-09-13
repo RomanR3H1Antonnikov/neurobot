@@ -22,6 +22,7 @@ from bot.keyboards.media import (
     model_select_text, model_variant_text, back_to_model_kb, back_to_confirm_kb, back_to_frames_kb,
     image_confirm_kb, image_ratio_kb, image_resolution_kb,
     video_confirm_kb, video_format_kb, video_frames_menu_kb, video_duration_picker_kb, audio_confirm_kb, edit_confirm_kb,
+    music_confirm_kb, music_format_kb,
     style_ref_collecting_kb, after_generation_kb, gen_waiting_kb, error_kb,
 )
 from providers.base import ProviderError, ProviderContentPolicyError, TaskType
@@ -218,6 +219,25 @@ def _confirm_card_text(data: dict) -> str:
     elif media_type == "audio":
         t = "Озвучка" if data.get("audio_type", "voice") == "voice" else "Музыка"
         lines.append(f"<b>Тип аудио:</b> {t}")
+        if data.get("has_music_settings"):
+            lines.append(f"<b>Длительность:</b> {data.get('music_duration', 30)} сек")
+            if data.get("music_show_advanced"):
+                pos_styles = data.get("music_positive_styles") or []
+                neg_styles = data.get("music_negative_styles") or []
+                sections = data.get("music_sections") or []
+                if pos_styles:
+                    _ps = ", ".join(pos_styles[:3]) + ("..." if len(pos_styles) > 3 else "")
+                    lines.append(f"<b>Стили (+):</b> {_ps}")
+                if neg_styles:
+                    _ns = ", ".join(neg_styles[:3]) + ("..." if len(neg_styles) > 3 else "")
+                    lines.append(f"<b>Стили (-):</b> {_ns}")
+                if sections:
+                    lines.append(f"<b>Секции:</b> {len(sections)} шт.")
+                if data.get("music_instrumental"):
+                    lines.append("<b>Только инструментал:</b> Да")
+                if data.get("music_respect_durations"):
+                    lines.append("<b>Длит. секций:</b> Соблюдать")
+                lines.append(f"<b>Формат:</b> {data.get('music_format', 'mp3_44100_128')}")
     elif media_type in ("photo_edit", "video_edit"):
         ref_type = data.get("reference_type")
         if ref_type:
@@ -299,6 +319,8 @@ def _confirm_kb(data: dict):
             cost_credits=cost,
         )
     elif media_type == "audio":
+        if data.get("has_music_settings"):
+            return music_confirm_kb(data, cost_credits=cost)
         return audio_confirm_kb(has_prompt=has_prompt, cost_credits=cost)
     elif media_type in ("photo_edit", "video_edit"):
         return edit_confirm_kb(
@@ -485,6 +507,20 @@ async def select_model(callback: CallbackQuery, state: FSMContext) -> None:
     # для аудио — тип (voice/music) берём из конфига модели
     if media_type == "audio":
         update["audio_type"] = model_cfg.get("audio_type", "voice")
+        update["has_music_settings"] = bool(model_cfg.get("has_music_settings"))
+        if model_cfg.get("has_music_settings"):
+            update["music_duration"] = 30
+            update["music_positive_styles"] = []
+            update["music_negative_styles"] = []
+            update["music_sections"] = []
+            update["music_instrumental"] = False
+            update["music_respect_durations"] = False
+            update["music_format"] = "mp3_44100_128"
+            update["music_show_advanced"] = False
+            update["entering_music_duration"] = False
+            update["entering_music_pos_styles"] = False
+            update["entering_music_neg_styles"] = False
+            update["entering_music_sections"] = False
 
     await state.update_data(**update)
     data = await state.get_data()
@@ -818,6 +854,8 @@ async def generate_again(callback: CallbackQuery, state: FSMContext) -> None:
         managing_style_ref=None, managing_style_ref_index=None,
         video_frames_expanded=None,
         entering_duration=None,
+        entering_music_duration=False, entering_music_pos_styles=False,
+        entering_music_neg_styles=False, entering_music_sections=False,
         _is_generating=None,
         _cleanup_warned_msg_id=None,
     )
@@ -1128,8 +1166,11 @@ async def back_to_confirm(callback: CallbackQuery, state: FSMContext) -> None:
         adding_style_ref=None, adding_video_extra_frame=None, adding_audio_ref=None,
         adding_video_ref=None,
         managing_style_ref=None, managing_style_ref_index=None,
+        entering_music_duration=False, entering_music_pos_styles=False,
+        entering_music_neg_styles=False, entering_music_sections=False,
     )
     await state.set_state(MediaStates.confirm)
+    data = await state.get_data()
     text = _confirm_card_text(data)
     kb = _confirm_kb(data)
     try:
@@ -1551,6 +1592,54 @@ async def update_prompt_in_confirm(message: Message, state: FSMContext) -> None:
         asyncio.create_task(_notify_generating(message.bot, message.chat.id))
         return
 
+    # Ввод настроек ElevenLabs Music
+    if data.get("entering_music_duration"):
+        try:
+            val = int(message.text.strip())
+            if not (5 <= val <= 600):
+                sent = await message.answer("Введи целое число от 5 до 600 секунд:")
+                await _track_msg(state, sent.message_id)
+                return
+            await state.update_data(music_duration=val, entering_music_duration=False)
+            await message.delete()
+            await _update_confirm_card(message, state)
+        except ValueError:
+            sent = await message.answer("Нужно целое число (секунды, от 5 до 600):")
+            await _track_msg(state, sent.message_id)
+        return
+
+    if data.get("entering_music_pos_styles"):
+        raw = message.text.strip()
+        styles = [] if raw.lower() in ("нет", "очистить", "-") else [
+            s.strip() for s in raw.replace(";", ",").split(",") if s.strip()
+        ]
+        await state.update_data(music_positive_styles=styles, entering_music_pos_styles=False)
+        await message.delete()
+        await _update_confirm_card(message, state)
+        return
+
+    if data.get("entering_music_neg_styles"):
+        raw = message.text.strip()
+        styles = [] if raw.lower() in ("нет", "очистить", "-") else [
+            s.strip() for s in raw.replace(";", ",").split(",") if s.strip()
+        ]
+        await state.update_data(music_negative_styles=styles, entering_music_neg_styles=False)
+        await message.delete()
+        await _update_confirm_card(message, state)
+        return
+
+    if data.get("entering_music_sections"):
+        raw = message.text.strip()
+        if raw.lower() in ("нет", "очистить", "-"):
+            sections: list[str] = []
+        else:
+            # поддерживаем разделители: новая строка, точка с запятой
+            sections = [s.strip() for s in raw.replace(";", "\n").split("\n") if s.strip()]
+        await state.update_data(music_sections=sections, entering_music_sections=False)
+        await message.delete()
+        await _update_confirm_card(message, state)
+        return
+
     # Ввод кастомной длительности видео
     if data.get("entering_duration"):
         min_d = data.get("model_min_duration") or 1
@@ -1920,6 +2009,123 @@ async def edit_prompt(callback: CallbackQuery, state: FSMContext) -> None:
     await callback.answer()
 
 
+# ─── ElevenLabs Music: дополнительные настройки ─────────────────────────────
+
+@router.callback_query(MediaStates.confirm, F.data == "media:music_adv")
+async def toggle_music_advanced(callback: CallbackQuery, state: FSMContext) -> None:
+    data = await state.get_data()
+    await state.update_data(music_show_advanced=not bool(data.get("music_show_advanced")))
+    data = await state.get_data()
+    await callback.message.edit_text(_confirm_card_text(data), parse_mode="HTML", reply_markup=_confirm_kb(data))
+    await callback.answer()
+
+
+@router.callback_query(MediaStates.confirm, F.data == "media:music_duration")
+async def enter_music_duration(callback: CallbackQuery, state: FSMContext) -> None:
+    await state.update_data(entering_music_duration=True)
+    await callback.message.edit_text(
+        "⏱ Введи длительность трека в секундах (5–600):",
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=[[
+            InlineKeyboardButton(text="◀️ Назад", callback_data="media:back:confirm"),
+        ]]),
+    )
+    await callback.answer()
+
+
+@router.callback_query(MediaStates.confirm, F.data == "media:music_pos_styles")
+async def enter_music_pos_styles(callback: CallbackQuery, state: FSMContext) -> None:
+    data = await state.get_data()
+    current = data.get("music_positive_styles") or []
+    hint = f"Текущие: <code>{', '.join(current)}</code>\n\n" if current else ""
+    await state.update_data(entering_music_pos_styles=True)
+    await callback.message.edit_text(
+        f"{hint}🎼 Введи позитивные стили через запятую (например: <code>jazz, upbeat, piano</code>).\n"
+        "Чтобы очистить — напиши «нет».",
+        parse_mode="HTML",
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=[[
+            InlineKeyboardButton(text="◀️ Назад", callback_data="media:back:confirm"),
+        ]]),
+    )
+    await callback.answer()
+
+
+@router.callback_query(MediaStates.confirm, F.data == "media:music_neg_styles")
+async def enter_music_neg_styles(callback: CallbackQuery, state: FSMContext) -> None:
+    data = await state.get_data()
+    current = data.get("music_negative_styles") or []
+    hint = f"Текущие: <code>{', '.join(current)}</code>\n\n" if current else ""
+    await state.update_data(entering_music_neg_styles=True)
+    await callback.message.edit_text(
+        f"{hint}🚫 Введи негативные стили через запятую (то, чего не должно быть в треке).\n"
+        "Чтобы очистить — напиши «нет».",
+        parse_mode="HTML",
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=[[
+            InlineKeyboardButton(text="◀️ Назад", callback_data="media:back:confirm"),
+        ]]),
+    )
+    await callback.answer()
+
+
+@router.callback_query(MediaStates.confirm, F.data == "media:music_sections")
+async def enter_music_sections(callback: CallbackQuery, state: FSMContext) -> None:
+    data = await state.get_data()
+    current = data.get("music_sections") or []
+    if current:
+        hint = "Текущие секции:\n" + "\n".join(f"  • {s}" for s in current) + "\n\n"
+    else:
+        hint = ""
+    await state.update_data(entering_music_sections=True)
+    await callback.message.edit_text(
+        f"{hint}📋 Введи секции — каждая с новой строки или через «;»\n"
+        "(например: <code>Вступление\nКуплет с гитарой\nПрипев</code>).\n"
+        "Чтобы очистить — напиши «нет».",
+        parse_mode="HTML",
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=[[
+            InlineKeyboardButton(text="◀️ Назад", callback_data="media:back:confirm"),
+        ]]),
+    )
+    await callback.answer()
+
+
+@router.callback_query(MediaStates.confirm, F.data == "media:music_instrumental")
+async def toggle_music_instrumental(callback: CallbackQuery, state: FSMContext) -> None:
+    data = await state.get_data()
+    await state.update_data(music_instrumental=not bool(data.get("music_instrumental")))
+    data = await state.get_data()
+    await callback.message.edit_text(_confirm_card_text(data), parse_mode="HTML", reply_markup=_confirm_kb(data))
+    await callback.answer()
+
+
+@router.callback_query(MediaStates.confirm, F.data == "media:music_respect_dur")
+async def toggle_music_respect_dur(callback: CallbackQuery, state: FSMContext) -> None:
+    data = await state.get_data()
+    await state.update_data(music_respect_durations=not bool(data.get("music_respect_durations")))
+    data = await state.get_data()
+    await callback.message.edit_text(_confirm_card_text(data), parse_mode="HTML", reply_markup=_confirm_kb(data))
+    await callback.answer()
+
+
+@router.callback_query(MediaStates.confirm, F.data == "media:pick_music_format")
+async def pick_music_format(callback: CallbackQuery, state: FSMContext) -> None:
+    data = await state.get_data()
+    current = data.get("music_format", "mp3_44100_128")
+    await callback.message.edit_text(
+        "📁 <b>Выбери формат аудио:</b>",
+        parse_mode="HTML",
+        reply_markup=music_format_kb(current),
+    )
+    await callback.answer()
+
+
+@router.callback_query(MediaStates.confirm, F.data.startswith("media:music_format:"))
+async def set_music_format(callback: CallbackQuery, state: FSMContext) -> None:
+    fmt = callback.data[len("media:music_format:"):]
+    await state.update_data(music_format=fmt)
+    data = await state.get_data()
+    await callback.message.edit_text(_confirm_card_text(data), parse_mode="HTML", reply_markup=_confirm_kb(data))
+    await callback.answer()
+
+
 @router.callback_query(F.data == "media:gen_why_long")
 async def gen_why_long(callback: CallbackQuery) -> None:
     await callback.answer(
@@ -2063,8 +2269,20 @@ async def _run_generation(send_msg: Message, tg_user, state: FSMContext, data: d
             await save_generation(tg_user.id, "video", sent.video.file_id, prompt=prompt, model_label=data.get("model_label"))
 
     elif media_type == "audio":
+        music_params: dict | None = None
+        if data.get("has_music_settings"):
+            music_params = {
+                "music_duration": data.get("music_duration", 30),
+                "music_positive_styles": data.get("music_positive_styles") or [],
+                "music_negative_styles": data.get("music_negative_styles") or [],
+                "music_sections": data.get("music_sections") or [],
+                "music_instrumental": bool(data.get("music_instrumental")),
+                "music_respect_durations": bool(data.get("music_respect_durations")),
+                "music_format": data.get("music_format", "mp3_44100_128"),
+            }
         result = await media_service.generate_audio(
-            tg_user.id, tg_user.username, prompt, data.get("audio_type", "voice"), model_slug
+            tg_user.id, tg_user.username, prompt, data.get("audio_type", "voice"), model_slug,
+            music_params=music_params,
         )
         file = BufferedInputFile(result.data, filename=result.filename)
         sent = await send_msg.answer_audio(file, reply_markup=after_generation_kb())

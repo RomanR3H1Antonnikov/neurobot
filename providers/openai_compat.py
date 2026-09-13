@@ -118,7 +118,8 @@ class OpenAICompatProvider(AbstractProvider):
         return GenerationResult(data=video_bytes, mime_type="video/mp4", filename="video.mp4")
 
     async def generate_audio(
-        self, prompt: str, audio_type: str = "voice", model: str | None = None
+        self, prompt: str, audio_type: str = "voice", model: str | None = None,
+        music_params: dict | None = None,
     ) -> GenerationResult:
         actual_model = model or self.audio_model
 

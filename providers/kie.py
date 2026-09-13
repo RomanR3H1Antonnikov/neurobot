@@ -252,6 +252,7 @@ class KieProvider(OpenAICompatProvider):
 
     async def generate_audio(
         self, prompt: str, audio_type: str = "voice", model: str | None = None,
+        music_params: dict | None = None,
     ) -> GenerationResult:
         actual_model = model or "elevenlabs/text-to-dialogue-v3"
         corr_id = uuid.uuid4().hex

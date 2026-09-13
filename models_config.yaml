@@ -601,6 +601,7 @@ tasks:
         model_id: elevenlabs-music
         provider: genapi
         audio_type: music
+        has_music_settings: true
         cost_credits: 1
         cost_usd: 0.04
         enabled: true

@@ -350,6 +350,76 @@ def audio_confirm_kb(has_prompt: bool = False, cost_credits: int | None = None) 
     return builder.as_markup()
 
 
+_MUSIC_FORMATS = ["mp3_44100_128", "mp3_44100_192", "pcm_44100"]
+
+
+def music_confirm_kb(data: dict, cost_credits: int | None = None) -> InlineKeyboardMarkup:
+    """Карточка подтверждения для ElevenLabs Music с дополнительными настройками."""
+    builder = InlineKeyboardBuilder()
+    has_prompt = bool(data.get("prompt"))
+    show_advanced = bool(data.get("music_show_advanced"))
+
+    dur = data.get("music_duration", 30)
+    builder.row(InlineKeyboardButton(
+        text=f"⏱ Длительность: {dur} сек",
+        callback_data="media:music_duration",
+    ))
+
+    if show_advanced:
+        pos_styles = data.get("music_positive_styles") or []
+        neg_styles = data.get("music_negative_styles") or []
+        sections = data.get("music_sections") or []
+
+        pos_text = f"🎼 Стили (+): {len(pos_styles)}" if pos_styles else "➕ Позит. стили"
+        neg_text = f"🚫 Стили (-): {len(neg_styles)}" if neg_styles else "➕ Негат. стили"
+        builder.row(
+            InlineKeyboardButton(text=pos_text, callback_data="media:music_pos_styles"),
+            InlineKeyboardButton(text=neg_text, callback_data="media:music_neg_styles"),
+        )
+
+        sec_text = f"📋 Секции: {len(sections)}" if sections else "📋 Добавить секции"
+        builder.row(InlineKeyboardButton(text=sec_text, callback_data="media:music_sections"))
+
+        instr = bool(data.get("music_instrumental"))
+        respect = bool(data.get("music_respect_durations"))
+        builder.row(
+            InlineKeyboardButton(
+                text=f"🎹 Инструментал: {'✅' if instr else '❌'}",
+                callback_data="media:music_instrumental",
+            ),
+            InlineKeyboardButton(
+                text=f"⏰ Длит. секций: {'✅' if respect else '❌'}",
+                callback_data="media:music_respect_dur",
+            ),
+        )
+
+        fmt = data.get("music_format", "mp3_44100_128")
+        builder.row(InlineKeyboardButton(text=f"📁 Формат: {fmt}", callback_data="media:pick_music_format"))
+
+    edit_text = "✏️ Изменить описание" if has_prompt else "✏️ Ввести описание"
+    builder.row(
+        InlineKeyboardButton(text=edit_text, callback_data="media:edit_prompt"),
+        InlineKeyboardButton(text="◀️ Назад", callback_data="media:back:model"),
+    )
+
+    adv_text = "⚙️ Свернуть настройки ▲" if show_advanced else "⚙️ Дополнительные настройки ▼"
+    builder.row(InlineKeyboardButton(text=adv_text, callback_data="media:music_adv"))
+
+    start_text = f"🚀 Начать генерацию — {cost_credits} кр." if cost_credits else "🚀 Начать генерацию"
+    builder.row(InlineKeyboardButton(text=start_text, callback_data="media:start"))
+    return builder.as_markup()
+
+
+def music_format_kb(current: str) -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    for fmt in _MUSIC_FORMATS:
+        prefix = "✅ " if fmt == current else ""
+        builder.add(InlineKeyboardButton(text=f"{prefix}{fmt}", callback_data=f"media:music_format:{fmt}"))
+    builder.adjust(1)
+    builder.row(InlineKeyboardButton(text="◀️ Назад", callback_data="media:back:confirm"))
+    return builder.as_markup()
+
+
 # ─── Карточка подтверждения: редактирование ──────────────────────────────────
 
 def edit_confirm_kb(

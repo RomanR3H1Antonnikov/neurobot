@@ -67,7 +67,10 @@ class AbstractProvider(ABC):
         ...
 
     @abstractmethod
-    async def generate_audio(self, prompt: str, audio_type: str = "voice") -> GenerationResult:
+    async def generate_audio(
+        self, prompt: str, audio_type: str = "voice", model: str | None = None,
+        music_params: dict | None = None,
+    ) -> GenerationResult:
         ...
 
     @abstractmethod

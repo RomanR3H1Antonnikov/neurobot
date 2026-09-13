@@ -142,17 +142,52 @@ class GenApiProvider(AbstractProvider):
     # ─── Генерация аудио ──────────────────────────────────────────────────────
 
     async def generate_audio(
-        self, prompt: str, audio_type: str = "music", model: str | None = None
+        self, prompt: str, audio_type: str = "music", model: str | None = None,
+        music_params: dict | None = None,
     ) -> GenerationResult:
         actual_model = model or "udio"
-        data = await self._run(actual_model, prompt)
+        extra: dict | None = None
+        if music_params:
+            extra = {}
+            duration = music_params.get("music_duration")
+            if duration:
+                extra["music_length"] = duration
+            if music_params.get("music_instrumental"):
+                extra["Force_instrumental"] = True
+            if music_params.get("music_respect_durations"):
+                extra["respect_sections_durations"] = True
+            fmt = music_params.get("music_format")
+            if fmt:
+                extra["output_format"] = fmt
+            composition_plan: dict = {}
+            pos_styles = music_params.get("music_positive_styles") or []
+            neg_styles = music_params.get("music_negative_styles") or []
+            sections = music_params.get("music_sections") or []
+            if pos_styles:
+                composition_plan["positive_styles"] = pos_styles
+            if neg_styles:
+                composition_plan["negative_styles"] = neg_styles
+            if sections:
+                composition_plan["sections"] = [{"prompt": s} for s in sections]
+            if composition_plan:
+                extra["composition_plan"] = composition_plan
+            if not extra:
+                extra = None
+
+        data = await self._run(actual_model, prompt, extra=extra)
 
         url = _extract_url(data)
         if not url:
             raise ProviderUnavailableError(f"GenAPI: не получен URL аудио (тело: {str(data)[:200]})")
 
+        fmt_out = (music_params or {}).get("music_format", "")
+        if fmt_out.startswith("pcm"):
+            mime, filename = "audio/wav", "audio.wav"
+        else:
+            mime, filename = "audio/mpeg", "audio.mp3"
+
         audio_bytes = await self._download(url)
-        return GenerationResult(data=audio_bytes, mime_type="audio/mpeg", filename="audio.mp3")
+        return GenerationResult(data=audio_bytes, mime_type=mime, filename=filename)
 
     # ─── Редактирование и видео ───────────────────────────────────────────────
 

@@ -164,5 +164,5 @@ class RouteraiProvider(OpenAICompatProvider):
 
         return await super().edit_image(image_bytes, prompt, model, image_url, style_reference_urls)
 
-    async def generate_audio(self, prompt: str, audio_type: str = "voice", model: str | None = None) -> GenerationResult:
+    async def generate_audio(self, prompt: str, audio_type: str = "voice", model: str | None = None, music_params: dict | None = None) -> GenerationResult:
         raise ProviderUnavailableError("Генерация аудио через RouteAI не настроена")

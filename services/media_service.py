@@ -90,13 +90,16 @@ async def generate_video(
 
 
 async def generate_audio(
-    telegram_id: int, username: str, prompt: str, audio_type: str, model_slug: str
+    telegram_id: int, username: str, prompt: str, audio_type: str, model_slug: str,
+    music_params: dict | None = None,
 ) -> GenerationResult:
     task = TaskType.AUDIO_GENERATION
     provider, model_cfg = get_provider_by_model_id(task, model_slug)
     user_id = await _check_preconditions(telegram_id, username, task, model_cfg)
 
-    result = await provider.generate_audio(prompt, audio_type=audio_type, model=model_cfg["model_id"])
+    result = await provider.generate_audio(
+        prompt, audio_type=audio_type, model=model_cfg["model_id"], music_params=music_params,
+    )
     await deduct_credits(user_id, get_cost(model_cfg), task.value)
     return result
 
