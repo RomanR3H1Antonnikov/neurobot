@@ -115,10 +115,10 @@ async def topup_selected(callback: CallbackQuery) -> None:
     else:
         await callback.message.answer_invoice(
             title="Пополнение баланса",
-            description=f"Зачислим {credits} ₽ на ваш баланс для генерации медиа, чата и работы с документами",
+            description=f"{credits} кредитов для генерации медиа, чата и работы с документами",
             payload=f"topup:{credits}",
             currency="XTR",
-            prices=[LabeledPrice(label=f"Пополнение баланса на {credits} ₽", amount=amount)],
+            prices=[LabeledPrice(label=f"{credits} кредитов", amount=amount)],
         )
 
 
