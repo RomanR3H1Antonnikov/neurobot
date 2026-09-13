@@ -171,7 +171,11 @@ class OpenAICompatProvider(AbstractProvider):
         return GenerationResult(data=image_out, mime_type="image/png", filename="edited.png")
 
     async def edit_video(
-        self, video_bytes: bytes, prompt: str, model: str | None = None
+        self, video_bytes: bytes, prompt: str, model: str | None = None,
+        video_url: str | None = None,
+        duration: int = 5,
+        aspect_ratio: str | None = None,
+        resolution: str | None = None,
     ) -> GenerationResult:
         actual_model = model or self.video_edit_model
 

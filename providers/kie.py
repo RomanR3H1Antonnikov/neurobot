@@ -443,7 +443,10 @@ class KieProvider(OpenAICompatProvider):
                     "resolution": _veo_res,
                     "aspect_ratio": aspect_ratio or "16:9",
                 }
-                if first_frame_url:
+                if video_reference_urls:
+                    veo_input["generationType"] = "REFERENCE_2_VIDEO"
+                    veo_input["videoUrls"] = list(video_reference_urls)
+                elif first_frame_url:
                     veo_input["generationType"] = "FIRST_AND_LAST_FRAMES_2_VIDEO"
                     veo_input["imageUrls"] = [first_frame_url]
                 elif style_reference_urls:
@@ -581,3 +584,23 @@ class KieProvider(OpenAICompatProvider):
 
         image_out = await self._download(result_url)
         return GenerationResult(data=image_out, mime_type="image/png", filename="edited.png")
+
+    # ─── Редактирование видео ─────────────────────────────────────────────────
+
+    async def edit_video(
+        self, video_bytes: bytes, prompt: str, model: str | None = None,
+        video_url: str | None = None,
+        duration: int = 5,
+        aspect_ratio: str | None = None,
+        resolution: str | None = None,
+    ) -> GenerationResult:
+        if not video_url:
+            raise ProviderUnavailableError("KIE edit_video: не передан URL видео")
+        return await self.generate_video(
+            prompt=prompt,
+            duration=duration,
+            model=model,
+            video_reference_urls=[video_url],
+            aspect_ratio=aspect_ratio or "16:9",
+            resolution=resolution,
+        )

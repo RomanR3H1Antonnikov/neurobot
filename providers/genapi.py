@@ -246,7 +246,11 @@ class GenApiProvider(AbstractProvider):
             variants=list(images[1:]) if len(images) > 1 else None,
         )
 
-    async def edit_video(self, video_bytes: bytes, prompt: str, model: str | None = None) -> GenerationResult:
+    async def edit_video(
+        self, video_bytes: bytes, prompt: str, model: str | None = None,
+        video_url: str | None = None, duration: int = 5,
+        aspect_ratio: str | None = None, resolution: str | None = None,
+    ) -> GenerationResult:
         raise ProviderUnavailableError("Редактирование видео через GenAPI не поддерживается")
 
     async def generate_video(self, prompt: str, duration: int = 5, model: str | None = None, style_reference_urls: list[str] | None = None, aspect_ratio: str | None = None, resolution: str | None = None, audio_reference_urls: list[str] | None = None, first_frame_url: str | None = None, last_frame_url: str | None = None, video_reference_urls: list[str] | None = None, output_format: str | None = None) -> GenerationResult:

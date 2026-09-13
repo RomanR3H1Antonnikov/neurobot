@@ -214,7 +214,11 @@ class BratuhaProvider(AbstractProvider):
 
         return GenerationResult(data=image_bytes, mime_type="image/png", filename="image.png")
 
-    async def edit_video(self, video_bytes: bytes, prompt: str, model: str | None = None) -> GenerationResult:
+    async def edit_video(
+        self, video_bytes: bytes, prompt: str, model: str | None = None,
+        video_url: str | None = None, duration: int = 5,
+        aspect_ratio: str | None = None, resolution: str | None = None,
+    ) -> GenerationResult:
         raise ProviderUnavailableError("Редактирование видео через Bratuha не поддерживается")
 
     async def chat(self, messages: list[dict], system: str = "") -> ChatResult:

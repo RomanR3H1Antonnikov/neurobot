@@ -82,7 +82,13 @@ class AbstractProvider(ABC):
         ...
 
     @abstractmethod
-    async def edit_video(self, video_bytes: bytes, prompt: str) -> GenerationResult:
+    async def edit_video(
+        self, video_bytes: bytes, prompt: str, model: str | None = None,
+        video_url: str | None = None,
+        duration: int = 5,
+        aspect_ratio: str | None = None,
+        resolution: str | None = None,
+    ) -> GenerationResult:
         ...
 
     @abstractmethod

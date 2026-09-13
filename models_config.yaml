@@ -834,7 +834,101 @@ tasks:
   # ─── Редактирование видео ────────────────────────────────────────────────────
   video_edit:
     rate_limit_per_hour: 20
-    models: []  # модели будут добавлены после получения от клиента
+    models:
+      - id: kling-3-edit
+        label: "Kling 3.0"
+        description: >-
+          Kling 3.0 от Kuaishou переосмысляет загруженное видео по текстовому описанию:
+          сохраняет структуру движения, позволяет менять стиль, окружение и детали сцены.
+        duration_options: [5, 10, 15]
+        min_duration: 3
+        max_duration: 15
+        aspect_ratios: ["16:9", "9:16", "1:1", "21:9"]
+        resolutions: ["720p", "1080p", "4K"]
+        model_id: kling-3.0/video
+        provider: kie
+        cost_credits: 1
+        cost_usd: 0.08
+        enabled: true
+
+      - id: grok-video-1-5-edit
+        label: "Grok Video 1.5"
+        description: >-
+          Grok Video 1.5 от xAI переосмысляет видео по текстовому описанию с генерацией
+          синхронизированного звука (речь, эффекты, музыка) в одном проходе.
+        duration_options: [5, 10, 15]
+        min_duration: 1
+        max_duration: 15
+        aspect_ratios: ["1:1", "9:16", "16:9", "2:3", "3:2"]
+        resolutions: ["480p", "720p", "1080p"]
+        model_id: grok-imagine-video-1-5-preview
+        provider: kie
+        cost_credits: 1
+        cost_usd: 0.06
+        enabled: true
+
+      - id: happyhorse-1-1-edit
+        label: "HappyHorse 1.1"
+        description: >-
+          HappyHorse 1.1 от Alibaba редактирует видео (до 15 сек, 1080p) по текстовому
+          описанию: стабильная идентичность персонажей, улучшенная динамика движений.
+        duration_options: [5, 10, 15]
+        min_duration: 3
+        max_duration: 15
+        aspect_ratios: ["16:9", "9:16", "1:1", "4:3", "3:4"]
+        resolutions: ["720p", "1080p"]
+        model_id: alibaba/happyhorse-1.1
+        provider: routerai
+        cost_credits: 1
+        cost_usd: 0.07
+        enabled: true
+
+      - id: veo-3-1-lite-edit
+        label: "Veo 3.1 Lite"
+        group: veo-edit
+        group_label: "Veo 3.1"
+        description: >-
+          Veo 3.1 от Google DeepMind переосмысляет видео по тексту с реалистичной физикой
+          и нативным звуком.
+        variant_description: "Облегчённая версия — быстрее, ниже стоимость."
+        duration_options: [4, 8]
+        min_duration: 4
+        max_duration: 8
+        resolutions: ["720p", "1080p", "4K"]
+        model_id: veo3_lite
+        provider: kie
+        cost_credits: 1
+        cost_usd: 0.06
+        enabled: true
+
+      - id: veo-3-1-fast-edit
+        label: "Veo 3.1 Fast"
+        group: veo-edit
+        group_label: "Veo 3.1"
+        description: ""
+        variant_description: "Ускоренная версия — ~2x быстрее Quality."
+        duration_options: [4, 8]
+        min_duration: 4
+        max_duration: 8
+        resolutions: ["720p", "1080p", "4K"]
+        model_id: veo3_fast
+        provider: kie
+        cost_credits: 1
+        cost_usd: 0.08
+        enabled: true
+
+      - id: veo-3-1-quality-edit
+        label: "Veo 3.1 Quality"
+        group: veo-edit
+        group_label: "Veo 3.1"
+        description: ""
+        variant_description: "Флагманское качество."
+        resolutions: ["720p", "1080p", "4K"]
+        model_id: veo3
+        provider: kie
+        cost_credits: 1
+        cost_usd: 0.10
+        enabled: true
 
   # ─── Чат с ИИ ────────────────────────────────────────────────────────────────
   chat:

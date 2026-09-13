@@ -2585,10 +2585,12 @@ async def _run_generation(send_msg: Message, tg_user, state: FSMContext, data: d
 
     elif media_type == "video_edit":
         file_info = await send_msg.bot.get_file(data["reference_file_id"])
+        video_url = f"https://api.telegram.org/file/bot{_cfg.bot_token}/{file_info.file_path}"
         file_bytes = await send_msg.bot.download_file(file_info.file_path)
         media_bytes = file_bytes.read()
         result = await media_service.edit_video(
-            tg_user.id, tg_user.username, media_bytes, prompt, model_slug
+            tg_user.id, tg_user.username, media_bytes, prompt, model_slug,
+            video_url=video_url,
         )
         file = BufferedInputFile(result.data, filename=result.filename)
         sent = await send_msg.answer_video(file, reply_markup=after_generation_kb())
