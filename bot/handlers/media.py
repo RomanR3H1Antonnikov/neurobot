@@ -343,6 +343,7 @@ def _confirm_kb(data: dict):
             show_frames_button=_show_frames,
             show_first_frame_btn=_show_first,
             show_constructor_btn=_show_constructor,
+            frames_mode=data.get("video_frames_mode"),
             output_format=data.get("video_output_format"),
             output_formats=data.get("model_output_formats"),
             cost_credits=cost,
@@ -1104,6 +1105,7 @@ async def style_ref_replace_start(callback: CallbackQuery, state: FSMContext) ->
 @router.callback_query(MediaStates.confirm, F.data == "media:toggle_frames")
 async def toggle_frames(callback: CallbackQuery, state: FSMContext) -> None:
     """Открывает меню выбора кадров видео."""
+    await state.update_data(video_frames_mode="constructor")
     data = await state.get_data()
     motion_control = bool(data.get("model_motion_control"))
     max_extra_refs = data.get("model_max_style_refs", 0) if not motion_control else 0
@@ -1183,7 +1185,7 @@ async def add_video_ref(callback: CallbackQuery, state: FSMContext) -> None:
 @router.callback_query(MediaStates.confirm, F.data == "media:add_first_frame")
 async def add_first_frame(callback: CallbackQuery, state: FSMContext) -> None:
     """Кнопка 'Первый кадр' / 'Фото' на карточке видео-генерации."""
-    await state.update_data(adding_video_frame="first", _sref_msg_id=callback.message.message_id)
+    await state.update_data(adding_video_frame="first", _sref_msg_id=callback.message.message_id, video_frames_mode="animate")
     data = await state.get_data()
     has = bool(data.get("video_first_frame_file_id"))
     if bool(data.get("model_motion_control")):

@@ -215,6 +215,7 @@ def video_confirm_kb(
     show_frames_button: bool = True,
     show_first_frame_btn: bool = True,
     show_constructor_btn: bool = True,
+    frames_mode: str | None = None,
     output_format: str | None = None,
     output_formats: list[str] | None = None,
     cost_credits: int | None = None,
@@ -241,10 +242,20 @@ def video_confirm_kb(
     if show_frames_button:
         row_btns = []
         if show_first_frame_btn:
-            animate_text = "🖼 Оживить фото ✅" if has_first_frame else "🖼 Оживить фото"
+            if frames_mode == "animate":
+                animate_text = "🖼 Оживить фото ✅"
+            elif frames_mode == "constructor":
+                animate_text = "🖼 Оживить фото ❌"
+            else:
+                animate_text = "🖼 Оживить фото"
             row_btns.append(InlineKeyboardButton(text=animate_text, callback_data="media:add_first_frame"))
         if show_constructor_btn:
-            constr_text = "🎬 Конструктор видео ✅" if (has_last_frame or has_extra_refs) else "🎬 Конструктор видео"
+            if frames_mode == "constructor":
+                constr_text = "🎬 Конструктор видео ✅"
+            elif frames_mode == "animate":
+                constr_text = "🎬 Конструктор видео ❌"
+            else:
+                constr_text = "🎬 Конструктор видео"
             row_btns.append(InlineKeyboardButton(text=constr_text, callback_data="media:toggle_frames"))
         if row_btns:
             builder.row(*row_btns)
