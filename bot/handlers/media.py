@@ -1139,7 +1139,7 @@ async def toggle_frames(callback: CallbackQuery, state: FSMContext) -> None:
     max_extra_refs = data.get("model_max_style_refs", 0)
     extra_ref_count = len(data.get("style_reference_file_ids") or [])
     await callback.message.edit_text(
-        "🎬 <b>Конструктор видео</b>\n\nДобавь референсные фото:",
+        "🎬 <b>Конструктор видео</b>\n\nДобавь фото ориентиры для генерации:",
         parse_mode="HTML",
         reply_markup=video_frames_menu_kb(
             extra_ref_count=extra_ref_count,
