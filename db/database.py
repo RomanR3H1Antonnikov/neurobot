@@ -79,5 +79,21 @@ async def _create_tables(db: aiosqlite.Connection) -> None:
             prompt      TEXT,
             created_at  INTEGER NOT NULL DEFAULT (strftime('%s', 'now'))
         );
+
+        CREATE TABLE IF NOT EXISTS fsm_states (
+            chat_id  INTEGER NOT NULL,
+            user_id  INTEGER NOT NULL,
+            destiny  TEXT NOT NULL DEFAULT 'fsm',
+            state    TEXT NOT NULL,
+            PRIMARY KEY (chat_id, user_id, destiny)
+        );
+
+        CREATE TABLE IF NOT EXISTS fsm_data (
+            chat_id  INTEGER NOT NULL,
+            user_id  INTEGER NOT NULL,
+            destiny  TEXT NOT NULL DEFAULT 'fsm',
+            data     TEXT NOT NULL DEFAULT '{}',
+            PRIMARY KEY (chat_id, user_id, destiny)
+        );
     """)
     await db.commit()
