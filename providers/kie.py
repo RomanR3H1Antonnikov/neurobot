@@ -376,7 +376,7 @@ class KieProvider(OpenAICompatProvider):
         }
         if not _wan_with_images:
             input_data["aspect_ratio"] = _effective_ratio
-        if (is_kling or is_wan or is_bytedance or is_google or is_grok_video) and not _wan_with_images:
+        if (is_kling or is_wan or is_bytedance or is_google or is_grok_video or is_pixverse) and not _wan_with_images:
             input_data["resolution"] = resolution or "720p"
 
         # ── Первый / последний кадр ──────────────────────────────────────────
