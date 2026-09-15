@@ -239,7 +239,7 @@ tasks:
         output_formats: ["mp4", "mov"]
         model_id: bytedance/seedance-2-5
         provider: kie
-        cost_credits: 1
+        cost_credits: 40
         cost_usd: 0.08
         enabled: true
 
@@ -259,7 +259,7 @@ tasks:
         max_audio_refs: 3
         model_id: bytedance/seedance-2
         provider: kie
-        cost_credits: 1
+        cost_credits: 25
         cost_usd: 0.06
         enabled: true
 
@@ -285,7 +285,7 @@ tasks:
         max_style_refs: 0
         model_id: kling-3.0/video
         provider: kie
-        cost_credits: 1
+        cost_credits: 25
         cost_usd: 0.08
         enabled: true
 
@@ -311,7 +311,7 @@ tasks:
         max_style_refs: 0
         model_id: kling/v3-turbo-text-to-video
         provider: kie
-        cost_credits: 1
+        cost_credits: 28
         cost_usd: 0.05
         enabled: true
 
@@ -340,7 +340,7 @@ tasks:
         max_style_refs: 0
         model_id: kling-3.0/motion-control
         provider: kie
-        cost_credits: 1
+        cost_credits: 30
         cost_usd: 0.08
         enabled: true
 
@@ -360,7 +360,7 @@ tasks:
         max_audio_refs: 3
         model_id: minimax-h3/text-to-video
         provider: kie
-        cost_credits: 1
+        cost_credits: 17
         cost_usd: 0.07
         enabled: true
 
@@ -383,7 +383,7 @@ tasks:
         max_audio_refs: 5
         model_id: wan/3-0-video
         provider: kie
-        cost_credits: 1
+        cost_credits: 10
         cost_usd: 0.08
         enabled: true
 
@@ -402,7 +402,7 @@ tasks:
         max_audio_refs: 5
         model_id: wan/3-0-video-prime
         provider: kie
-        cost_credits: 1
+        cost_credits: 14
         cost_usd: 0.08
         enabled: true
 
@@ -430,7 +430,7 @@ tasks:
         max_audio_refs: 1
         model_id: wan/2-7-text-to-video
         provider: kie
-        cost_credits: 1
+        cost_credits: 17
         cost_usd: 0.07
         enabled: true
 
@@ -450,7 +450,7 @@ tasks:
         max_style_refs: 9
         model_id: alibaba/happyhorse-1.1
         provider: routerai
-        cost_credits: 1
+        cost_credits: 15
         cost_usd: 0.07
         enabled: true
 
@@ -468,7 +468,7 @@ tasks:
         max_style_refs: 7
         model_id: pixverse-v6/text-to-video
         provider: kie
-        cost_credits: 1
+        cost_credits: 4
         cost_usd: 0.07
         enabled: true
 
@@ -490,7 +490,7 @@ tasks:
         resolutions: ["720p", "1080p", "4K"]
         model_id: veo3_lite
         provider: kie
-        cost_credits: 1
+        cost_credits: 16
         cost_usd: 0.06
         enabled: true
 
@@ -513,7 +513,7 @@ tasks:
         resolutions: ["720p", "1080p", "4K"]
         model_id: veo3_fast
         provider: kie
-        cost_credits: 1
+        cost_credits: 30
         cost_usd: 0.08
         enabled: true
 
@@ -535,7 +535,7 @@ tasks:
         resolutions: ["720p", "1080p", "4K"]
         model_id: veo3
         provider: kie
-        cost_credits: 1
+        cost_credits: 112
         cost_usd: 0.10
         enabled: true
 
@@ -545,7 +545,7 @@ tasks:
         description: ""
         model_id: gemini-omni-flash
         provider: bratuha
-        cost_credits: 1
+        cost_credits: 31
         cost_usd: 0.05
         enabled: false
 
@@ -607,7 +607,7 @@ tasks:
         max_style_refs: 7
         model_id: grok-imagine-video-1-5-preview
         provider: kie
-        cost_credits: 1
+        cost_credits: 4
         cost_usd: 0.06
         enabled: true
 
