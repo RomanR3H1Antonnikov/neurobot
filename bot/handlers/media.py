@@ -64,21 +64,39 @@ async def _back_to_frames_menu(bot, chat_id: int, state: FSMContext) -> None:
     await state.set_state(MediaStates.confirm)
     data = await state.get_data()
     motion_control = bool(data.get("model_motion_control"))
-    max_extra_refs = data.get("model_max_style_refs", 0) if not motion_control else 0
-    title = (
-        "📎 <b>Motion Control</b>\n\nДобавь фото (начальный кадр) и видео (задаёт характер движения):"
-        if motion_control else
-        "📎 <b>Кадры видео</b>\n\nДобавь фото для первого и/или последнего кадра:"
-    )
-    frames_kb = video_frames_menu_kb(
-        has_first_frame=bool(data.get("video_first_frame_file_id")),
-        has_last_frame=bool(data.get("video_last_frame_file_id")),
-        motion_control=motion_control,
-        extra_ref_count=len(data.get("style_reference_file_ids") or []),
-        max_extra_refs=max_extra_refs,
-        show_first_frame=data.get("model_has_first_frame", True),
-        show_last_frame=data.get("model_has_last_frame", True),
-    )
+    if data.get("video_frames_mode") == "constructor":
+        constructor_video = data.get("model_constructor_video", False)
+        max_video_refs = data.get("model_max_video_refs", 0) if constructor_video else 0
+        title = (
+            "🎬 <b>Конструктор видео</b>\n\nДобавь фото/видео ориентиры для генерации:"
+            if constructor_video else
+            "🎬 <b>Конструктор видео</b>\n\nДобавь фото ориентиры для генерации:"
+        )
+        frames_kb = video_frames_menu_kb(
+            extra_ref_count=len(data.get("style_reference_file_ids") or []),
+            max_extra_refs=data.get("model_max_style_refs", 0),
+            show_first_frame=False,
+            show_last_frame=False,
+            show_video_refs=constructor_video,
+            max_video_refs=max_video_refs,
+            video_ref_count=len(data.get("video_style_reference_file_ids") or []),
+        )
+    else:
+        max_extra_refs = data.get("model_max_style_refs", 0) if not motion_control else 0
+        title = (
+            "📎 <b>Motion Control</b>\n\nДобавь фото (начальный кадр) и видео (задаёт характер движения):"
+            if motion_control else
+            "📎 <b>Кадры видео</b>\n\nДобавь фото для первого и/или последнего кадра:"
+        )
+        frames_kb = video_frames_menu_kb(
+            has_first_frame=bool(data.get("video_first_frame_file_id")),
+            has_last_frame=bool(data.get("video_last_frame_file_id")),
+            motion_control=motion_control,
+            extra_ref_count=len(data.get("style_reference_file_ids") or []),
+            max_extra_refs=max_extra_refs,
+            show_first_frame=data.get("model_has_first_frame", True),
+            show_last_frame=data.get("model_has_last_frame", True),
+        )
     msg_id = data.get("_sref_msg_id")
     if msg_id:
         try:
@@ -515,6 +533,7 @@ async def select_model(callback: CallbackQuery, state: FSMContext) -> None:
         "model_has_first_frame": model_cfg.get("first_frame", True),
         "model_has_last_frame": model_cfg.get("last_frame", True),
         "model_output_formats": model_cfg.get("output_formats"),
+        "model_constructor_video": model_cfg.get("constructor_includes_video", False),
         "video_frames_mode": None,
     }
     # если output_format не задан или недоступен у новой модели — сбрасываем
@@ -1135,19 +1154,29 @@ async def animate_photo(callback: CallbackQuery, state: FSMContext) -> None:
 
 @router.callback_query(MediaStates.confirm, F.data == "media:toggle_frames")
 async def toggle_frames(callback: CallbackQuery, state: FSMContext) -> None:
-    """Кнопка 'Конструктор видео' — референсные фото."""
+    """Кнопка 'Конструктор видео' — референсные фото и/или видео."""
     await state.update_data(video_frames_mode="constructor")
     data = await state.get_data()
     max_extra_refs = data.get("model_max_style_refs", 0)
     extra_ref_count = len(data.get("style_reference_file_ids") or [])
+    constructor_video = data.get("model_constructor_video", False)
+    max_video_refs = data.get("model_max_video_refs", 0) if constructor_video else 0
+    title = (
+        "🎬 <b>Конструктор видео</b>\n\nДобавь фото/видео ориентиры для генерации:"
+        if constructor_video else
+        "🎬 <b>Конструктор видео</b>\n\nДобавь фото ориентиры для генерации:"
+    )
     await callback.message.edit_text(
-        "🎬 <b>Конструктор видео</b>\n\nДобавь фото ориентиры для генерации:",
+        title,
         parse_mode="HTML",
         reply_markup=video_frames_menu_kb(
             extra_ref_count=extra_ref_count,
             max_extra_refs=max_extra_refs,
             show_first_frame=False,
             show_last_frame=False,
+            show_video_refs=constructor_video,
+            max_video_refs=max_video_refs,
+            video_ref_count=len(data.get("video_style_reference_file_ids") or []),
         ),
     )
     await callback.answer()
@@ -1166,7 +1195,7 @@ async def add_extra_frames(callback: CallbackQuery, state: FSMContext) -> None:
         f"📎 Отправь фото — оно добавится как дополнительный кадр. Можно добавить до {max_refs} штук.\nКогда закончишь — нажми «Назад»."
     )
     await state.update_data(adding_video_extra_frame=True, _sref_msg_id=callback.message.message_id)
-    await callback.message.edit_text(hint, reply_markup=back_to_confirm_kb())
+    await callback.message.edit_text(hint, reply_markup=back_to_frames_kb())
     await state.set_state(MediaStates.enter_reference)
     await callback.answer()
 
@@ -1200,7 +1229,7 @@ async def add_video_ref(callback: CallbackQuery, state: FSMContext) -> None:
         f"🎬 Отправь видеофайл — он добавится как видеореференс. Можно добавить до {max_refs} файлов.\nКогда закончишь — нажми «Назад»."
     )
     await state.update_data(adding_video_ref=True, _sref_msg_id=callback.message.message_id)
-    await callback.message.edit_text(hint, reply_markup=back_to_confirm_kb())
+    await callback.message.edit_text(hint, reply_markup=back_to_frames_kb())
     await state.set_state(MediaStates.enter_reference)
     await callback.answer()
 
@@ -1299,6 +1328,13 @@ async def delete_extra_frames(callback: CallbackQuery, state: FSMContext) -> Non
     await state.update_data(style_reference_file_ids=[], _sref_msg_id=callback.message.message_id)
     await _back_to_frames_menu(callback.bot, callback.message.chat.id, state)
     await callback.answer("Кадры удалены")
+
+
+@router.callback_query(MediaStates.confirm, F.data == "media:delete_video_refs")
+async def delete_video_refs(callback: CallbackQuery, state: FSMContext) -> None:
+    await state.update_data(video_style_reference_file_ids=[], _sref_msg_id=callback.message.message_id)
+    await _back_to_frames_menu(callback.bot, callback.message.chat.id, state)
+    await callback.answer("Видео удалены")
 
 
 # ─── Загрузка референса (только для edit) ────────────────────────────────────

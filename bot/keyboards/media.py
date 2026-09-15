@@ -290,6 +290,9 @@ def video_frames_menu_kb(
     max_extra_refs: int = 0,
     show_first_frame: bool = True,
     show_last_frame: bool = True,
+    show_video_refs: bool = False,
+    max_video_refs: int = 0,
+    video_ref_count: int = 0,
 ) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     if motion_control:
@@ -316,9 +319,9 @@ def video_frames_menu_kb(
             builder.row(InlineKeyboardButton(text=last_text, callback_data="media:add_last_frame"))
     if not motion_control and max_extra_refs > 0:
         extra_text = (
-            f"📎 Остальные кадры: {extra_ref_count} фото ✅"
-            if extra_ref_count else
-            "📎 Остальные кадры"
+            f"📷 Фото: {extra_ref_count} ✅" if (show_video_refs and extra_ref_count)
+            else f"📎 Остальные кадры: {extra_ref_count} фото ✅" if extra_ref_count
+            else ("📷 Фото" if show_video_refs else "📎 Остальные кадры")
         )
         if extra_ref_count > 0:
             builder.row(
@@ -327,6 +330,15 @@ def video_frames_menu_kb(
             )
         else:
             builder.row(InlineKeyboardButton(text=extra_text, callback_data="media:add_extra_frames"))
+    if show_video_refs and max_video_refs > 0:
+        video_text = f"🎬 Видео: {video_ref_count} ✅" if video_ref_count else "🎬 Видео"
+        if video_ref_count > 0:
+            builder.row(
+                InlineKeyboardButton(text=video_text, callback_data="media:add_video_ref"),
+                InlineKeyboardButton(text="🗑", callback_data="media:delete_video_refs"),
+            )
+        else:
+            builder.row(InlineKeyboardButton(text=video_text, callback_data="media:add_video_ref"))
     builder.row(InlineKeyboardButton(text="◀️ Назад", callback_data="media:back:confirm"))
     return builder.as_markup()
 
