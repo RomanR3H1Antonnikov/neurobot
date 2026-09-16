@@ -3,15 +3,20 @@ from aiogram import Router, F
 from aiogram.filters import Command
 from aiogram.types import Message, CallbackQuery, PreCheckoutQuery, LabeledPrice
 from aiogram.fsm.context import FSMContext
+from aiogram.fsm.state import State, StatesGroup
 
 from bot.keyboards.main_menu import BTN_BALANCE, main_menu_kb
 from bot.keyboards.billing import (
     payment_method_kb, stars_packages_kb, rub_packages_kb, quick_topup_kb,
-    TOPUP_PACKAGES_STARS, TOPUP_PACKAGES_RUB,
+    cancel_custom_kb, TOPUP_PACKAGES_STARS, TOPUP_PACKAGES_RUB, MIN_RUB, MAX_RUB, MIN_STARS,
 )
 from bot.utils import cleanup_tracked_messages, safe_delete
 from config import config, reload_models
 from db.queries import get_or_create_user, add_credits
+
+
+class BillingStates(StatesGroup):
+    awaiting_custom_amount = State()
 
 logger = logging.getLogger(__name__)
 router = Router()
@@ -87,6 +92,114 @@ async def method_back(callback: CallbackQuery, state: FSMContext, db_user: dict)
         parse_mode="HTML",
         reply_markup=payment_method_kb(_has_yookassa()),
     )
+
+
+# ─── Своя сумма ──────────────────────────────────────────────────────────────
+
+@router.callback_query(F.data.in_({"billing:custom:stars", "billing:custom:rub"}))
+async def custom_amount_start(callback: CallbackQuery, state: FSMContext) -> None:
+    method = callback.data.split(":")[2]
+    await state.set_state(BillingStates.awaiting_custom_amount)
+    await state.update_data(custom_method=method, _custom_prompt_msg_id=callback.message.message_id)
+    await callback.answer()
+    if method == "rub":
+        text = (
+            f"💳 <b>Своя сумма</b>\n\n"
+            f"Введи сумму пополнения в рублях\n"
+            f"(от {MIN_RUB} до {MAX_RUB:,} ₽):"
+        )
+    else:
+        text = f"⭐ <b>Своя сумма</b>\n\nВведи количество Telegram Stars (от {MIN_STARS} ⭐):"
+    await callback.message.edit_text(text, parse_mode="HTML", reply_markup=cancel_custom_kb(method))
+
+
+@router.callback_query(F.data.startswith("billing:custom_cancel:"))
+async def custom_amount_cancel(callback: CallbackQuery, state: FSMContext) -> None:
+    method = callback.data.split(":")[2]
+    await state.clear()
+    await callback.answer()
+    if method == "rub":
+        await callback.message.edit_text(
+            "💳 <b>Оплата банковской картой</b>\n\nВыбери пакет:",
+            parse_mode="HTML",
+            reply_markup=rub_packages_kb(),
+        )
+    else:
+        await callback.message.edit_text(
+            "⭐ <b>Оплата Telegram Stars</b>\n\nВыбери пакет:",
+            parse_mode="HTML",
+            reply_markup=stars_packages_kb(),
+        )
+
+
+@router.message(BillingStates.awaiting_custom_amount)
+async def custom_amount_input(message: Message, state: FSMContext) -> None:
+    data = await state.get_data()
+    method = data.get("custom_method", "rub")
+    prompt_id = data.get("_custom_prompt_msg_id")
+
+    await safe_delete(message, "custom_amount_input")
+
+    raw = (message.text or "").strip().replace(" ", "").replace(",", ".")
+    try:
+        value = int(float(raw))
+        if value <= 0:
+            raise ValueError
+    except (ValueError, TypeError):
+        await _reprompt(message.bot, message.chat.id, prompt_id, method,
+                        "Введи целое положительное число, например: <b>500</b>")
+        return
+
+    if method == "rub":
+        if value < MIN_RUB:
+            await _reprompt(message.bot, message.chat.id, prompt_id, method,
+                            f"Минимальная сумма — <b>{MIN_RUB} ₽</b>. Введи другую сумму:")
+            return
+        if value > MAX_RUB:
+            await _reprompt(message.bot, message.chat.id, prompt_id, method,
+                            f"Максимальная сумма — <b>{MAX_RUB:,} ₽</b>. Введи другую сумму:")
+            return
+        await state.clear()
+        await message.answer_invoice(
+            title="Пополнение баланса",
+            description=f"Зачислим {value} ₽ на ваш баланс для генерации медиа, чата и работы с документами",
+            payload=f"topup:{value}",
+            provider_token=config.yookassa_provider_token,
+            currency="RUB",
+            prices=[LabeledPrice(label=f"Пополнение баланса на {value} ₽", amount=value * 100)],
+        )
+    else:
+        if value < MIN_STARS:
+            await _reprompt(message.bot, message.chat.id, prompt_id, method,
+                            f"Минимум — <b>{MIN_STARS} ⭐</b>. Введи другое количество Stars:")
+            return
+        credits = value  # 1 Star = 1 ₽
+        await state.clear()
+        await message.answer_invoice(
+            title="Пополнение баланса",
+            description=f"Зачислим {credits} ₽ на ваш баланс для генерации медиа, чата и работы с документами",
+            payload=f"topup:{credits}",
+            currency="XTR",
+            prices=[LabeledPrice(label=f"Пополнение баланса на {credits} ₽", amount=value)],
+        )
+
+
+async def _reprompt(bot, chat_id: int, prompt_id: int | None, method: str, error_text: str) -> None:
+    """Обновляет сообщение-промпт с текстом ошибки, не меняя кнопку Отмена."""
+    if method == "rub":
+        base = f"💳 <b>Своя сумма</b>\n\n{error_text}"
+    else:
+        base = f"⭐ <b>Своя сумма</b>\n\n{error_text}"
+    if prompt_id:
+        try:
+            await bot.edit_message_text(
+                chat_id=chat_id, message_id=prompt_id,
+                text=base, parse_mode="HTML", reply_markup=cancel_custom_kb(method),
+            )
+            return
+        except Exception:
+            pass
+    await bot.send_message(chat_id, base, parse_mode="HTML", reply_markup=cancel_custom_kb(method))
 
 
 # ─── Выставление счёта ────────────────────────────────────────────────────────

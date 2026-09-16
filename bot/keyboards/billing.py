@@ -1,6 +1,10 @@
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
+MIN_RUB = 60
+MAX_RUB = 100_000
+MIN_STARS = 50
+
 # Пакеты пополнения Stars (рубли → Stars)
 TOPUP_PACKAGES_STARS = [
     (100,  99),
@@ -33,6 +37,7 @@ def stars_packages_kb() -> InlineKeyboardMarkup:
             text=f"{credits} ₽ — {stars} ⭐",
             callback_data=f"billing:topup:{credits}:{stars}:stars",
         ))
+    builder.row(InlineKeyboardButton(text="✏️ Своя сумма", callback_data="billing:custom:stars"))
     builder.row(InlineKeyboardButton(text="◀️ Назад", callback_data="billing:method_back"))
     return builder.as_markup()
 
@@ -44,7 +49,14 @@ def rub_packages_kb() -> InlineKeyboardMarkup:
             text=f"{rub} ₽",
             callback_data=f"billing:topup:{credits}:{rub}:rub",
         ))
+    builder.row(InlineKeyboardButton(text="✏️ Своя сумма", callback_data="billing:custom:rub"))
     builder.row(InlineKeyboardButton(text="◀️ Назад", callback_data="billing:method_back"))
+    return builder.as_markup()
+
+
+def cancel_custom_kb(method: str) -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    builder.row(InlineKeyboardButton(text="◀️ Отмена", callback_data=f"billing:custom_cancel:{method}"))
     return builder.as_markup()
 
 
