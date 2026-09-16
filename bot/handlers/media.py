@@ -68,9 +68,9 @@ async def _back_to_frames_menu(bot, chat_id: int, state: FSMContext) -> None:
         constructor_video = data.get("model_constructor_video", False)
         max_video_refs = data.get("model_max_video_refs", 0) if constructor_video else 0
         title = (
-            "🎬 <b>Конструктор видео</b>\n\nДобавь фото/видео ориентиры для генерации:"
+            "🎬 <b>Конструктор видео</b>\n\nДобавь ориентиры для генерации:"
             if constructor_video else
-            "🎬 <b>Конструктор видео</b>\n\nДобавь фото ориентиры для генерации:"
+            "🎬 <b>Конструктор видео</b>\n\nДобавь ориентиры для генерации:"
         )
         frames_kb = video_frames_menu_kb(
             extra_ref_count=len(data.get("style_reference_file_ids") or []),
@@ -1175,9 +1175,9 @@ async def toggle_frames(callback: CallbackQuery, state: FSMContext) -> None:
     constructor_video = data.get("model_constructor_video", False)
     max_video_refs = data.get("model_max_video_refs", 0) if constructor_video else 0
     title = (
-        "🎬 <b>Конструктор видео</b>\n\nДобавь фото/видео ориентиры для генерации:"
+        "🎬 <b>Конструктор видео</b>\n\nДобавь ориентиры для генерации:"
         if constructor_video else
-        "🎬 <b>Конструктор видео</b>\n\nДобавь фото ориентиры для генерации:"
+        "🎬 <b>Конструктор видео</b>\n\nДобавь ориентиры для генерации:"
     )
     await callback.message.edit_text(
         title,

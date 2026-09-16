@@ -73,6 +73,7 @@ class RouteraiProvider(OpenAICompatProvider):
             "aspect_ratio": aspect_ratio or "16:9",
             "duration": duration,
             "resolution": resolution or "720p",
+            "audio": audio,
         }
         if style_reference_urls:
             payload["image_urls"] = list(style_reference_urls)
