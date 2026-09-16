@@ -160,14 +160,18 @@ async def custom_amount_input(message: Message, state: FSMContext) -> None:
                             f"Максимальная сумма — <b>{MAX_RUB:,} ₽</b>. Введи другую сумму:")
             return
         await state.clear()
-        await message.answer_invoice(
-            title="Пополнение баланса",
-            description=f"Зачислим {value} ₽ на ваш баланс для генерации медиа, чата и работы с документами",
-            payload=f"topup:{value}",
-            provider_token=config.yookassa_provider_token,
-            currency="RUB",
-            prices=[LabeledPrice(label=f"Пополнение баланса на {value} ₽", amount=value * 100)],
-        )
+        try:
+            await message.answer_invoice(
+                title="Пополнение баланса",
+                description=f"Зачислим {value} ₽ на ваш баланс для генерации медиа, чата и работы с документами",
+                payload=f"topup:{value}",
+                provider_token=config.yookassa_provider_token,
+                currency="RUB",
+                prices=[LabeledPrice(label=f"Пополнение баланса на {value} ₽", amount=value * 100)],
+            )
+        except Exception as e:
+            logger.error("answer_invoice RUB failed: value=%s err=%s", value, e)
+            await message.answer("Не удалось выставить счёт. Попробуй другую сумму или обратись в поддержку.")
     else:
         if value < MIN_STARS:
             await _reprompt(message.bot, message.chat.id, prompt_id, method,
@@ -175,13 +179,17 @@ async def custom_amount_input(message: Message, state: FSMContext) -> None:
             return
         credits = value  # 1 Star = 1 ₽
         await state.clear()
-        await message.answer_invoice(
-            title="Пополнение баланса",
-            description=f"Зачислим {credits} ₽ на ваш баланс для генерации медиа, чата и работы с документами",
-            payload=f"topup:{credits}",
-            currency="XTR",
-            prices=[LabeledPrice(label=f"Пополнение баланса на {credits} ₽", amount=value)],
-        )
+        try:
+            await message.answer_invoice(
+                title="Пополнение баланса",
+                description=f"Зачислим {credits} ₽ на ваш баланс для генерации медиа, чата и работы с документами",
+                payload=f"topup:{credits}",
+                currency="XTR",
+                prices=[LabeledPrice(label=f"Пополнение баланса на {credits} ₽", amount=value)],
+            )
+        except Exception as e:
+            logger.error("answer_invoice XTR failed: value=%s err=%s", value, e)
+            await message.answer("Не удалось выставить счёт. Попробуй другое количество Stars.")
 
 
 async def _reprompt(bot, chat_id: int, prompt_id: int | None, method: str, error_text: str) -> None:
