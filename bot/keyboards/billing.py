@@ -1,7 +1,7 @@
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
-MIN_RUB = 60
+MIN_RUB = 10
 MAX_RUB = 100_000
 MIN_STARS = 50
 
