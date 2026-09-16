@@ -253,7 +253,7 @@ class GenApiProvider(AbstractProvider):
     ) -> GenerationResult:
         raise ProviderUnavailableError("Редактирование видео через GenAPI не поддерживается")
 
-    async def generate_video(self, prompt: str, duration: int = 5, model: str | None = None, style_reference_urls: list[str] | None = None, aspect_ratio: str | None = None, resolution: str | None = None, audio_reference_urls: list[str] | None = None, first_frame_url: str | None = None, last_frame_url: str | None = None, video_reference_urls: list[str] | None = None, output_format: str | None = None) -> GenerationResult:
+    async def generate_video(self, prompt: str, duration: int = 5, model: str | None = None, style_reference_urls: list[str] | None = None, aspect_ratio: str | None = None, resolution: str | None = None, audio_reference_urls: list[str] | None = None, first_frame_url: str | None = None, last_frame_url: str | None = None, video_reference_urls: list[str] | None = None, output_format: str | None = None, audio: bool = True) -> GenerationResult:
         raise ProviderUnavailableError("Генерация видео через GenAPI не поддерживается")
 
     # ─── Загрузка результата ──────────────────────────────────────────────────

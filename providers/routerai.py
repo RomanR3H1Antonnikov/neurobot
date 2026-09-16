@@ -63,6 +63,7 @@ class RouteraiProvider(OpenAICompatProvider):
         last_frame_url: str | None = None,
         video_reference_urls: list[str] | None = None,
         output_format: str | None = None,
+        audio: bool = True,
     ) -> GenerationResult:
         actual_model = model or "alibaba/happyhorse-1.1"
 

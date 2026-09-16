@@ -347,6 +347,7 @@ class KieProvider(OpenAICompatProvider):
         audio_reference_urls: list[str] | None = None,
         video_reference_urls: list[str] | None = None,
         output_format: str | None = None,
+        audio: bool = True,
     ) -> GenerationResult:
         actual_model = model or "kling-3.0/video"
         corr_id = uuid.uuid4().hex
@@ -414,6 +415,9 @@ class KieProvider(OpenAICompatProvider):
         if output_format and is_bytedance:
             input_data["output_format"] = output_format
 
+        # ── Флаг аудио ───────────────────────────────────────────────────────
+        input_data["audio"] = audio
+
         # ── Аудио-референсы ─────────────────────────────────────────────────
         if audio_reference_urls:
             if is_google:
@@ -458,6 +462,7 @@ class KieProvider(OpenAICompatProvider):
                     veo_input["imageUrls"] = list(style_reference_urls)
                 else:
                     veo_input["generationType"] = "TEXT_2_VIDEO"
+                veo_input["audio"] = audio
                 await self._create_veo_job(actual_model, veo_input, corr_id)
             else:
                 await self._create_job(actual_model, input_data, corr_id)

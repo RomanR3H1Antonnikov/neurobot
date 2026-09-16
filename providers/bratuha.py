@@ -93,6 +93,7 @@ class BratuhaProvider(AbstractProvider):
         first_frame_url: str | None = None, last_frame_url: str | None = None,
         video_reference_urls: list[str] | None = None,
         output_format: str | None = None,
+        audio: bool = True,
     ) -> GenerationResult:
         actual_model = model or "veo3.1-lite"
         tool = _MODEL_TOOLS.get(actual_model, "veo-3-1")

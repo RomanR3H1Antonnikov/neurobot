@@ -63,6 +63,7 @@ class AbstractProvider(ABC):
         last_frame_url: str | None = None,
         video_reference_urls: list[str] | None = None,
         output_format: str | None = None,
+        audio: bool = True,
     ) -> GenerationResult:
         ...
 

@@ -365,6 +365,7 @@ def _confirm_kb(data: dict):
             frames_mode=data.get("video_frames_mode"),
             output_format=data.get("video_output_format"),
             output_formats=data.get("model_output_formats"),
+            audio_enabled=data.get("video_audio_enabled", True),
             cost_credits=cost,
         )
     elif media_type == "audio":
@@ -534,6 +535,7 @@ async def select_model(callback: CallbackQuery, state: FSMContext) -> None:
         "model_has_last_frame": model_cfg.get("last_frame", True),
         "model_output_formats": model_cfg.get("output_formats"),
         "model_constructor_video": model_cfg.get("constructor_includes_video", False),
+        "video_audio_enabled": True,
         "video_frames_mode": None,
     }
     # если output_format не задан или недоступен у новой модели — сбрасываем
@@ -1149,6 +1151,17 @@ async def animate_photo(callback: CallbackQuery, state: FSMContext) -> None:
             show_last_frame=show_last,
         ),
     )
+    await callback.answer()
+
+
+@router.callback_query(MediaStates.confirm, F.data == "media:toggle_audio")
+async def toggle_audio(callback: CallbackQuery, state: FSMContext) -> None:
+    """Кнопка переключения звука в видео."""
+    data = await state.get_data()
+    new_audio = not data.get("video_audio_enabled", True)
+    await state.update_data(video_audio_enabled=new_audio)
+    data = await state.get_data()
+    await callback.message.edit_reply_markup(reply_markup=_confirm_kb(data))
     await callback.answer()
 
 
@@ -2550,6 +2563,7 @@ async def _run_generation(send_msg: Message, tg_user, state: FSMContext, data: d
             audio_reference_urls=audio_reference_urls,
             video_reference_urls=video_reference_urls,
             output_format=data.get("video_output_format"),
+            audio=data.get("video_audio_enabled", True),
         )
         file = BufferedInputFile(result.data, filename=result.filename)
         if result.mime_type == "video/quicktime":
