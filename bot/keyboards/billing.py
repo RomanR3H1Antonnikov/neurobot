@@ -3,7 +3,7 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 MIN_RUB = 75  # Telegram enforces min 7500 kopecks (75 RUB) for fiat currencies
 MAX_RUB = 100_000
-MIN_STARS = 50
+MIN_STARS = 1
 
 # Пакеты пополнения Stars (рубли → Stars)
 TOPUP_PACKAGES_STARS = [

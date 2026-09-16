@@ -105,11 +105,11 @@ async def custom_amount_start(callback: CallbackQuery, state: FSMContext) -> Non
     if method == "rub":
         text = (
             f"💳 <b>Своя сумма</b>\n\n"
-            f"Введи сумму пополнения в рублях\n"
-            f"(от {MIN_RUB} до {MAX_RUB:,} ₽):"
+            f"Введи сумму пополнения в рублях.\n"
+            f"Минимум — <b>{MIN_RUB} ₽</b> (ограничение Telegram)."
         )
     else:
-        text = f"⭐ <b>Своя сумма</b>\n\nВведи количество Telegram Stars (от {MIN_STARS} ⭐):"
+        text = "⭐ <b>Своя сумма</b>\n\nВведи количество Telegram Stars для оплаты:"
     await callback.message.edit_text(text, parse_mode="HTML", reply_markup=cancel_custom_kb(method))
 
 
@@ -153,7 +153,7 @@ async def custom_amount_input(message: Message, state: FSMContext) -> None:
     if method == "rub":
         if value < MIN_RUB:
             await _reprompt(message.bot, message.chat.id, prompt_id, method,
-                            f"Минимальная сумма — <b>{MIN_RUB} ₽</b>. Введи другую сумму:")
+                            f"Минимум — <b>{MIN_RUB} ₽</b> (ограничение Telegram). Введи другую сумму:")
             return
         if value > MAX_RUB:
             await _reprompt(message.bot, message.chat.id, prompt_id, method,
