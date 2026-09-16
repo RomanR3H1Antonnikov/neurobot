@@ -586,7 +586,7 @@ tasks:
         max_audio_refs: 3
         model_id: google/gemini-omni-flash-1-1
         provider: kie
-        cost_credits: 1
+        cost_credits: 31
         cost_usd: 0.06
         enabled: true
 
