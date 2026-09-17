@@ -1407,7 +1407,13 @@ async def add_video_ref(callback: CallbackQuery, state: FSMContext) -> None:
 @router.callback_query(MediaStates.confirm, F.data == "media:add_first_frame")
 async def add_first_frame(callback: CallbackQuery, state: FSMContext) -> None:
     """Кнопка 'Первый кадр' / 'Фото' на карточке видео-генерации."""
-    await state.update_data(adding_video_frame="first", _sref_msg_id=callback.message.message_id, video_frames_mode="animate")
+    await state.update_data(
+        adding_video_frame="first",
+        _sref_msg_id=callback.message.message_id,
+        video_frames_mode="animate",
+        adding_video_extra_frame=None,
+        adding_style_ref=None,
+    )
     data = await state.get_data()
     has = bool(data.get("video_first_frame_file_id"))
     if bool(data.get("model_motion_control")):
@@ -1422,7 +1428,12 @@ async def add_first_frame(callback: CallbackQuery, state: FSMContext) -> None:
 @router.callback_query(MediaStates.confirm, F.data == "media:add_last_frame")
 async def add_last_frame(callback: CallbackQuery, state: FSMContext) -> None:
     """Кнопка 'Конец видео' / 'Видео' на карточке видео-генерации."""
-    await state.update_data(adding_video_frame="last", _sref_msg_id=callback.message.message_id)
+    await state.update_data(
+        adding_video_frame="last",
+        _sref_msg_id=callback.message.message_id,
+        adding_video_extra_frame=None,
+        adding_style_ref=None,
+    )
     data = await state.get_data()
     has = bool(data.get("video_last_frame_file_id"))
     if bool(data.get("model_motion_control")):
