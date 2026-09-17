@@ -3,6 +3,7 @@ import logging
 import time
 import uuid
 from aiogram import Router, F
+from aiogram.exceptions import TelegramBadRequest
 
 logger = logging.getLogger(__name__)
 from aiogram.types import Message, CallbackQuery, BufferedInputFile, InlineKeyboardMarkup, InlineKeyboardButton
@@ -44,7 +45,7 @@ _CANCEL_WINDOW_SEC = 5  # секунд, в течение которых отм�
 
 
 async def _update_sref_status(bot, chat_id: int, state: FSMContext, text: str, kb) -> None:
-    """Редактирует сообщение-счётчик ориентиров; если не удаётся — отправляет новое."""
+    """Редактирует сообщение-счётчик ориентиров; если не удаётся — удаляет старое и отправляет новое."""
     data = await state.get_data()
     msg_id = data.get("_sref_msg_id")
     if msg_id:
@@ -53,6 +54,14 @@ async def _update_sref_status(bot, chat_id: int, state: FSMContext, text: str, k
                 text, chat_id=chat_id, message_id=msg_id, reply_markup=kb,
             )
             return
+        except TelegramBadRequest as e:
+            if "not modified" in str(e).lower():
+                return  # сообщение уже актуально, дубль не нужен
+        except Exception:
+            pass
+        # При реальной ошибке редактирования — удаляем старое сообщение перед отправкой нового
+        try:
+            await bot.delete_message(chat_id=chat_id, message_id=msg_id)
         except Exception:
             pass
     sent = await bot.send_message(chat_id, text, reply_markup=kb)
