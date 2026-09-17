@@ -274,7 +274,7 @@ def video_confirm_kb(
         if row_btns:
             builder.row(*row_btns)
     if max_audio_refs > 0:
-        audio_text = f"🎵 Аудио: {audio_ref_count} файл(а) ✅" if audio_ref_count else "🎵 Аудио"
+        audio_text = f"🎵 Аудио: {audio_ref_count}/{max_audio_refs} ✅" if audio_ref_count else "🎵 Аудио"
         builder.row(InlineKeyboardButton(text=audio_text, callback_data="media:add_audio_ref"))
     audio_toggle_text = "🔊 Звуковое сопровождение: вкл" if audio_enabled else "🔇 Звуковое сопровождение: выкл"
     builder.row(InlineKeyboardButton(text=audio_toggle_text, callback_data="media:toggle_audio"))
