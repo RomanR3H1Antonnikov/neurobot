@@ -68,6 +68,16 @@ async def _update_sref_status(bot, chat_id: int, state: FSMContext, text: str, k
     await state.update_data(_sref_msg_id=sent.message_id)
 
 
+async def _toast(message: Message, text: str, delay: float = 4.0) -> None:
+    """Отправляет временное сообщение-алерт, которое само удаляется через delay секунд."""
+    try:
+        tmp = await message.answer(text)
+        await asyncio.sleep(delay)
+        await tmp.delete()
+    except Exception:
+        pass
+
+
 async def _back_to_frames_menu(bot, chat_id: int, state: FSMContext) -> None:
     """После добавления кадра редактирует hint-сообщение обратно в меню кадров."""
     await state.set_state(MediaStates.confirm)
@@ -1602,19 +1612,11 @@ async def receive_reference_photo(message: Message, state: FSMContext, album: li
     # Фильтр типа: ожидается не фото
     if data.get("adding_video_ref"):
         await message.delete()
-        await _update_sref_status(
-            message.bot, message.chat.id, state,
-            "Здесь нужно прислать видео 🎬, а не фото.",
-            back_to_frames_kb(),
-        )
+        asyncio.create_task(_toast(message, "⚠️ Здесь нужно прислать видео 🎬, а не фото."))
         return
     if data.get("adding_audio_ref") or data.get("receiving_edit_audio"):
         await message.delete()
-        await _update_sref_status(
-            message.bot, message.chat.id, state,
-            "Здесь нужно прислать аудиофайл 🎵, а не фото.",
-            back_to_confirm_kb(),
-        )
+        asyncio.create_task(_toast(message, "⚠️ Здесь нужно прислать аудиофайл 🎵, а не фото."))
         return
     if data.get("media_type") == "video_edit":
         sent = await message.answer("Для редактирования видео пришли видеофайл, а не фото.", reply_markup=back_to_model_kb())
@@ -1722,31 +1724,17 @@ async def receive_reference_video(message: Message, state: FSMContext) -> None:
     # Фильтр типа: ожидается не видео
     if data.get("adding_style_ref") or data.get("adding_video_extra_frame"):
         await message.delete()
-        srefs = data.get("style_reference_file_ids") or []
-        kb = back_to_frames_kb() if data.get("adding_video_extra_frame") else style_ref_collecting_kb(len(srefs), data.get("model_max_style_refs", 14))
-        await _update_sref_status(
-            message.bot, message.chat.id, state,
-            "Здесь нужно прислать фото 📷, а не видео.",
-            kb,
-        )
+        asyncio.create_task(_toast(message, "⚠️ Здесь нужно прислать фото 📷, а не видео."))
         return
     if data.get("adding_video_frame") and not (
         data.get("adding_video_frame") == "last" and data.get("model_motion_control")
     ):
         await message.delete()
-        await _update_sref_status(
-            message.bot, message.chat.id, state,
-            "Здесь нужно прислать фото 📷, а не видео.",
-            back_to_frames_kb(),
-        )
+        asyncio.create_task(_toast(message, "⚠️ Здесь нужно прислать фото 📷, а не видео."))
         return
     if data.get("adding_audio_ref") or data.get("receiving_edit_audio"):
         await message.delete()
-        await _update_sref_status(
-            message.bot, message.chat.id, state,
-            "Здесь нужно прислать аудиофайл 🎵, а не видео.",
-            back_to_confirm_kb(),
-        )
+        asyncio.create_task(_toast(message, "⚠️ Здесь нужно прислать аудиофайл 🎵, а не видео."))
         return
     # Видео-референс для генерации видео
     if data.get("adding_video_ref"):
@@ -1797,25 +1785,11 @@ async def receive_reference_audio(message: Message, state: FSMContext) -> None:
     # Фильтр типа: ожидается не аудио
     if data.get("adding_style_ref") or data.get("adding_video_extra_frame") or data.get("adding_video_frame"):
         await message.delete()
-        srefs = data.get("style_reference_file_ids") or []
-        kb = (
-            back_to_frames_kb()
-            if (data.get("adding_video_extra_frame") or data.get("adding_video_frame"))
-            else style_ref_collecting_kb(len(srefs), data.get("model_max_style_refs", 14))
-        )
-        await _update_sref_status(
-            message.bot, message.chat.id, state,
-            "Здесь нужно прислать фото 📷, а не аудиофайл.",
-            kb,
-        )
+        asyncio.create_task(_toast(message, "⚠️ Здесь нужно прислать фото 📷, а не аудиофайл."))
         return
     if data.get("adding_video_ref"):
         await message.delete()
-        await _update_sref_status(
-            message.bot, message.chat.id, state,
-            "Здесь нужно прислать видео 🎬, а не аудиофайл.",
-            back_to_frames_kb(),
-        )
+        asyncio.create_task(_toast(message, "⚠️ Здесь нужно прислать видео 🎬, а не аудиофайл."))
         return
     if data.get("receiving_edit_audio"):
         await message.delete()
@@ -1924,24 +1898,18 @@ async def receive_reference_document(message: Message, state: FSMContext) -> Non
 
     if _expects_photo and not mime.startswith("image/"):
         await message.delete()
-        srefs = data.get("style_reference_file_ids") or []
-        kb = (
-            back_to_frames_kb()
-            if (data.get("adding_video_extra_frame") or data.get("adding_video_frame"))
-            else style_ref_collecting_kb(len(srefs), data.get("model_max_style_refs", 14))
-        )
         type_word = "видео" if mime.startswith("video/") else "аудиофайл" if mime.startswith("audio/") else "файл"
-        await _update_sref_status(message.bot, message.chat.id, state, f"Здесь нужно прислать фото 📷, а не {type_word}.", kb)
+        asyncio.create_task(_toast(message, f"⚠️ Здесь нужно прислать фото 📷, а не {type_word}."))
         return
     if _expects_video and not mime.startswith("video/"):
         await message.delete()
         type_word = "фото" if mime.startswith("image/") else "аудиофайл" if mime.startswith("audio/") else "файл"
-        await _update_sref_status(message.bot, message.chat.id, state, f"Здесь нужно прислать видео 🎬, а не {type_word}.", back_to_frames_kb())
+        asyncio.create_task(_toast(message, f"⚠️ Здесь нужно прислать видео 🎬, а не {type_word}."))
         return
     if _expects_audio and not mime.startswith("audio/"):
         await message.delete()
         type_word = "фото" if mime.startswith("image/") else "видео" if mime.startswith("video/") else "файл"
-        await _update_sref_status(message.bot, message.chat.id, state, f"Здесь нужно прислать аудиофайл 🎵, а не {type_word}.", back_to_confirm_kb())
+        asyncio.create_task(_toast(message, f"⚠️ Здесь нужно прислать аудиофайл 🎵, а не {type_word}."))
         return
 
     # Прямые ссылки — тип по MIME
