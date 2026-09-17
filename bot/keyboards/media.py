@@ -315,8 +315,8 @@ def video_frames_menu_kb(
         first_text = "📎 Фото ✅" if has_first_frame else "📎 Фото"
         last_text = "📎 Видео ✅" if has_last_frame else "📎 Видео"
     else:
-        first_text = "📎 Начало видео: фото ✅" if has_first_frame else "📎 Начало видео"
-        last_text = "📎 Конец видео: фото ✅" if has_last_frame else "📎 Конец видео"
+        first_text = "📎 Начало видео"
+        last_text = "📎 Конец видео"
     if show_first_frame:
         if has_first_frame:
             builder.row(
