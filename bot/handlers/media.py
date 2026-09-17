@@ -1537,19 +1537,27 @@ async def _show_confirm_after_reference(message: Message, state: FSMContext) -> 
 
 
 @router.message(MediaStates.enter_reference, F.photo)
-async def receive_reference_photo(message: Message, state: FSMContext) -> None:
+async def receive_reference_photo(message: Message, state: FSMContext, album: list | None = None) -> None:
     data = await state.get_data()
     if data.get("media_type") == "video_edit":
         sent = await message.answer("Для редактирования видео пришли видеофайл, а не фото.", reply_markup=back_to_model_kb())
         await _track_msg(state, sent.message_id)
         return
     photo = message.photo[-1]
+    # Все сообщения альбома (или [message] если одиночное фото)
+    album_msgs: list = album or [message]
     if data.get("adding_video_extra_frame"):
-        await message.delete()
         srefs = list(data.get("style_reference_file_ids") or [])
         max_refs = data.get("model_max_style_refs", 0)
-        if len(srefs) < max_refs:
-            srefs.append(photo.file_id)
+        for msg in album_msgs:
+            if len(srefs) >= max_refs:
+                break
+            if msg.photo:
+                srefs.append(msg.photo[-1].file_id)
+            try:
+                await msg.delete()
+            except Exception:
+                pass
         await state.update_data(style_reference_file_ids=srefs)
         await _update_sref_status(
             message.bot, message.chat.id, state,
@@ -1558,10 +1566,11 @@ async def receive_reference_photo(message: Message, state: FSMContext) -> None:
         )
         return
     if data.get("adding_style_ref"):
-        await message.delete()
         srefs = list(data.get("style_reference_file_ids") or [])
         max_refs = data.get("model_max_style_refs", 14)
         if data.get("managing_style_ref") == "replace_photo":
+            # Замена одного ориентира — только первое фото
+            await message.delete()
             idx = data.get("managing_style_ref_index", 0)
             if 0 <= idx < len(srefs):
                 srefs[idx] = photo.file_id
@@ -1575,8 +1584,15 @@ async def receive_reference_photo(message: Message, state: FSMContext) -> None:
                 style_ref_collecting_kb(len(srefs), max_refs),
             )
             return
-        if len(srefs) < max_refs:
-            srefs.append(photo.file_id)
+        for msg in album_msgs:
+            if len(srefs) >= max_refs:
+                break
+            if msg.photo:
+                srefs.append(msg.photo[-1].file_id)
+            try:
+                await msg.delete()
+            except Exception:
+                pass
         await state.update_data(style_reference_file_ids=srefs)
         await _update_sref_status(
             message.bot, message.chat.id, state,

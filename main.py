@@ -10,6 +10,7 @@ from db.database import get_db, close_db
 from db.fsm_storage import SQLiteFSMStorage
 from bot.middlewares.user_middleware import UserMiddleware
 from bot.middlewares.cleanup import CallbackCleanupMiddleware
+from bot.middlewares.album import AlbumMiddleware
 from bot.handlers import start, media, chat, documents, billing, mygenerations, fallback
 from services.kie_webhook import start_webhook_server, set_bot
 
@@ -31,6 +32,7 @@ async def main() -> None:
 
     dp.update.middleware(UserMiddleware())
     dp.callback_query.middleware(CallbackCleanupMiddleware())
+    dp.message.middleware(AlbumMiddleware())
 
     dp.include_router(start.router)
     dp.include_router(billing.router)
