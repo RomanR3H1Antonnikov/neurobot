@@ -243,8 +243,17 @@ def video_confirm_kb(
             callback_data="media:pick_format",
         ))
     if show_frames_button:
-        has_animate_files = has_first_frame or has_last_frame
-        has_constructor_files = has_extra_refs or video_ref_count > 0
+        # frames_mode — авторитет: игнорируем файлы "чужого" режима,
+        # чтобы оба кнопки никогда не показывали ✅ одновременно
+        if frames_mode == "animate":
+            has_animate_files = has_first_frame or has_last_frame
+            has_constructor_files = False
+        elif frames_mode == "constructor":
+            has_animate_files = False
+            has_constructor_files = has_extra_refs or video_ref_count > 0
+        else:
+            has_animate_files = has_first_frame or has_last_frame
+            has_constructor_files = has_extra_refs or video_ref_count > 0
         row_btns = []
         if show_first_frame_btn:
             if has_animate_files:
