@@ -2286,10 +2286,21 @@ async def confirm_unknown_input(message: Message, state: FSMContext) -> None:
             await _update_confirm_card(message, state)
             return
 
-        # video: последовательное авто-добавление кадров
-        # 1-е фото → начало видео (если есть), 2-е → конец видео (если есть), остальные → доп. кадры
+        # video: фото-референс
         if media_type == "video":
             await message.delete()
+            # Конструктор → фото сразу идёт как референс конструктора (минуя кадры)
+            if data.get("video_frames_mode") == "constructor":
+                if max_refs > 0:
+                    srefs = list(data.get("style_reference_file_ids") or [])
+                    if len(srefs) < max_refs:
+                        srefs.append(photo.file_id)
+                    await state.update_data(style_reference_file_ids=srefs)
+                if _caption:
+                    await state.update_data(prompt=_caption)
+                await _update_confirm_card(message, state)
+                return
+            # Animate-режим: 1-е фото → начало, 2-е → конец, остальные → доп. кадры
             has_first_support = data.get("model_has_first_frame", True)
             has_last_support = data.get("model_has_last_frame", True)
             if has_first_support and not data.get("video_first_frame_file_id"):
@@ -2337,6 +2348,18 @@ async def confirm_unknown_input(message: Message, state: FSMContext) -> None:
         await _update_confirm_card(message, state)
         return
     elif (message.video or message.video_note) and media_type == "video":
+        # Конструктор → видео идёт как видео-референс конструктора
+        if data.get("video_frames_mode") == "constructor":
+            await message.delete()
+            video_file_id = (message.video or message.video_note).file_id
+            max_video_refs = data.get("model_max_video_refs", 0)
+            if max_video_refs > 0:
+                vrefs = list(data.get("video_style_reference_file_ids") or [])
+                if len(vrefs) < max_video_refs:
+                    vrefs.append(video_file_id)
+                await state.update_data(video_style_reference_file_ids=vrefs)
+            await _update_confirm_card(message, state)
+            return
         hint = (
             "Этот раздел создаёт видео с нуля по описанию. "
             "Если хочешь изменить готовое видео — используй раздел «✏️ Редактировать видео»."
