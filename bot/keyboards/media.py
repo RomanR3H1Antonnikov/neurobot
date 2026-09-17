@@ -68,6 +68,8 @@ def _cost_label(model: dict) -> str:
     if by_res:
         lo, hi = min(by_res.values()), max(by_res.values())
         return f"{lo}–{hi} ₽" if lo != hi else f"{lo} ₽"
+    if model.get("cost_per_second"):
+        return f"от {model['cost_credits']} ₽"
     return f"{model['cost_credits']} ₽"
 
 

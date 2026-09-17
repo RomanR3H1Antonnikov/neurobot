@@ -240,6 +240,7 @@ tasks:
         model_id: bytedance/seedance-2-5
         provider: kie
         cost_credits: 40
+        cost_per_second: 8.0
         cost_usd: 0.08
         enabled: true
 
@@ -261,6 +262,7 @@ tasks:
         model_id: bytedance/seedance-2
         provider: kie
         cost_credits: 25
+        cost_per_second: 5.0
         cost_usd: 0.06
         enabled: true
 
@@ -287,6 +289,7 @@ tasks:
         model_id: kling-3.0/video
         provider: kie
         cost_credits: 25
+        cost_per_second: 5.0
         cost_usd: 0.08
         enabled: true
 
@@ -313,6 +316,7 @@ tasks:
         model_id: kling/v3-turbo-text-to-video
         provider: kie
         cost_credits: 28
+        cost_per_second: 5.6
         cost_usd: 0.05
         enabled: true
 
@@ -342,6 +346,7 @@ tasks:
         model_id: kling-3.0/motion-control
         provider: kie
         cost_credits: 30
+        cost_per_second: 6.0
         cost_usd: 0.08
         enabled: true
 
@@ -365,6 +370,7 @@ tasks:
         model_id: minimax-h3/text-to-video
         provider: kie
         cost_credits: 17
+        cost_per_second: 3.4
         cost_usd: 0.07
         enabled: true
 
@@ -389,6 +395,7 @@ tasks:
         model_id: wan/3-0-video
         provider: kie
         cost_credits: 10
+        cost_per_second: 2.0
         cost_usd: 0.08
         enabled: true
 
@@ -409,6 +416,7 @@ tasks:
         model_id: wan/3-0-video-prime
         provider: kie
         cost_credits: 14
+        cost_per_second: 2.8
         cost_usd: 0.08
         enabled: true
 
@@ -438,6 +446,7 @@ tasks:
         model_id: wan/2-7-text-to-video
         provider: kie
         cost_credits: 17
+        cost_per_second: 3.4
         cost_usd: 0.07
         enabled: true
 
@@ -458,6 +467,7 @@ tasks:
         model_id: alibaba/happyhorse-1.1
         provider: routerai
         cost_credits: 15
+        cost_per_second: 3.0
         cost_usd: 0.07
         enabled: true
 
@@ -476,6 +486,7 @@ tasks:
         model_id: pixverse-v6/text-to-video
         provider: kie
         cost_credits: 4
+        cost_per_second: 0.8
         cost_usd: 0.07
         enabled: true
 
@@ -498,6 +509,7 @@ tasks:
         model_id: veo3_lite
         provider: kie
         cost_credits: 16
+        cost_per_second: 2.0
         cost_usd: 0.06
         enabled: true
 
@@ -521,6 +533,7 @@ tasks:
         model_id: veo3_fast
         provider: kie
         cost_credits: 30
+        cost_per_second: 3.75
         cost_usd: 0.08
         enabled: true
 
@@ -546,6 +559,7 @@ tasks:
         model_id: veo3
         provider: kie
         cost_credits: 112
+        cost_per_second: 28.0
         cost_usd: 0.10
         enabled: true
 
@@ -597,6 +611,7 @@ tasks:
         model_id: google/gemini-omni-flash-1-1
         provider: kie
         cost_credits: 31
+        cost_per_second: 7.75
         cost_usd: 0.06
         enabled: true
 
@@ -618,6 +633,7 @@ tasks:
         model_id: grok-imagine-video-1-5-preview
         provider: kie
         cost_credits: 4
+        cost_per_second: 0.8
         cost_usd: 0.06
         enabled: true
 

@@ -319,7 +319,7 @@ def _get_generation_cost(data: dict) -> int | None:
         return None
     try:
         _, model_cfg = get_provider_by_model_id(task_type, model_slug)
-        return media_service.get_cost(model_cfg, data.get("resolution"))
+        return media_service.get_cost(model_cfg, data.get("resolution"), data.get("duration"))
     except Exception:
         return None
 
@@ -555,10 +555,10 @@ async def select_model(callback: CallbackQuery, state: FSMContext) -> None:
     allowed_res = model_cfg.get("resolutions")
     if allowed_res:
         current_res = data.get("resolution")
-        if not current_res or current_res not in allowed_res:
+        if media_type == "video" or not current_res or current_res not in allowed_res:
             update["resolution"] = allowed_res[0]
-    # если текущая длительность вне допустимых опций — сбрасываем на первую
-    if media_type == "video" and data.get("duration", 5) not in duration_options:
+    # для видео — всегда ставим минимальную длительность (самый дешёвый дефолт)
+    if media_type == "video" and duration_options:
         update["duration"] = duration_options[0]
     # для аудио — тип (voice/music) берём из конфига модели
     if media_type == "audio":

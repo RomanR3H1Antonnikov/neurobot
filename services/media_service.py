@@ -14,8 +14,22 @@ class RateLimitError(Exception):
     pass
 
 
-def get_cost(model_cfg: dict, resolution: str | None = None) -> int:
-    """Возвращает стоимость с учётом выбранного разрешения (если есть тарификация по разрешению)."""
+def get_cost(model_cfg: dict, resolution: str | None = None, duration: int | None = None) -> int:
+    """Возвращает стоимость генерации.
+
+    Приоритет:
+      1. cost_per_second_by_resolution × duration
+      2. cost_per_second × duration
+      3. cost_by_resolution[resolution]
+      4. cost_credits (фиксированная)
+    """
+    if duration:
+        by_dur_res = model_cfg.get("cost_per_second_by_resolution")
+        if by_dur_res and resolution and resolution in by_dur_res:
+            return max(1, round(by_dur_res[resolution] * duration))
+        per_sec = model_cfg.get("cost_per_second")
+        if per_sec:
+            return max(1, round(per_sec * duration))
     by_res = model_cfg.get("cost_by_resolution")
     if by_res and resolution and resolution in by_res:
         return by_res[resolution]
@@ -24,7 +38,7 @@ def get_cost(model_cfg: dict, resolution: str | None = None) -> int:
 
 async def _check_preconditions(
     telegram_id: int, username: str, task_type: TaskType, model_cfg: dict,
-    resolution: str | None = None,
+    resolution: str | None = None, duration: int | None = None,
 ) -> int:
     """Проверяет лимиты и баланс. Возвращает user_id из БД."""
     user = await get_or_create_user(telegram_id, username)
@@ -35,7 +49,7 @@ async def _check_preconditions(
     if not ok:
         raise RateLimitError(f"Превышен лимит: не более {rate_limit} запросов в час")
 
-    cost = get_cost(model_cfg, resolution)
+    cost = get_cost(model_cfg, resolution, duration)
     if user["balance"] < cost:
         raise InsufficientCreditsError(
             f"Недостаточно средств. Нужно: {cost} ₽, у вас: {user['balance']} ₽"
@@ -73,7 +87,8 @@ async def generate_video(
 ) -> GenerationResult:
     task = TaskType.VIDEO_GENERATION
     provider, model_cfg = get_provider_by_model_id(task, model_slug)
-    user_id = await _check_preconditions(telegram_id, username, task, model_cfg)
+    user_id = await _check_preconditions(telegram_id, username, task, model_cfg,
+                                         resolution=resolution, duration=duration)
 
     result = await provider.generate_video(
         prompt, duration=duration, model=model_cfg["model_id"],
@@ -87,7 +102,7 @@ async def generate_video(
         output_format=output_format,
         audio=audio,
     )
-    await deduct_credits(user_id, get_cost(model_cfg), task.value)
+    await deduct_credits(user_id, get_cost(model_cfg, resolution, duration), task.value)
     return result
 
 
