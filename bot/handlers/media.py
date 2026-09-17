@@ -1129,6 +1129,26 @@ async def style_ref_replace_start(callback: CallbackQuery, state: FSMContext) ->
 @router.callback_query(MediaStates.confirm, F.data == "media:animate_photo")
 async def animate_photo(callback: CallbackQuery, state: FSMContext) -> None:
     """Кнопка 'Оживить фото' — первый и/или последний кадр."""
+    data = await state.get_data()
+
+    has_constructor_files = bool(data.get("style_reference_file_ids")) or bool(data.get("video_style_reference_file_ids"))
+    if has_constructor_files and data.get("video_frames_mode") != "animate":
+        if data.get("confirm_mode_switch") != "animate":
+            await state.update_data(confirm_mode_switch="animate")
+            await callback.answer(
+                "⚠️ «Оживить фото» и «Конструктор видео» — взаимоисключающие разделы.\n"
+                "Файлы из конструктора будут удалены. Нажми ещё раз для подтверждения.",
+                show_alert=True,
+            )
+            return
+        await state.update_data(
+            style_reference_file_ids=None,
+            video_style_reference_file_ids=None,
+            confirm_mode_switch=None,
+        )
+    else:
+        await state.update_data(confirm_mode_switch=None)
+
     await state.update_data(video_frames_mode="animate")
     data = await state.get_data()
     motion_control = bool(data.get("model_motion_control"))
@@ -1168,6 +1188,26 @@ async def toggle_audio(callback: CallbackQuery, state: FSMContext) -> None:
 @router.callback_query(MediaStates.confirm, F.data == "media:toggle_frames")
 async def toggle_frames(callback: CallbackQuery, state: FSMContext) -> None:
     """Кнопка 'Конструктор видео' — референсные фото и/или видео."""
+    data = await state.get_data()
+
+    has_animate_files = bool(data.get("video_first_frame_file_id")) or bool(data.get("video_last_frame_file_id"))
+    if has_animate_files and data.get("video_frames_mode") != "constructor":
+        if data.get("confirm_mode_switch") != "constructor":
+            await state.update_data(confirm_mode_switch="constructor")
+            await callback.answer(
+                "⚠️ «Конструктор видео» и «Оживить фото» — взаимоисключающие разделы.\n"
+                "Файлы из «Оживить фото» будут удалены. Нажми ещё раз для подтверждения.",
+                show_alert=True,
+            )
+            return
+        await state.update_data(
+            video_first_frame_file_id=None,
+            video_last_frame_file_id=None,
+            confirm_mode_switch=None,
+        )
+    else:
+        await state.update_data(confirm_mode_switch=None)
+
     await state.update_data(video_frames_mode="constructor")
     data = await state.get_data()
     max_extra_refs = data.get("model_max_style_refs", 0)
@@ -1294,6 +1334,7 @@ async def back_to_confirm(callback: CallbackQuery, state: FSMContext) -> None:
         entering_music_duration=False, entering_music_pos_styles=False,
         entering_music_neg_styles=False, entering_music_sections=False,
         entering_udio_float=None, entering_udio_lyrics=False,
+        confirm_mode_switch=None,
     )
     await state.set_state(MediaStates.confirm)
     data = await state.get_data()
