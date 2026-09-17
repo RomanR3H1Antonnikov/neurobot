@@ -354,6 +354,8 @@ tasks:
         duration_options: [5, 10, 15]
         min_duration: 4
         max_duration: 15
+        aspect_ratios: ["21:9", "16:9", "4:3", "1:1", "3:4", "9:16"]
+        resolutions: ["720p", "768p", "1080p", "2K"]
         first_frame: true
         last_frame: true
         max_style_refs: 9
@@ -486,8 +488,8 @@ tasks:
           создаёт ролики с нативным звуком, реалистичной физикой и светом, поддерживает
           точную реализацию промптов.
         variant_description: "Облегчённая версия Veo 3.1. Поддерживает первый кадр (image-to-video) и чистую генерацию по тексту."
-        duration_options: [4, 8]
-        min_duration: 4
+        duration_options: [8]
+        min_duration: 8
         max_duration: 8
         first_frame: true
         last_frame: false
@@ -509,8 +511,8 @@ tasks:
         variant_description: >-
           Ускоренная версия Veo 3.1 — в ~2 раза быстрее Quality. Принимает до 3 фото-референсов,
           подходит для тестов, итераций и контента под соцсети.
-        duration_options: [4, 8]
-        min_duration: 4
+        duration_options: [8]
+        min_duration: 8
         max_duration: 8
         first_frame: false
         last_frame: false
@@ -534,6 +536,9 @@ tasks:
           Veo 3.1 Quality — флагманский режим генерации видео в модели Veo 3.1 от Google DeepMind,
           который ориентирован на финальные, профессиональные проекты, где критически важны
           высокое качество изображения, детализация, плавность движения и проработанный звук.
+        duration_options: [4, 8]
+        min_duration: 4
+        max_duration: 8
         first_frame: false
         last_frame: false
         max_style_refs: 0
