@@ -1585,6 +1585,23 @@ async def _show_confirm_after_reference(message: Message, state: FSMContext) -> 
 @router.message(MediaStates.enter_reference, F.photo)
 async def receive_reference_photo(message: Message, state: FSMContext, album: list | None = None) -> None:
     data = await state.get_data()
+    # Фильтр типа: ожидается не фото
+    if data.get("adding_video_ref"):
+        await message.delete()
+        await _update_sref_status(
+            message.bot, message.chat.id, state,
+            "Здесь нужно прислать видео 🎬, а не фото.",
+            back_to_frames_kb(),
+        )
+        return
+    if data.get("adding_audio_ref") or data.get("receiving_edit_audio"):
+        await message.delete()
+        await _update_sref_status(
+            message.bot, message.chat.id, state,
+            "Здесь нужно прислать аудиофайл 🎵, а не фото.",
+            back_to_confirm_kb(),
+        )
+        return
     if data.get("media_type") == "video_edit":
         sent = await message.answer("Для редактирования видео пришли видеофайл, а не фото.", reply_markup=back_to_model_kb())
         await _track_msg(state, sent.message_id)
@@ -1688,6 +1705,35 @@ async def receive_reference_video(message: Message, state: FSMContext) -> None:
         sent = await message.answer("Для редактирования фото пришли изображение, а не видео.", reply_markup=back_to_model_kb())
         await _track_msg(state, sent.message_id)
         return
+    # Фильтр типа: ожидается не видео
+    if data.get("adding_style_ref") or data.get("adding_video_extra_frame"):
+        await message.delete()
+        srefs = data.get("style_reference_file_ids") or []
+        kb = back_to_frames_kb() if data.get("adding_video_extra_frame") else style_ref_collecting_kb(len(srefs), data.get("model_max_style_refs", 14))
+        await _update_sref_status(
+            message.bot, message.chat.id, state,
+            "Здесь нужно прислать фото 📷, а не видео.",
+            kb,
+        )
+        return
+    if data.get("adding_video_frame") and not (
+        data.get("adding_video_frame") == "last" and data.get("model_motion_control")
+    ):
+        await message.delete()
+        await _update_sref_status(
+            message.bot, message.chat.id, state,
+            "Здесь нужно прислать фото 📷, а не видео.",
+            back_to_frames_kb(),
+        )
+        return
+    if data.get("adding_audio_ref") or data.get("receiving_edit_audio"):
+        await message.delete()
+        await _update_sref_status(
+            message.bot, message.chat.id, state,
+            "Здесь нужно прислать аудиофайл 🎵, а не видео.",
+            back_to_confirm_kb(),
+        )
+        return
     # Видео-референс для генерации видео
     if data.get("adding_video_ref"):
         video_refs = list(data.get("video_style_reference_file_ids") or [])
@@ -1734,6 +1780,29 @@ async def receive_reference_video(message: Message, state: FSMContext) -> None:
 @router.message(MediaStates.enter_reference, F.audio | F.voice)
 async def receive_reference_audio(message: Message, state: FSMContext) -> None:
     data = await state.get_data()
+    # Фильтр типа: ожидается не аудио
+    if data.get("adding_style_ref") or data.get("adding_video_extra_frame") or data.get("adding_video_frame"):
+        await message.delete()
+        srefs = data.get("style_reference_file_ids") or []
+        kb = (
+            back_to_frames_kb()
+            if (data.get("adding_video_extra_frame") or data.get("adding_video_frame"))
+            else style_ref_collecting_kb(len(srefs), data.get("model_max_style_refs", 14))
+        )
+        await _update_sref_status(
+            message.bot, message.chat.id, state,
+            "Здесь нужно прислать фото 📷, а не аудиофайл.",
+            kb,
+        )
+        return
+    if data.get("adding_video_ref"):
+        await message.delete()
+        await _update_sref_status(
+            message.bot, message.chat.id, state,
+            "Здесь нужно прислать видео 🎬, а не аудиофайл.",
+            back_to_frames_kb(),
+        )
+        return
     if data.get("receiving_edit_audio"):
         await message.delete()
         file_id = message.audio.file_id if message.audio else message.voice.file_id
@@ -1794,22 +1863,74 @@ async def receive_reference_audio(message: Message, state: FSMContext) -> None:
 async def receive_reference_document(message: Message, state: FSMContext) -> None:
     data = await state.get_data()
     mime = message.document.mime_type or ""
-    if data.get("receiving_edit_audio") and mime.startswith("audio/"):
-        await message.delete()
-        file_name = message.document.file_name or "Аудиофайл"
-        await state.update_data(
-            video_edit_audio_file_id=message.document.file_id,
-            video_edit_audio_file_name=file_name,
-            video_edit_audio_mode="replace",
-            receiving_edit_audio=None,
-        )
-        await state.set_state(MediaStates.confirm)
-        await _update_sref_status(
-            message.bot, message.chat.id, state,
-            f"🔊 Аудиофайл загружен: {file_name}\n\nНажми «Назад», чтобы вернуться к карточке.",
-            edit_sound_kb("replace", file_name),
-        )
+
+    # Аудио-документ для receiving_edit_audio или adding_audio_ref обрабатываем первым
+    if (data.get("receiving_edit_audio") or data.get("adding_audio_ref")) and mime.startswith("audio/"):
+        if data.get("receiving_edit_audio"):
+            await message.delete()
+            file_name = message.document.file_name or "Аудиофайл"
+            await state.update_data(
+                video_edit_audio_file_id=message.document.file_id,
+                video_edit_audio_file_name=file_name,
+                video_edit_audio_mode="replace",
+                receiving_edit_audio=None,
+            )
+            await state.set_state(MediaStates.confirm)
+            await _update_sref_status(
+                message.bot, message.chat.id, state,
+                f"🔊 Аудиофайл загружен: {file_name}\n\nНажми «Назад», чтобы вернуться к карточке.",
+                edit_sound_kb("replace", file_name),
+            )
+        else:
+            # adding_audio_ref — пересылаем в audio-хендлер через прямую обработку
+            await message.delete()
+            file_id = message.document.file_id
+            file_name = message.document.file_name or "Аудиофайл"
+            audio_refs = list(data.get("audio_reference_file_ids") or [])
+            audio_names = list(data.get("audio_reference_file_names") or [])
+            max_refs = data.get("model_max_audio_refs", 0)
+            if len(audio_refs) < max_refs:
+                audio_refs.append(file_id)
+                audio_names.append(file_name)
+            await state.update_data(
+                audio_reference_file_ids=audio_refs,
+                audio_reference_file_names=audio_names,
+            )
+            await _update_sref_status(
+                message.bot, message.chat.id, state,
+                _audio_ref_hint(audio_names, max_refs),
+                _audio_ref_kb(audio_names),
+            )
         return
+
+    # Фильтр типа: документ не соответствует ожидаемому типу
+    _expects_photo = data.get("adding_style_ref") or data.get("adding_video_extra_frame") or data.get("adding_video_frame")
+    _expects_video = data.get("adding_video_ref")
+    _expects_audio = data.get("adding_audio_ref") or data.get("receiving_edit_audio")
+
+    if _expects_photo and not mime.startswith("image/"):
+        await message.delete()
+        srefs = data.get("style_reference_file_ids") or []
+        kb = (
+            back_to_frames_kb()
+            if (data.get("adding_video_extra_frame") or data.get("adding_video_frame"))
+            else style_ref_collecting_kb(len(srefs), data.get("model_max_style_refs", 14))
+        )
+        type_word = "видео" if mime.startswith("video/") else "аудиофайл" if mime.startswith("audio/") else "файл"
+        await _update_sref_status(message.bot, message.chat.id, state, f"Здесь нужно прислать фото 📷, а не {type_word}.", kb)
+        return
+    if _expects_video and not mime.startswith("video/"):
+        await message.delete()
+        type_word = "фото" if mime.startswith("image/") else "аудиофайл" if mime.startswith("audio/") else "файл"
+        await _update_sref_status(message.bot, message.chat.id, state, f"Здесь нужно прислать видео 🎬, а не {type_word}.", back_to_frames_kb())
+        return
+    if _expects_audio and not mime.startswith("audio/"):
+        await message.delete()
+        type_word = "фото" if mime.startswith("image/") else "видео" if mime.startswith("video/") else "файл"
+        await _update_sref_status(message.bot, message.chat.id, state, f"Здесь нужно прислать аудиофайл 🎵, а не {type_word}.", back_to_confirm_kb())
+        return
+
+    # Прямые ссылки — тип по MIME
     if mime.startswith("video/"):
         if data.get("media_type") == "photo_edit":
             sent = await message.answer("Для редактирования фото пришли изображение, а не видео.", reply_markup=back_to_model_kb())
