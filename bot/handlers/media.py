@@ -1347,12 +1347,6 @@ def _audio_ref_hint(audio_names: list[str], max_refs: int) -> str:
 async def add_audio_ref(callback: CallbackQuery, state: FSMContext) -> None:
     """Кнопка 'Аудио' на карточке видео-генерации."""
     data = await state.get_data()
-    if not data.get("video_audio_enabled", True):
-        await callback.answer(
-            "Аудиореференсы недоступны при отключённом звуке.\nВключи «Со звуком», чтобы загрузить аудио.",
-            show_alert=True,
-        )
-        return
     audio_names = list(data.get("audio_reference_file_names") or [])
     max_refs = data.get("model_max_audio_refs", 0)
     await state.update_data(adding_audio_ref=True, _sref_msg_id=callback.message.message_id)
@@ -1652,6 +1646,17 @@ async def receive_reference_audio(message: Message, state: FSMContext) -> None:
         sent = await message.answer(
             "Аудиофайл принимается только при добавлении аудио-референсов. "
             "Нажми кнопку «🎵 Аудио» на карточке.",
+            reply_markup=back_to_confirm_kb(),
+        )
+        await _track_msg(state, sent.message_id)
+        return
+    audio_duration = (message.audio and message.audio.duration) or (message.voice and message.voice.duration)
+    max_video_dur = data.get("model_max_duration")
+    if audio_duration and max_video_dur and audio_duration > max_video_dur:
+        sent = await message.answer(
+            f"⚠️ Аудиофайл слишком длинный ({audio_duration} сек).\n"
+            f"Максимальная длительность аудио-референса — {max_video_dur} сек "
+            f"(максимальная длина видео для этой модели).",
             reply_markup=back_to_confirm_kb(),
         )
         await _track_msg(state, sent.message_id)
