@@ -1257,6 +1257,12 @@ async def add_extra_frames(callback: CallbackQuery, state: FSMContext) -> None:
 async def add_audio_ref(callback: CallbackQuery, state: FSMContext) -> None:
     """Кнопка 'Аудио' на карточке видео-генерации."""
     data = await state.get_data()
+    if not data.get("video_audio_enabled", True):
+        await callback.answer(
+            "Аудиореференсы недоступны при отключённом звуке.\nВключи «Со звуком», чтобы загрузить аудио.",
+            show_alert=True,
+        )
+        return
     count = len(data.get("audio_reference_file_ids") or [])
     max_refs = data.get("model_max_audio_refs", 0)
     hint = (
