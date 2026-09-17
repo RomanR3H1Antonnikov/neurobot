@@ -849,6 +849,7 @@ async def back_to_model(callback: CallbackQuery, state: FSMContext) -> None:
         video_style_reference_file_ids=None, adding_video_ref=None, model_max_video_refs=None,
         model_has_first_frame=None, model_has_last_frame=None,
         managing_style_ref=None, managing_style_ref_index=None,
+        managing_video_ref=None, managing_video_ref_index=None,
         video_first_frame_file_id=None, video_last_frame_file_id=None,
         video_frames_expanded=None,
         video_edit_audio_mode=None, video_edit_audio_file_id=None, video_edit_audio_file_name=None,
@@ -953,6 +954,7 @@ async def generate_again(callback: CallbackQuery, state: FSMContext) -> None:
         adding_video_ref=None,
         video_style_reference_file_ids=None,
         managing_style_ref=None, managing_style_ref_index=None,
+        managing_video_ref=None, managing_video_ref_index=None,
         video_frames_expanded=None,
         entering_duration=None,
         entering_music_duration=False, entering_music_pos_styles=False,
@@ -1467,6 +1469,7 @@ async def back_to_confirm(callback: CallbackQuery, state: FSMContext) -> None:
         adding_style_ref=None, adding_video_extra_frame=None, adding_audio_ref=None,
         adding_video_ref=None,
         managing_style_ref=None, managing_style_ref_index=None,
+        managing_video_ref=None, managing_video_ref_index=None,
         entering_duration=None,
         entering_music_duration=False, entering_music_pos_styles=False,
         entering_music_neg_styles=False, entering_music_sections=False,
@@ -1530,6 +1533,40 @@ async def delete_video_refs(callback: CallbackQuery, state: FSMContext) -> None:
     await callback.answer("Видео удалены")
 
 
+@router.callback_query(MediaStates.confirm, F.data == "media:replace_extra_frame")
+async def replace_extra_frame(callback: CallbackQuery, state: FSMContext) -> None:
+    data = await state.get_data()
+    count = len(data.get("style_reference_file_ids") or [])
+    await state.update_data(
+        adding_video_extra_frame=True,
+        managing_style_ref="replace",
+        _sref_msg_id=callback.message.message_id,
+    )
+    await callback.message.edit_text(
+        f"Введи номер фото для замены (1–{count}):",
+        reply_markup=back_to_frames_kb(),
+    )
+    await state.set_state(MediaStates.enter_reference)
+    await callback.answer()
+
+
+@router.callback_query(MediaStates.confirm, F.data == "media:replace_video_ref")
+async def replace_video_ref(callback: CallbackQuery, state: FSMContext) -> None:
+    data = await state.get_data()
+    count = len(data.get("video_style_reference_file_ids") or [])
+    await state.update_data(
+        adding_video_ref=True,
+        managing_video_ref="replace",
+        _sref_msg_id=callback.message.message_id,
+    )
+    await callback.message.edit_text(
+        f"Введи номер видео для замены (1–{count}):",
+        reply_markup=back_to_frames_kb(),
+    )
+    await state.set_state(MediaStates.enter_reference)
+    await callback.answer()
+
+
 # ─── Загрузка референса (только для edit) ────────────────────────────────────
 
 async def _show_confirm_after_reference(message: Message, state: FSMContext) -> None:
@@ -1558,6 +1595,25 @@ async def receive_reference_photo(message: Message, state: FSMContext, album: li
     if data.get("adding_video_extra_frame"):
         srefs = list(data.get("style_reference_file_ids") or [])
         max_refs = data.get("model_max_style_refs", 0)
+        # Замена конкретного фото
+        if data.get("managing_style_ref") == "replace_photo":
+            idx = data.get("managing_style_ref_index", 0)
+            if 0 <= idx < len(srefs):
+                srefs[idx] = photo.file_id
+            await state.update_data(
+                style_reference_file_ids=srefs,
+                managing_style_ref=None, managing_style_ref_index=None,
+            )
+            try:
+                await message.delete()
+            except Exception:
+                pass
+            await _update_sref_status(
+                message.bot, message.chat.id, state,
+                f"✅ Фото #{idx + 1} заменено. Кадров: {len(srefs)}/{max_refs}. Отправь ещё или нажми «Назад».",
+                back_to_frames_kb(),
+            )
+            return
         for msg in album_msgs:
             if len(srefs) >= max_refs:
                 break
@@ -1634,9 +1690,25 @@ async def receive_reference_video(message: Message, state: FSMContext) -> None:
         return
     # Видео-референс для генерации видео
     if data.get("adding_video_ref"):
-        await message.delete()
         video_refs = list(data.get("video_style_reference_file_ids") or [])
         max_refs = data.get("model_max_video_refs", 0)
+        # Замена конкретного видео
+        if data.get("managing_video_ref") == "replace_video":
+            idx = data.get("managing_video_ref_index", 0)
+            if 0 <= idx < len(video_refs):
+                video_refs[idx] = message.video.file_id
+            await state.update_data(
+                video_style_reference_file_ids=video_refs,
+                managing_video_ref=None, managing_video_ref_index=None,
+            )
+            await message.delete()
+            await _update_sref_status(
+                message.bot, message.chat.id, state,
+                f"✅ Видео #{idx + 1} заменено. Всего: {len(video_refs)}/{max_refs}. Отправь ещё или нажми «Назад».",
+                back_to_frames_kb(),
+            )
+            return
+        await message.delete()
         if len(video_refs) < max_refs:
             video_refs.append(message.video.file_id)
         await state.update_data(video_style_reference_file_ids=video_refs)
@@ -1764,10 +1836,52 @@ async def receive_reference_document(message: Message, state: FSMContext) -> Non
 
 @router.message(MediaStates.enter_reference, F.text, ~F.text.in_(MENU_BUTTONS))
 async def enter_reference_text_input(message: Message, state: FSMContext) -> None:
-    """Ввод номера фото для удаления/замены в режиме сбора ориентиров."""
+    """Ввод номера фото/видео для замены в режиме сбора ориентиров."""
     data = await state.get_data()
     managing = data.get("managing_style_ref")
+    managing_video = data.get("managing_video_ref")
 
+    # ── Замена фото в конструкторе видео ─────────────────────────────────────
+    if data.get("adding_video_extra_frame") and managing == "replace":
+        srefs = list(data.get("style_reference_file_ids") or [])
+        max_refs = data.get("model_max_style_refs", 0)
+        try:
+            idx = int(message.text.strip()) - 1
+            if idx < 0 or idx >= len(srefs):
+                raise ValueError
+        except ValueError:
+            sent = await message.answer(f"Введи число от 1 до {len(srefs)}.")
+            await _track_msg(state, sent.message_id)
+            return
+        await state.update_data(managing_style_ref="replace_photo", managing_style_ref_index=idx)
+        await _update_sref_status(
+            message.bot, message.chat.id, state,
+            f"Пришли новое фото для замены #{idx + 1}:",
+            back_to_frames_kb(),
+        )
+        return
+
+    # ── Замена видео в конструкторе видео ────────────────────────────────────
+    if data.get("adding_video_ref") and managing_video == "replace":
+        video_refs = list(data.get("video_style_reference_file_ids") or [])
+        max_refs = data.get("model_max_video_refs", 0)
+        try:
+            idx = int(message.text.strip()) - 1
+            if idx < 0 or idx >= len(video_refs):
+                raise ValueError
+        except ValueError:
+            sent = await message.answer(f"Введи число от 1 до {len(video_refs)}.")
+            await _track_msg(state, sent.message_id)
+            return
+        await state.update_data(managing_video_ref="replace_video", managing_video_ref_index=idx)
+        await _update_sref_status(
+            message.bot, message.chat.id, state,
+            f"Пришли новое видео для замены #{idx + 1}:",
+            back_to_frames_kb(),
+        )
+        return
+
+    # ── Ориентиры для генерации изображений ──────────────────────────────────
     if data.get("adding_style_ref") and not managing:
         sent = await message.answer("Текст не принимается в качестве ориентира — пришли фото 📎")
         await _track_msg(state, sent.message_id)

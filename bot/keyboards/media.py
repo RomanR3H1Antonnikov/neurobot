@@ -340,6 +340,7 @@ def video_frames_menu_kb(
                 InlineKeyboardButton(text=extra_text, callback_data="media:add_extra_frames"),
                 InlineKeyboardButton(text="🗑", callback_data="media:delete_extra_frames"),
             )
+            builder.row(InlineKeyboardButton(text="🔄 Заменить фото", callback_data="media:replace_extra_frame"))
         else:
             builder.row(InlineKeyboardButton(text=extra_text, callback_data="media:add_extra_frames"))
     if show_video_refs and max_video_refs > 0:
@@ -349,6 +350,7 @@ def video_frames_menu_kb(
                 InlineKeyboardButton(text=video_text, callback_data="media:add_video_ref"),
                 InlineKeyboardButton(text="🗑", callback_data="media:delete_video_refs"),
             )
+            builder.row(InlineKeyboardButton(text="🔄 Заменить видео", callback_data="media:replace_video_ref"))
         else:
             builder.row(InlineKeyboardButton(text=video_text, callback_data="media:add_video_ref"))
     builder.row(InlineKeyboardButton(text="◀️ Назад", callback_data="media:back:confirm"))
