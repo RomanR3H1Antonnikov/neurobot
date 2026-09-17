@@ -334,7 +334,7 @@ def video_frames_menu_kb(
         else:
             builder.row(InlineKeyboardButton(text=last_text, callback_data="media:add_last_frame"))
     if not motion_control and max_extra_refs > 0:
-        extra_text = f"📷 Фото: {extra_ref_count} ✅" if extra_ref_count else "📷 Фото"
+        extra_text = f"📷 Фото: {extra_ref_count}/{max_extra_refs} ✅" if extra_ref_count else "📷 Фото"
         if extra_ref_count > 0:
             builder.row(
                 InlineKeyboardButton(text=extra_text, callback_data="media:add_extra_frames"),
@@ -343,7 +343,7 @@ def video_frames_menu_kb(
         else:
             builder.row(InlineKeyboardButton(text=extra_text, callback_data="media:add_extra_frames"))
     if show_video_refs and max_video_refs > 0:
-        video_text = f"🎬 Видео: {video_ref_count} ✅" if video_ref_count else "🎬 Видео"
+        video_text = f"🎬 Видео: {video_ref_count}/{max_video_refs} ✅" if video_ref_count else "🎬 Видео"
         if video_ref_count > 0:
             builder.row(
                 InlineKeyboardButton(text=video_text, callback_data="media:add_video_ref"),

@@ -1394,7 +1394,7 @@ async def add_video_ref(callback: CallbackQuery, state: FSMContext) -> None:
     count = len(data.get("video_style_reference_file_ids") or [])
     max_refs = data.get("model_max_video_refs", 0)
     hint = (
-        f"🎬 Добавлено {count} видео. Отправь ещё (до {max_refs} всего). Когда закончишь — нажми «Назад»."
+        f"🎬 Добавлено {count}/{max_refs} видео. Отправь ещё или нажми «Назад»."
         if count else
         f"🎬 Отправь видеофайл — он добавится как видеореференс. Можно добавить до {max_refs} файлов.\nКогда закончишь — нажми «Назад»."
     )
