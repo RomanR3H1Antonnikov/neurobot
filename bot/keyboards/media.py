@@ -243,19 +243,21 @@ def video_confirm_kb(
             callback_data="media:pick_format",
         ))
     if show_frames_button:
+        has_animate_files = has_first_frame or has_last_frame
+        has_constructor_files = has_extra_refs or video_ref_count > 0
         row_btns = []
         if show_first_frame_btn:
-            if frames_mode == "animate":
+            if has_animate_files:
                 animate_text = "🖼 Оживить фото ✅"
-            elif frames_mode == "constructor":
+            elif has_constructor_files:
                 animate_text = "🖼 Оживить фото ❌"
             else:
                 animate_text = "🖼 Оживить фото"
             row_btns.append(InlineKeyboardButton(text=animate_text, callback_data="media:animate_photo"))
         if show_constructor_btn:
-            if frames_mode == "constructor":
+            if has_constructor_files:
                 constr_text = "🎬 Конструктор видео ✅"
-            elif frames_mode == "animate":
+            elif has_animate_files:
                 constr_text = "🎬 Конструктор видео ❌"
             else:
                 constr_text = "🎬 Конструктор видео"
