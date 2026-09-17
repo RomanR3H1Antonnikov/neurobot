@@ -1290,6 +1290,7 @@ async def back_to_confirm(callback: CallbackQuery, state: FSMContext) -> None:
         adding_style_ref=None, adding_video_extra_frame=None, adding_audio_ref=None,
         adding_video_ref=None,
         managing_style_ref=None, managing_style_ref_index=None,
+        entering_duration=None,
         entering_music_duration=False, entering_music_pos_styles=False,
         entering_music_neg_styles=False, entering_music_sections=False,
         entering_udio_float=None, entering_udio_lyrics=False,
@@ -2133,6 +2134,7 @@ async def set_duration(callback: CallbackQuery, state: FSMContext) -> None:
 @router.callback_query(MediaStates.confirm, F.data == "media:pick_duration")
 async def pick_duration(callback: CallbackQuery, state: FSMContext) -> None:
     data = await state.get_data()
+    await state.update_data(entering_duration=None)
     options = data.get("model_duration_options") or [5, 10]
     min_d = data.get("model_min_duration") or min(options)
     max_d = data.get("model_max_duration") or max(options)
