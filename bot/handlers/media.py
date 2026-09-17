@@ -1383,7 +1383,7 @@ async def receive_reference_photo(message: Message, state: FSMContext) -> None:
         await _update_sref_status(
             message.bot, message.chat.id, state,
             f"✅ Добавлено! Кадров: {len(srefs)}/{max_refs}. Отправь ещё или нажми «Назад».",
-            back_to_confirm_kb(),
+            back_to_frames_kb(),
         )
         return
     if data.get("adding_style_ref"):
@@ -1447,7 +1447,7 @@ async def receive_reference_video(message: Message, state: FSMContext) -> None:
         await _update_sref_status(
             message.bot, message.chat.id, state,
             f"✅ Видео добавлено! Всего: {len(video_refs)}/{max_refs}. Отправь ещё или нажми «Назад».",
-            back_to_confirm_kb(),
+            back_to_frames_kb(),
         )
         return
     # Motion control: принимаем видео в слот последнего кадра
