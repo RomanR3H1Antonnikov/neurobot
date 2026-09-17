@@ -827,7 +827,7 @@ async def back_to_model(callback: CallbackQuery, state: FSMContext) -> None:
         reference_file_id=None, reference_type=None,
         generated_file_id=None,
         style_reference_file_ids=None, adding_style_ref=None, adding_video_extra_frame=None,
-        audio_reference_file_ids=None, adding_audio_ref=None, model_max_audio_refs=None,
+        audio_reference_file_ids=None, audio_reference_file_names=None, adding_audio_ref=None, model_max_audio_refs=None,
         video_style_reference_file_ids=None, adding_video_ref=None, model_max_video_refs=None,
         model_has_first_frame=None, model_has_last_frame=None,
         managing_style_ref=None, managing_style_ref_index=None,
@@ -919,7 +919,7 @@ async def generate_again(callback: CallbackQuery, state: FSMContext) -> None:
         prompt=None,
         reference_file_id=None, reference_type=None,
         style_reference_file_ids=None,
-        audio_reference_file_ids=None,
+        audio_reference_file_ids=None, audio_reference_file_names=None,
         generated_file_id=None,
         kie_gen_task_id=None,
         video_first_frame_file_id=None, video_last_frame_file_id=None,
@@ -1253,6 +1253,22 @@ async def add_extra_frames(callback: CallbackQuery, state: FSMContext) -> None:
     await callback.answer()
 
 
+def _audio_ref_kb(count: int) -> InlineKeyboardMarkup:
+    rows = []
+    if count:
+        rows.append([InlineKeyboardButton(text="🗑 Удалить последнее", callback_data="media:delete_last_audio_ref")])
+    rows.append([InlineKeyboardButton(text="◀️ Назад", callback_data="media:back:confirm")])
+    return InlineKeyboardMarkup(inline_keyboard=rows)
+
+
+def _audio_ref_hint(audio_names: list[str], max_refs: int) -> str:
+    count = len(audio_names)
+    if not count:
+        return f"🎵 Отправь аудиофайл — он добавится как звуковой референс. Можно до {max_refs} файлов.\nКогда закончишь — нажми «Назад»."
+    names_str = "\n".join(f"  {i + 1}. {n}" for i, n in enumerate(audio_names))
+    return f"🎵 Загружено аудио ({count}/{max_refs}):\n{names_str}\n\nОтправь ещё или нажми «Назад»."
+
+
 @router.callback_query(MediaStates.confirm, F.data == "media:add_audio_ref")
 async def add_audio_ref(callback: CallbackQuery, state: FSMContext) -> None:
     """Кнопка 'Аудио' на карточке видео-генерации."""
@@ -1263,16 +1279,36 @@ async def add_audio_ref(callback: CallbackQuery, state: FSMContext) -> None:
             show_alert=True,
         )
         return
-    count = len(data.get("audio_reference_file_ids") or [])
+    audio_names = list(data.get("audio_reference_file_names") or [])
     max_refs = data.get("model_max_audio_refs", 0)
-    hint = (
-        f"🎵 Добавлено {count} аудио. Отправь ещё (до {max_refs} всего). Когда закончишь — нажми «Назад»."
-        if count else
-        f"🎵 Отправь аудиофайл — он добавится как звуковой референс для видео. Можно добавить до {max_refs} файлов.\nКогда закончишь — нажми «Назад»."
-    )
     await state.update_data(adding_audio_ref=True, _sref_msg_id=callback.message.message_id)
-    await callback.message.edit_text(hint, reply_markup=back_to_confirm_kb())
+    await callback.message.edit_text(
+        _audio_ref_hint(audio_names, max_refs),
+        reply_markup=_audio_ref_kb(len(audio_names)),
+    )
     await state.set_state(MediaStates.enter_reference)
+    await callback.answer()
+
+
+@router.callback_query(MediaStates.enter_reference, F.data == "media:delete_last_audio_ref")
+async def delete_last_audio_ref(callback: CallbackQuery, state: FSMContext) -> None:
+    data = await state.get_data()
+    audio_refs = list(data.get("audio_reference_file_ids") or [])
+    audio_names = list(data.get("audio_reference_file_names") or [])
+    max_refs = data.get("model_max_audio_refs", 0)
+    if audio_refs:
+        audio_refs.pop()
+    if audio_names:
+        audio_names.pop()
+    await state.update_data(
+        audio_reference_file_ids=audio_refs or None,
+        audio_reference_file_names=audio_names or None,
+    )
+    await _update_sref_status(
+        callback.bot, callback.message.chat.id, state,
+        _audio_ref_hint(audio_names, max_refs),
+        _audio_ref_kb(len(audio_names)),
+    )
     await callback.answer()
 
 
@@ -1524,15 +1560,21 @@ async def receive_reference_audio(message: Message, state: FSMContext) -> None:
         return
     await message.delete()
     file_id = message.audio.file_id if message.audio else message.voice.file_id
+    file_name = (message.audio and message.audio.file_name) or "Аудиофайл"
     audio_refs = list(data.get("audio_reference_file_ids") or [])
+    audio_names = list(data.get("audio_reference_file_names") or [])
     max_refs = data.get("model_max_audio_refs", 0)
     if len(audio_refs) < max_refs:
         audio_refs.append(file_id)
-    await state.update_data(audio_reference_file_ids=audio_refs)
+        audio_names.append(file_name)
+    await state.update_data(
+        audio_reference_file_ids=audio_refs,
+        audio_reference_file_names=audio_names,
+    )
     await _update_sref_status(
         message.bot, message.chat.id, state,
-        f"✅ Аудио добавлено! Всего: {len(audio_refs)}/{max_refs}. Отправь ещё или нажми «Назад».",
-        back_to_confirm_kb(),
+        _audio_ref_hint(audio_names, max_refs),
+        _audio_ref_kb(len(audio_refs)),
     )
 
 
