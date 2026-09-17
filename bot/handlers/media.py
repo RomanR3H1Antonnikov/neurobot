@@ -82,7 +82,8 @@ async def _back_to_frames_menu(bot, chat_id: int, state: FSMContext) -> None:
             video_ref_count=len(data.get("video_style_reference_file_ids") or []),
         )
     else:
-        max_extra_refs = data.get("model_max_style_refs", 0) if not motion_control else 0
+        # В режиме "оживить фото" кнопка доп. кадров не нужна — только первый/последний кадр
+        max_extra_refs = 0
         title = (
             "📎 <b>Motion Control</b>\n\nДобавь фото (начальный кадр) и видео (задаёт характер движения):"
             if motion_control else
