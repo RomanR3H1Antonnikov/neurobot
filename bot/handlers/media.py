@@ -26,7 +26,7 @@ from bot.keyboards.media import (
     music_confirm_kb, music_format_kb,
     udio_confirm_kb, udio_lyrics_type_kb, udio_model_type_kb,
     voice_picker_kb,
-    style_ref_collecting_kb, after_generation_kb, gen_waiting_kb, error_kb,
+    style_ref_collecting_kb, style_ref_delete_kb, after_generation_kb, gen_waiting_kb, error_kb,
 )
 from providers.base import ProviderError, ProviderContentPolicyError, TaskType
 from providers.router import get_models_for_task
@@ -1183,7 +1183,21 @@ async def style_ref_delete_start(callback: CallbackQuery, state: FSMContext) -> 
     max_refs = data.get("model_max_style_refs", 14)
     await state.update_data(managing_style_ref="delete")
     await callback.message.edit_text(
-        f"Введи номер фото для удаления (1–{count}):",
+        f"Введите номер фото, которое хотите удалить (1–{count}):",
+        reply_markup=style_ref_delete_kb(count, max_refs),
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data == "media:style_ref_back_to_collect")
+async def style_ref_back_to_collect(callback: CallbackQuery, state: FSMContext) -> None:
+    """Назад из режима удаления к экрану сбора ориентиров."""
+    data = await state.get_data()
+    count = len(data.get("style_reference_file_ids") or [])
+    max_refs = data.get("model_max_style_refs", 14)
+    await state.update_data(managing_style_ref=None, managing_style_ref_index=None)
+    await callback.message.edit_text(
+        f"📎 Пришли фото-ориентиры (до {max_refs} штук). Нейросеть будет ориентироваться на них при генерации:",
         reply_markup=style_ref_collecting_kb(count, max_refs),
     )
     await callback.answer()
