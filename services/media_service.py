@@ -146,6 +146,8 @@ async def edit_video(
     duration: int = 5,
     aspect_ratio: str | None = None,
     resolution: str | None = None,
+    audio: bool = True,
+    audio_url: str | None = None,
 ) -> GenerationResult:
     task = TaskType.VIDEO_EDIT
     provider, model_cfg = get_provider_by_model_id(task, model_slug)
@@ -157,6 +159,8 @@ async def edit_video(
         duration=duration,
         aspect_ratio=aspect_ratio,
         resolution=resolution,
+        audio=audio,
+        audio_url=audio_url,
     )
     await deduct_credits(user_id, get_cost(model_cfg), task.value)
     return result

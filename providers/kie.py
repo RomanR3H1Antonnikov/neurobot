@@ -598,6 +598,8 @@ class KieProvider(OpenAICompatProvider):
         duration: int = 5,
         aspect_ratio: str | None = None,
         resolution: str | None = None,
+        audio: bool = True,
+        audio_url: str | None = None,
     ) -> GenerationResult:
         if not video_url:
             raise ProviderUnavailableError("KIE edit_video: не передан URL видео")
@@ -608,4 +610,6 @@ class KieProvider(OpenAICompatProvider):
             video_reference_urls=[video_url],
             aspect_ratio=aspect_ratio or "16:9",
             resolution=resolution,
+            audio=audio,
+            audio_reference_urls=[audio_url] if audio_url else None,
         )

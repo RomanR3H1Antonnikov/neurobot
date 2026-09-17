@@ -21,7 +21,7 @@ from bot.keyboards.media import (
     media_type_kb, media_edit_kb, media_info_kb, model_top_kb, model_variant_kb,
     model_select_text, model_variant_text, back_to_model_kb, back_to_confirm_kb, back_to_frames_kb,
     image_confirm_kb, image_ratio_kb, image_resolution_kb,
-    video_confirm_kb, video_format_kb, video_frames_menu_kb, video_duration_picker_kb, audio_confirm_kb, edit_confirm_kb,
+    video_confirm_kb, video_format_kb, video_frames_menu_kb, video_duration_picker_kb, audio_confirm_kb, edit_confirm_kb, edit_sound_kb,
     music_confirm_kb, music_format_kb,
     udio_confirm_kb, udio_lyrics_type_kb, udio_model_type_kb,
     voice_picker_kb,
@@ -293,6 +293,13 @@ def _confirm_card_text(data: dict) -> str:
             _srefs = data.get("style_reference_file_ids") or []
             if _srefs:
                 lines.append(f"<b>{'Ориентир' if len(_srefs) == 1 else 'Ориентиры'}:</b> {len(_srefs)} фото ✅")
+        elif media_type == "video_edit":
+            _edit_audio_mode = data.get("video_edit_audio_mode")
+            if _edit_audio_mode == "remove":
+                lines.append("<b>Звук:</b> убрать ✅")
+            elif _edit_audio_mode == "replace":
+                _edit_audio_name = data.get("video_edit_audio_file_name", "аудиофайл")
+                lines.append(f"<b>Звук:</b> заменить ✅ ({_edit_audio_name})")
 
     if media_type == "audio":
         prompt_label = "Текст для озвучки" if data.get("audio_type", "voice") == "voice" else "Описание музыки"
@@ -382,6 +389,7 @@ def _confirm_kb(data: dict):
             media_type=media_type,
             style_ref_count=style_ref_count,
             cost_credits=cost,
+            video_edit_audio_mode=data.get("video_edit_audio_mode"),
         )
 
 
@@ -833,6 +841,8 @@ async def back_to_model(callback: CallbackQuery, state: FSMContext) -> None:
         managing_style_ref=None, managing_style_ref_index=None,
         video_first_frame_file_id=None, video_last_frame_file_id=None,
         video_frames_expanded=None,
+        video_edit_audio_mode=None, video_edit_audio_file_id=None, video_edit_audio_file_name=None,
+        receiving_edit_audio=None,
     )
     await state.set_state(MediaStates.select_model)
     text = model_select_text(type_label, models)
@@ -1054,6 +1064,61 @@ async def add_reference_prompt(callback: CallbackQuery, state: FSMContext) -> No
     await callback.message.edit_text(hint, reply_markup=back_to_confirm_kb())
     await state.set_state(MediaStates.enter_reference)
     await callback.answer()
+
+
+@router.callback_query(MediaStates.confirm, F.data == "media:edit_sound")
+async def edit_sound_menu(callback: CallbackQuery, state: FSMContext) -> None:
+    """Открывает меню управления звуком для редактирования видео."""
+    data = await state.get_data()
+    await state.update_data(receiving_edit_audio=None)
+    audio_mode = data.get("video_edit_audio_mode")
+    audio_name = data.get("video_edit_audio_file_name")
+    await callback.answer()
+    await callback.message.edit_text(
+        "🔊 <b>Звук в видео</b>\n\n"
+        "• <b>Убрать звук</b> — удалит звуковую дорожку из результата\n"
+        "• <b>Заменить звук</b> — загрузи аудиофайл, который станет новой дорожкой",
+        parse_mode="HTML",
+        reply_markup=edit_sound_kb(audio_mode, audio_name),
+    )
+
+
+@router.callback_query(MediaStates.confirm, F.data == "media:edit_sound:remove")
+async def edit_sound_remove(callback: CallbackQuery, state: FSMContext) -> None:
+    """Переключает режим 'убрать звук' (повторное нажатие сбрасывает)."""
+    data = await state.get_data()
+    if data.get("video_edit_audio_mode") == "remove":
+        new_mode = None
+    else:
+        new_mode = "remove"
+    await state.update_data(
+        video_edit_audio_mode=new_mode,
+        video_edit_audio_file_id=None,
+        video_edit_audio_file_name=None,
+    )
+    await callback.answer()
+    await callback.message.edit_reply_markup(reply_markup=edit_sound_kb(new_mode))
+
+
+@router.callback_query(MediaStates.confirm, F.data == "media:edit_sound:replace_blocked")
+async def edit_sound_replace_blocked(callback: CallbackQuery, state: FSMContext) -> None:
+    await callback.answer("Сначала отключи «Убрать звук» — нажми на него ещё раз", show_alert=True)
+
+
+@router.callback_query(MediaStates.confirm, F.data == "media:edit_sound:replace")
+async def edit_sound_replace(callback: CallbackQuery, state: FSMContext) -> None:
+    """Переходит в режим загрузки аудиофайла для замены звука."""
+    await state.update_data(receiving_edit_audio=True, _sref_msg_id=callback.message.message_id)
+    await state.set_state(MediaStates.enter_reference)
+    await callback.answer()
+    await callback.message.edit_text(
+        "🔊 <b>Замена звука</b>\n\n"
+        "Отправь аудиофайл (mp3, wav, ogg) — он станет звуковой дорожкой "
+        "отредактированного видео.\n\n"
+        "Нажми «Назад», чтобы вернуться без изменений.",
+        parse_mode="HTML",
+        reply_markup=back_to_confirm_kb(),
+    )
 
 
 @router.callback_query(MediaStates.confirm, F.data == "media:add_style_ref")
@@ -1392,6 +1457,7 @@ async def back_to_confirm(callback: CallbackQuery, state: FSMContext) -> None:
         entering_music_neg_styles=False, entering_music_sections=False,
         entering_udio_float=None, entering_udio_lyrics=False,
         confirm_mode_switch=None,
+        receiving_edit_audio=None,
     )
     await state.set_state(MediaStates.confirm)
     data = await state.get_data()
@@ -1565,6 +1631,23 @@ async def receive_reference_video(message: Message, state: FSMContext) -> None:
 @router.message(MediaStates.enter_reference, F.audio | F.voice)
 async def receive_reference_audio(message: Message, state: FSMContext) -> None:
     data = await state.get_data()
+    if data.get("receiving_edit_audio"):
+        await message.delete()
+        file_id = message.audio.file_id if message.audio else message.voice.file_id
+        file_name = (message.audio and message.audio.file_name) or "Аудиофайл"
+        await state.update_data(
+            video_edit_audio_file_id=file_id,
+            video_edit_audio_file_name=file_name,
+            video_edit_audio_mode="replace",
+            receiving_edit_audio=None,
+        )
+        await state.set_state(MediaStates.confirm)
+        await _update_sref_status(
+            message.bot, message.chat.id, state,
+            f"🔊 Аудиофайл загружен: {file_name}\n\nНажми «Назад», чтобы вернуться к карточке.",
+            edit_sound_kb("replace", file_name),
+        )
+        return
     if not data.get("adding_audio_ref"):
         sent = await message.answer(
             "Аудиофайл принимается только при добавлении аудио-референсов. "
@@ -1597,6 +1680,22 @@ async def receive_reference_audio(message: Message, state: FSMContext) -> None:
 async def receive_reference_document(message: Message, state: FSMContext) -> None:
     data = await state.get_data()
     mime = message.document.mime_type or ""
+    if data.get("receiving_edit_audio") and mime.startswith("audio/"):
+        await message.delete()
+        file_name = message.document.file_name or "Аудиофайл"
+        await state.update_data(
+            video_edit_audio_file_id=message.document.file_id,
+            video_edit_audio_file_name=file_name,
+            video_edit_audio_mode="replace",
+            receiving_edit_audio=None,
+        )
+        await state.set_state(MediaStates.confirm)
+        await _update_sref_status(
+            message.bot, message.chat.id, state,
+            f"🔊 Аудиофайл загружен: {file_name}\n\nНажми «Назад», чтобы вернуться к карточке.",
+            edit_sound_kb("replace", file_name),
+        )
+        return
     if mime.startswith("video/"):
         if data.get("media_type") == "photo_edit":
             sent = await message.answer("Для редактирования фото пришли изображение, а не видео.", reply_markup=back_to_model_kb())
@@ -2746,9 +2845,16 @@ async def _run_generation(send_msg: Message, tg_user, state: FSMContext, data: d
         video_url = f"https://api.telegram.org/file/bot{_cfg.bot_token}/{file_info.file_path}"
         file_bytes = await send_msg.bot.download_file(file_info.file_path)
         media_bytes = file_bytes.read()
+        _edit_audio_mode = data.get("video_edit_audio_mode")
+        _edit_audio_url = None
+        if _edit_audio_mode == "replace" and data.get("video_edit_audio_file_id"):
+            _audio_info = await send_msg.bot.get_file(data["video_edit_audio_file_id"])
+            _edit_audio_url = f"https://api.telegram.org/file/bot{_cfg.bot_token}/{_audio_info.file_path}"
         result = await media_service.edit_video(
             tg_user.id, tg_user.username, media_bytes, prompt, model_slug,
             video_url=video_url,
+            audio=(_edit_audio_mode != "remove"),
+            audio_url=_edit_audio_url,
         )
         file = BufferedInputFile(result.data, filename=result.filename)
         sent = await send_msg.answer_video(file, reply_markup=after_generation_kb())

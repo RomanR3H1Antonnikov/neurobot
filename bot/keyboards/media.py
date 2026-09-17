@@ -573,6 +573,7 @@ def edit_confirm_kb(
     media_type: str = "photo_edit",
     style_ref_count: int = 0,
     cost_credits: int | None = None,
+    video_edit_audio_mode: str | None = None,
 ) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     if media_type == "photo_edit":
@@ -583,6 +584,14 @@ def edit_confirm_kb(
     if media_type == "photo_edit":
         style_text = f"🖼 Ориентиры: {style_ref_count} фото ✅" if style_ref_count else "📎 Добавить ориентир"
         builder.row(InlineKeyboardButton(text=style_text, callback_data="media:add_style_ref"))
+    if media_type == "video_edit":
+        if video_edit_audio_mode == "remove":
+            sound_text = "🔕 Звук: убрать ✅"
+        elif video_edit_audio_mode == "replace":
+            sound_text = "🔊 Звук: заменить ✅"
+        else:
+            sound_text = "🔊 Звук"
+        builder.row(InlineKeyboardButton(text=sound_text, callback_data="media:edit_sound"))
     prompt_text = "✏️ Изменить инструкцию" if has_prompt else "✏️ Ввести инструкцию"
     builder.row(
         InlineKeyboardButton(text=prompt_text, callback_data="media:edit_prompt"),
@@ -590,6 +599,25 @@ def edit_confirm_kb(
     )
     start_text = f"🚀 Начать обработку — {cost_credits} ₽" if cost_credits else "🚀 Начать обработку"
     builder.row(InlineKeyboardButton(text=start_text, callback_data="media:start"))
+    return builder.as_markup()
+
+
+def edit_sound_kb(audio_mode: str | None, audio_file_name: str | None = None) -> InlineKeyboardMarkup:
+    """Клавиатура выбора режима звука при редактировании видео."""
+    builder = InlineKeyboardBuilder()
+    if audio_mode == "remove":
+        remove_text = "✅ Убрать звук"
+    else:
+        remove_text = "🔇 Убрать звук"
+    builder.row(InlineKeyboardButton(text=remove_text, callback_data="media:edit_sound:remove"))
+    if audio_mode == "remove":
+        builder.row(InlineKeyboardButton(text="🔊 Заменить звук", callback_data="media:edit_sound:replace_blocked"))
+    elif audio_mode == "replace" and audio_file_name:
+        short_name = audio_file_name[:22] + "…" if len(audio_file_name) > 22 else audio_file_name
+        builder.row(InlineKeyboardButton(text=f"✅ Заменить: {short_name}", callback_data="media:edit_sound:replace"))
+    else:
+        builder.row(InlineKeyboardButton(text="🔊 Заменить звук", callback_data="media:edit_sound:replace"))
+    builder.row(InlineKeyboardButton(text="◀️ Назад", callback_data="media:back:confirm"))
     return builder.as_markup()
 
 

@@ -177,6 +177,8 @@ class OpenAICompatProvider(AbstractProvider):
         duration: int = 5,
         aspect_ratio: str | None = None,
         resolution: str | None = None,
+        audio: bool = True,
+        audio_url: str | None = None,
     ) -> GenerationResult:
         actual_model = model or self.video_edit_model
 
