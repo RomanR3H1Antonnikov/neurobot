@@ -2468,11 +2468,10 @@ async def confirm_unknown_input(message: Message, state: FSMContext, album: list
         await _update_confirm_card(message, state)
         return
     elif (message.video or message.video_note) and media_type == "video":
-        # Конструктор → видео идёт как видео-референс конструктора
-        if data.get("video_frames_mode") == "constructor":
+        video_file_id = (message.video or message.video_note).file_id
+        max_video_refs = data.get("model_max_video_refs", 0)
+        if data.get("video_frames_mode") == "constructor" or max_video_refs > 0:
             await message.delete()
-            video_file_id = (message.video or message.video_note).file_id
-            max_video_refs = data.get("model_max_video_refs", 0)
             if max_video_refs > 0:
                 vrefs = list(data.get("video_style_reference_file_ids") or [])
                 if len(vrefs) < max_video_refs:
@@ -2480,16 +2479,33 @@ async def confirm_unknown_input(message: Message, state: FSMContext, album: list
                 await state.update_data(video_style_reference_file_ids=vrefs)
             await _back_to_frames_menu(message.bot, message.chat.id, state)
             return
-        hint = (
-            "Этот раздел создаёт видео с нуля по описанию. "
-            "Если хочешь изменить готовое видео — используй раздел «✏️ Редактировать видео»."
-        )
+        await message.delete()
+        asyncio.create_task(_toast(message, "⚠️ Эта модель не поддерживает видео-референсы."))
+        return
+    elif (message.audio or message.voice) and media_type == "video":
+        max_audio_refs = data.get("model_max_audio_refs", 0)
+        if max_audio_refs > 0:
+            await message.delete()
+            file_id = message.audio.file_id if message.audio else message.voice.file_id
+            file_name = (message.audio and message.audio.file_name) or "Аудиофайл"
+            audio_refs = list(data.get("audio_reference_file_ids") or [])
+            audio_names = list(data.get("audio_reference_file_names") or [])
+            if len(audio_refs) < max_audio_refs:
+                audio_refs.append(file_id)
+                audio_names.append(file_name)
+            await state.update_data(
+                audio_reference_file_ids=audio_refs,
+                audio_reference_file_names=audio_names,
+            )
+            await _update_confirm_card(message, state)
+            return
+        await message.delete()
+        asyncio.create_task(_toast(message, "⚠️ Эта модель не поддерживает аудио-референсы."))
+        return
     else:
-        hint = "Не понял запроса. Введи текстовое описание или воспользуйся кнопками."
-
-    await message.delete()
-    sent_hint = await message.answer(hint)
-    await _track_msg(state, sent_hint.message_id)
+        await message.delete()
+        asyncio.create_task(_toast(message, "⚠️ Не понял файл. Введи текстовое описание или воспользуйся кнопками."))
+        return
 
 
 # ─── Фото с подписью — быстрый запуск редактирования ─────────────────────────
