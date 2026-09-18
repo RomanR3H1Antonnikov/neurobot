@@ -419,6 +419,70 @@ def voice_picker_kb(voices: list[dict], current_id: str) -> InlineKeyboardMarkup
     return builder.as_markup()
 
 
+_VOICE_STABILITY_PRESETS = [0.3, 0.5, 0.8]
+_STABILITY_LABELS = {0.3: "Экспрессивный", 0.5: "Стандарт", 0.8: "Стабильный"}
+
+_VOICE_LANGUAGES = [
+    ("auto", "🌐 Авто"),
+    ("ru", "🇷🇺 Русский"),
+    ("en", "🇬🇧 English"),
+    ("de", "🇩🇪 Deutsch"),
+    ("fr", "🇫🇷 Français"),
+    ("es", "🇪🇸 Español"),
+    ("zh", "🇨🇳 中文"),
+    ("ja", "🇯🇵 日本語"),
+]
+
+
+def voice_confirm_kb(data: dict, cost_credits: int | None = None) -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    dialogue_mode = bool(data.get("voice_dialogue_mode"))
+    stability = data.get("voice_stability", 0.5)
+    language = data.get("voice_language", "auto")
+    voice_label_1 = data.get("selected_voice_label") or "Стандартный"
+    voice_label_2 = data.get("selected_voice_label_2") or "Стандартный"
+    has_prompt = bool(data.get("prompt"))
+
+    mode_text = "💬 Диалог: ВКЛ" if dialogue_mode else "💬 Диалог: ВЫКЛ"
+    builder.row(InlineKeyboardButton(text=mode_text, callback_data="media:toggle_voice_dialogue"))
+
+    if dialogue_mode:
+        builder.row(
+            InlineKeyboardButton(text=f"🗣 Голос 1: {voice_label_1}", callback_data="media:pick_voice"),
+            InlineKeyboardButton(text=f"🗣 Голос 2: {voice_label_2}", callback_data="media:pick_voice_2"),
+        )
+    else:
+        builder.row(InlineKeyboardButton(text=f"🗣 Голос: {voice_label_1}", callback_data="media:pick_voice"))
+
+    stab_label = _STABILITY_LABELS.get(stability, f"{stability:.1f}")
+    lang_label = dict(_VOICE_LANGUAGES).get(language, language)
+    builder.row(
+        InlineKeyboardButton(text=f"⚙️ {stab_label}", callback_data="media:cycle_voice_stability"),
+        InlineKeyboardButton(text=lang_label, callback_data="media:pick_voice_language"),
+    )
+
+    edit_text = "✏️ Изменить текст" if has_prompt else "✏️ Ввести текст"
+    builder.row(
+        InlineKeyboardButton(text=edit_text, callback_data="media:edit_prompt"),
+        InlineKeyboardButton(text="◀️ Назад", callback_data="media:back:model"),
+    )
+    start_text = f"🚀 Начать генерацию — {cost_credits} ₽" if cost_credits else "🚀 Начать генерацию"
+    builder.row(InlineKeyboardButton(text=start_text, callback_data="media:start"))
+    return builder.as_markup()
+
+
+def voice_language_kb(current: str) -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    for code, label in _VOICE_LANGUAGES:
+        prefix = "✅ " if code == current else ""
+        builder.row(InlineKeyboardButton(
+            text=f"{prefix}{label}",
+            callback_data=f"media:set_voice_language:{code}",
+        ))
+    builder.row(InlineKeyboardButton(text="◀️ Назад", callback_data="media:back:confirm"))
+    return builder.as_markup()
+
+
 _MUSIC_FORMATS = ["mp3_44100_128", "mp3_44100_192", "pcm_44100"]
 
 

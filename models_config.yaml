@@ -666,7 +666,8 @@ tasks:
         model_id: elevenlabs/text-to-dialogue-v3
         provider: kie
         audio_type: voice
-        cost_credits: 1
+        has_voice_settings: true
+        cost_credits: 5
         cost_usd: 0.02
         enabled: true
         voices:

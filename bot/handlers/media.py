@@ -25,7 +25,7 @@ from bot.keyboards.media import (
     video_confirm_kb, video_format_kb, video_frames_menu_kb, video_duration_picker_kb, audio_confirm_kb, edit_confirm_kb, edit_sound_kb,
     music_confirm_kb, music_format_kb,
     udio_confirm_kb, udio_lyrics_type_kb, udio_model_type_kb,
-    voice_picker_kb,
+    voice_picker_kb, voice_confirm_kb, voice_language_kb,
     style_ref_collecting_kb, style_ref_delete_kb, after_generation_kb, gen_waiting_kb, error_kb,
 )
 from providers.base import ProviderError, ProviderContentPolicyError, TaskType
@@ -261,6 +261,16 @@ def _confirm_card_text(data: dict) -> str:
         lines.append(f"<b>Тип аудио:</b> {t}")
         if data.get("selected_voice_label"):
             lines.append(f"<b>Голос:</b> {data['selected_voice_label']}")
+        if data.get("has_voice_settings"):
+            _stab_map = {0.3: "Экспрессивный", 0.5: "Стандарт", 0.8: "Стабильный"}
+            stab = data.get("voice_stability", 0.5)
+            stab_label = _stab_map.get(stab, f"{stab:.1f}")
+            lang = data.get("voice_language", "auto")
+            _lang_map = {"auto": "Авто", "ru": "Рус", "en": "Eng", "de": "De",
+                         "fr": "Fr", "es": "Es", "zh": "Zh", "ja": "Jp"}
+            lang_label = _lang_map.get(lang, lang)
+            diag = "ВКЛ" if data.get("voice_dialogue_mode") else "ВЫКЛ"
+            lines.append(f"<b>Стиль:</b> {stab_label}  |  <b>Язык:</b> {lang_label}  |  <b>Диалог:</b> {diag}")
         if data.get("has_music_settings"):
             lines.append(f"<b>Длительность:</b> {data.get('music_duration', 30)} сек")
             if data.get("music_show_advanced"):
@@ -400,6 +410,8 @@ def _confirm_kb(data: dict):
             return music_confirm_kb(data, cost_credits=cost)
         if data.get("has_udio_settings"):
             return udio_confirm_kb(data, cost_credits=cost)
+        if data.get("has_voice_settings"):
+            return voice_confirm_kb(data, cost_credits=cost)
         voice_label = data.get("selected_voice_label") if data.get("model_voices") else None
         return audio_confirm_kb(has_prompt=has_prompt, cost_credits=cost, voice_label=voice_label)
     elif media_type in ("photo_edit", "video_edit"):
@@ -629,6 +641,14 @@ async def select_model(callback: CallbackQuery, state: FSMContext) -> None:
         else:
             update["selected_voice_id"] = None
             update["selected_voice_label"] = None
+        # Расширенные настройки голоса (elevenlabs-v3)
+        update["has_voice_settings"] = bool(model_cfg.get("has_voice_settings"))
+        if model_cfg.get("has_voice_settings") and voices:
+            update["voice_stability"] = 0.5
+            update["voice_language"] = "auto"
+            update["voice_dialogue_mode"] = False
+            update["selected_voice_id_2"] = voices[0]["id"]
+            update["selected_voice_label_2"] = voices[0]["label"]
 
     await state.update_data(**update)
     data = await state.get_data()
@@ -2952,6 +2972,87 @@ async def set_voice(callback: CallbackQuery, state: FSMContext) -> None:
     await callback.answer()
 
 
+# ─── Настройки голосовой озвучки (elevenlabs-v3) ─────────────────────────────
+
+@router.callback_query(MediaStates.confirm, F.data == "media:toggle_voice_dialogue")
+async def toggle_voice_dialogue(callback: CallbackQuery, state: FSMContext) -> None:
+    data = await state.get_data()
+    await state.update_data(voice_dialogue_mode=not bool(data.get("voice_dialogue_mode")))
+    data = await state.get_data()
+    await callback.message.edit_text(_confirm_card_text(data), parse_mode="HTML", reply_markup=_confirm_kb(data))
+    await callback.answer()
+
+
+@router.callback_query(MediaStates.confirm, F.data == "media:cycle_voice_stability")
+async def cycle_voice_stability(callback: CallbackQuery, state: FSMContext) -> None:
+    presets = [0.3, 0.5, 0.8]
+    data = await state.get_data()
+    current = data.get("voice_stability", 0.5)
+    try:
+        idx = presets.index(current)
+    except ValueError:
+        idx = 1
+    await state.update_data(voice_stability=presets[(idx + 1) % len(presets)])
+    data = await state.get_data()
+    await callback.message.edit_text(_confirm_card_text(data), parse_mode="HTML", reply_markup=_confirm_kb(data))
+    await callback.answer()
+
+
+@router.callback_query(MediaStates.confirm, F.data == "media:pick_voice_language")
+async def pick_voice_language(callback: CallbackQuery, state: FSMContext) -> None:
+    data = await state.get_data()
+    current = data.get("voice_language", "auto")
+    await callback.message.edit_text(
+        "🌐 <b>Выбери язык озвучки:</b>",
+        parse_mode="HTML",
+        reply_markup=voice_language_kb(current),
+    )
+    await callback.answer()
+
+
+@router.callback_query(MediaStates.confirm, F.data.startswith("media:set_voice_language:"))
+async def set_voice_language(callback: CallbackQuery, state: FSMContext) -> None:
+    lang = callback.data[len("media:set_voice_language:"):]
+    await state.update_data(voice_language=lang)
+    data = await state.get_data()
+    await callback.message.edit_text(_confirm_card_text(data), parse_mode="HTML", reply_markup=_confirm_kb(data))
+    await callback.answer()
+
+
+@router.callback_query(MediaStates.confirm, F.data == "media:pick_voice_2")
+async def pick_voice_2(callback: CallbackQuery, state: FSMContext) -> None:
+    data = await state.get_data()
+    voices = data.get("model_voices") or []
+    current_id = data.get("selected_voice_id_2", "")
+    rows = []
+    for v in voices:
+        prefix = "✅ " if v["id"] == current_id else ""
+        rows.append([InlineKeyboardButton(
+            text=f"{prefix}{v['label']}",
+            callback_data=f"media:set_voice_2:{v['id']}",
+        )])
+    rows.append([InlineKeyboardButton(text="◀️ Назад", callback_data="media:back:confirm")])
+    await callback.message.edit_text(
+        "🗣 <b>Выбери второй голос (диалог):</b>",
+        parse_mode="HTML",
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=rows),
+    )
+    await callback.answer()
+
+
+@router.callback_query(MediaStates.confirm, F.data.startswith("media:set_voice_2:"))
+async def set_voice_2(callback: CallbackQuery, state: FSMContext) -> None:
+    voice_id = callback.data[len("media:set_voice_2:"):]
+    data = await state.get_data()
+    voices = data.get("model_voices") or []
+    voice = next((v for v in voices if v["id"] == voice_id), None)
+    if voice:
+        await state.update_data(selected_voice_id_2=voice_id, selected_voice_label_2=voice["label"])
+    data = await state.get_data()
+    await callback.message.edit_text(_confirm_card_text(data), parse_mode="HTML", reply_markup=_confirm_kb(data))
+    await callback.answer()
+
+
 @router.callback_query(F.data == "media:gen_why_long")
 async def gen_why_long(callback: CallbackQuery) -> None:
     await callback.answer(
@@ -3112,6 +3213,10 @@ async def _run_generation(send_msg: Message, tg_user, state: FSMContext, data: d
             music_params = {
                 "_provider_model": "elevenlabs-v3",
                 "voice_id": data.get("selected_voice_id", "EkK5I93UQWFDigLMpZcX"),
+                "voice_stability": data.get("voice_stability", 0.5),
+                "voice_language": data.get("voice_language", "auto"),
+                "voice_dialogue_mode": bool(data.get("voice_dialogue_mode")),
+                "voice_id_2": data.get("selected_voice_id_2"),
             }
         elif data.get("has_udio_settings"):
             music_params = {

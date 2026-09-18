@@ -259,13 +259,32 @@ class KieProvider(OpenAICompatProvider):
         fut = register_pending(corr_id)
 
         # elevenlabs/text-to-dialogue-v3 требует массив dialogue с voice ID
-        voice_id = "EkK5I93UQWFDigLMpZcX"  # default
+        voice_id = "EkK5I93UQWFDigLMpZcX"
+        stability = 0.5
+        language_code = None
+        dialogue_mode = False
+        voice_id_2 = voice_id
         if music_params and music_params.get("_provider_model") == "elevenlabs-v3":
             voice_id = music_params.get("voice_id") or voice_id
-        input_data = {
-            "dialogue": [{"text": prompt, "voice": voice_id}],
-            "stability": 0.5,
-        }
+            stability = music_params.get("voice_stability", 0.5)
+            raw_lang = music_params.get("voice_language", "auto")
+            language_code = None if raw_lang == "auto" else raw_lang
+            dialogue_mode = bool(music_params.get("voice_dialogue_mode"))
+            voice_id_2 = music_params.get("voice_id_2") or voice_id
+
+        if dialogue_mode:
+            # Каждая непустая строка — отдельная реплика, голоса чередуются
+            raw_lines = [l.strip() for l in prompt.splitlines() if l.strip()]
+            dialogue = [
+                {"text": line, "voice": voice_id if i % 2 == 0 else voice_id_2}
+                for i, line in enumerate(raw_lines)
+            ] or [{"text": prompt, "voice": voice_id}]
+        else:
+            dialogue = [{"text": prompt, "voice": voice_id}]
+
+        input_data: dict = {"dialogue": dialogue, "stability": stability}
+        if language_code:
+            input_data["language_code"] = language_code
 
         try:
             await self._create_job(actual_model, input_data, corr_id)
