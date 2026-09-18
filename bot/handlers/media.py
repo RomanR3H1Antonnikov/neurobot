@@ -3122,6 +3122,9 @@ async def _run_generation(send_msg: Message, tg_user, state: FSMContext, data: d
         prompt=prompt or None,
     )
 
+    # Пауза перед отправкой в агрегатор — даёт окно реальной отмены
+    await asyncio.sleep(_CANCEL_WINDOW_SEC)
+
     _sref_ids = data.get("style_reference_file_ids") or []
     style_reference_urls = [
         u for u in [await _tg_file_url(send_msg.bot, fid, _cfg.bot_token) for fid in _sref_ids] if u
