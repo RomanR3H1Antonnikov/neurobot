@@ -2346,7 +2346,7 @@ async def update_prompt_in_confirm(message: Message, state: FSMContext) -> None:
 
 
 @router.message(MediaStates.confirm, ~F.text)
-async def confirm_unknown_input(message: Message, state: FSMContext) -> None:
+async def confirm_unknown_input(message: Message, state: FSMContext, album: list | None = None) -> None:
     """Нетекстовый ввод в confirm state."""
     data = await state.get_data()
     media_type = data.get("media_type", "")
@@ -2391,30 +2391,47 @@ async def confirm_unknown_input(message: Message, state: FSMContext) -> None:
 
         # video: фото-референс
         if media_type == "video":
-            await message.delete()
-            # Конструктор → фото сразу идёт как референс конструктора (минуя кадры)
+            album_msgs = album or [message]
+            for msg in album_msgs:
+                try:
+                    await msg.delete()
+                except Exception:
+                    pass
+            # Конструктор → все фото альбома идут как фото-референсы конструктора
             if data.get("video_frames_mode") == "constructor":
                 if max_refs > 0:
                     srefs = list(data.get("style_reference_file_ids") or [])
-                    if len(srefs) < max_refs:
-                        srefs.append(photo.file_id)
+                    for msg in album_msgs:
+                        if msg.photo and len(srefs) < max_refs:
+                            srefs.append(msg.photo[-1].file_id)
                     await state.update_data(style_reference_file_ids=srefs)
                 if _caption:
                     await state.update_data(prompt=_caption)
                 await _back_to_frames_menu(message.bot, message.chat.id, state)
                 return
-            # Animate-режим: 1-е фото → начало, 2-е → конец, остальные → доп. кадры
+            # Animate-режим
             has_first_support = data.get("model_has_first_frame", True)
             has_last_support = data.get("model_has_last_frame", True)
-            if has_first_support and not data.get("video_first_frame_file_id"):
-                await state.update_data(video_first_frame_file_id=photo.file_id)
-            elif has_last_support and not data.get("video_last_frame_file_id"):
-                await state.update_data(video_last_frame_file_id=photo.file_id)
-            elif max_refs > 0:
-                srefs = list(data.get("style_reference_file_ids") or [])
-                if len(srefs) < max_refs:
-                    srefs.append(photo.file_id)
-                await state.update_data(style_reference_file_ids=srefs)
+            album_photos = [msg.photo[-1].file_id for msg in album_msgs if msg.photo]
+            if len(album_photos) >= 2:
+                # 2+ фото: первое → начальный кадр, второе → конечный, остальные удалены
+                upd = {}
+                if has_first_support:
+                    upd["video_first_frame_file_id"] = album_photos[0]
+                if has_last_support:
+                    upd["video_last_frame_file_id"] = album_photos[1]
+                await state.update_data(**upd)
+            elif album_photos:
+                pid = album_photos[0]
+                if has_first_support and not data.get("video_first_frame_file_id"):
+                    await state.update_data(video_first_frame_file_id=pid)
+                elif has_last_support and not data.get("video_last_frame_file_id"):
+                    await state.update_data(video_last_frame_file_id=pid)
+                elif max_refs > 0:
+                    srefs = list(data.get("style_reference_file_ids") or [])
+                    if len(srefs) < max_refs:
+                        srefs.append(pid)
+                    await state.update_data(style_reference_file_ids=srefs)
             if _caption:
                 await state.update_data(prompt=_caption)
             await _back_to_frames_menu(message.bot, message.chat.id, state)
