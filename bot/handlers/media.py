@@ -2401,7 +2401,7 @@ async def confirm_unknown_input(message: Message, state: FSMContext) -> None:
                     await state.update_data(style_reference_file_ids=srefs)
                 if _caption:
                     await state.update_data(prompt=_caption)
-                await _update_confirm_card(message, state)
+                await _back_to_frames_menu(message.bot, message.chat.id, state)
                 return
             # Animate-режим: 1-е фото → начало, 2-е → конец, остальные → доп. кадры
             has_first_support = data.get("model_has_first_frame", True)
@@ -2417,7 +2417,7 @@ async def confirm_unknown_input(message: Message, state: FSMContext) -> None:
                 await state.update_data(style_reference_file_ids=srefs)
             if _caption:
                 await state.update_data(prompt=_caption)
-            await _update_confirm_card(message, state)
+            await _back_to_frames_menu(message.bot, message.chat.id, state)
             return
 
         # image: если модель поддерживает ориентиры — добавляем туда и обновляем карточку.
@@ -2461,7 +2461,7 @@ async def confirm_unknown_input(message: Message, state: FSMContext) -> None:
                 if len(vrefs) < max_video_refs:
                     vrefs.append(video_file_id)
                 await state.update_data(video_style_reference_file_ids=vrefs)
-            await _update_confirm_card(message, state)
+            await _back_to_frames_menu(message.bot, message.chat.id, state)
             return
         hint = (
             "Этот раздел создаёт видео с нуля по описанию. "
