@@ -2454,7 +2454,10 @@ async def confirm_unknown_input(message: Message, state: FSMContext, album: list
                     await state.update_data(style_reference_file_ids=srefs)
             if _caption:
                 await state.update_data(prompt=_caption)
-            await _back_to_frames_menu(message.bot, message.chat.id, state)
+            if data.get("video_frames_mode") == "animate":
+                await _back_to_frames_menu(message.bot, message.chat.id, state)
+            else:
+                await _update_confirm_card(message, state)
             return
 
         # image: если модель поддерживает ориентиры — добавляем туда и обновляем карточку.
