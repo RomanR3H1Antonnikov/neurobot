@@ -247,6 +247,15 @@ def _confirm_card_text(data: dict) -> str:
             lines.append(f"<b>Масштаб:</b> {_v_ratio}")
         elif data.get("model_resolutions") and _v_res:
             lines.append(f"<b>Качество:</b> {_v_res}")
+        _first_frame = data.get("video_first_frame_file_id")
+        _last_frame = data.get("video_last_frame_file_id")
+        if _first_frame or _last_frame:
+            _frame_parts = []
+            if _first_frame:
+                _frame_parts.append("первый ✅")
+            if _last_frame:
+                _frame_parts.append("последний ✅")
+            lines.append(f"<b>Кадры:</b> {', '.join(_frame_parts)}")
         _srefs = data.get("style_reference_file_ids") or []
         if _srefs:
             lines.append(f"<b>Доп. кадры:</b> {len(_srefs)} фото ✅")
