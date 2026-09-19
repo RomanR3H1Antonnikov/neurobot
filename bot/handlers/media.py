@@ -390,6 +390,7 @@ def _confirm_kb(data: dict):
         _show_animate = bool(_show_first or _show_last)
         _show_constructor = bool(_max_extra > 0)
         _show_frames = bool(_show_animate or _show_constructor)
+        _frames_mode = data.get("video_frames_mode")
         return video_confirm_kb(
             data.get("duration", 5),
             has_prompt=has_prompt,
@@ -408,7 +409,9 @@ def _confirm_kb(data: dict):
             show_frames_button=_show_frames,
             show_first_frame_btn=_show_animate,
             show_constructor_btn=_show_constructor,
-            frames_mode=data.get("video_frames_mode"),
+            frames_mode=_frames_mode,
+            show_first_frame_slot=bool(_show_first and not _frames_mode),
+            show_last_frame_slot=bool(_show_last and not _frames_mode),
             output_format=data.get("video_output_format"),
             output_formats=data.get("model_output_formats"),
             audio_enabled=data.get("video_audio_enabled", True),
@@ -1471,20 +1474,26 @@ async def add_video_ref(callback: CallbackQuery, state: FSMContext) -> None:
 @router.callback_query(MediaStates.confirm, F.data == "media:add_first_frame")
 async def add_first_frame(callback: CallbackQuery, state: FSMContext) -> None:
     """Кнопка 'Первый кадр' / 'Фото' на карточке видео-генерации."""
-    await state.update_data(
-        adding_video_frame="first",
-        _sref_msg_id=callback.message.message_id,
-        video_frames_mode="animate",
-        adding_video_extra_frame=None,
-        adding_style_ref=None,
-    )
+    data = await state.get_data()
+    from_confirm = data.get("video_frames_mode") is None
+    upd: dict = {
+        "adding_video_frame": "first",
+        "_sref_msg_id": callback.message.message_id,
+        "adding_video_extra_frame": None,
+        "adding_style_ref": None,
+        "adding_frame_from_confirm": from_confirm,
+    }
+    if not from_confirm:
+        upd["video_frames_mode"] = "animate"
+    await state.update_data(**upd)
     data = await state.get_data()
     has = bool(data.get("video_first_frame_file_id"))
     if bool(data.get("model_motion_control")):
         hint = "📎 Отправь другое фото (начальный кадр):" if has else "📎 Отправь фото — оно станет начальным кадром для Motion Control:"
     else:
         hint = "📎 Отправь другое фото для начала видео:" if has else "📎 Отправь фото — оно будет первым кадром (начало видео):"
-    await callback.message.edit_text(hint, reply_markup=back_to_frames_kb())
+    kb = back_to_confirm_kb() if from_confirm else back_to_frames_kb()
+    await callback.message.edit_text(hint, reply_markup=kb)
     await state.set_state(MediaStates.enter_reference)
     await callback.answer()
 
@@ -1492,19 +1501,24 @@ async def add_first_frame(callback: CallbackQuery, state: FSMContext) -> None:
 @router.callback_query(MediaStates.confirm, F.data == "media:add_last_frame")
 async def add_last_frame(callback: CallbackQuery, state: FSMContext) -> None:
     """Кнопка 'Конец видео' / 'Видео' на карточке видео-генерации."""
-    await state.update_data(
-        adding_video_frame="last",
-        _sref_msg_id=callback.message.message_id,
-        adding_video_extra_frame=None,
-        adding_style_ref=None,
-    )
+    data = await state.get_data()
+    from_confirm = data.get("video_frames_mode") is None
+    upd: dict = {
+        "adding_video_frame": "last",
+        "_sref_msg_id": callback.message.message_id,
+        "adding_video_extra_frame": None,
+        "adding_style_ref": None,
+        "adding_frame_from_confirm": from_confirm,
+    }
+    await state.update_data(**upd)
     data = await state.get_data()
     has = bool(data.get("video_last_frame_file_id"))
     if bool(data.get("model_motion_control")):
         hint = "📎 Отправь другое видео (движение):" if has else "📎 Отправь видео — оно задаст характер движения для Motion Control:"
     else:
         hint = "📎 Отправь другое фото для конца видео:" if has else "📎 Отправь фото — оно будет последним кадром (конец видео):"
-    await callback.message.edit_text(hint, reply_markup=back_to_frames_kb())
+    kb = back_to_confirm_kb() if from_confirm else back_to_frames_kb()
+    await callback.message.edit_text(hint, reply_markup=kb)
     await state.set_state(MediaStates.enter_reference)
     await callback.answer()
 
@@ -1520,7 +1534,7 @@ async def back_to_confirm(callback: CallbackQuery, state: FSMContext) -> None:
 
     await state.update_data(
         adding_style_ref=None, adding_video_extra_frame=None, adding_audio_ref=None,
-        adding_video_ref=None,
+        adding_video_ref=None, adding_video_frame=None, adding_frame_from_confirm=None,
         managing_style_ref=None, managing_style_ref_index=None,
         managing_video_ref=None, managing_video_ref_index=None,
         entering_duration=None,
@@ -1560,15 +1574,23 @@ async def back_to_frames(callback: CallbackQuery, state: FSMContext) -> None:
 
 @router.callback_query(MediaStates.confirm, F.data == "media:delete_first_frame")
 async def delete_first_frame(callback: CallbackQuery, state: FSMContext) -> None:
+    data = await state.get_data()
     await state.update_data(video_first_frame_file_id=None, _sref_msg_id=callback.message.message_id)
-    await _back_to_frames_menu(callback.bot, callback.message.chat.id, state)
+    if data.get("video_frames_mode") is None:
+        await _update_confirm_card(callback.message, state)
+    else:
+        await _back_to_frames_menu(callback.bot, callback.message.chat.id, state)
     await callback.answer("Фото удалено")
 
 
 @router.callback_query(MediaStates.confirm, F.data == "media:delete_last_frame")
 async def delete_last_frame(callback: CallbackQuery, state: FSMContext) -> None:
+    data = await state.get_data()
     await state.update_data(video_last_frame_file_id=None, _sref_msg_id=callback.message.message_id)
-    await _back_to_frames_menu(callback.bot, callback.message.chat.id, state)
+    if data.get("video_frames_mode") is None:
+        await _update_confirm_card(callback.message, state)
+    else:
+        await _back_to_frames_menu(callback.bot, callback.message.chat.id, state)
     await callback.answer("Фото удалено")
 
 
@@ -1731,9 +1753,12 @@ async def receive_reference_photo(message: Message, state: FSMContext, album: li
         # Кадр для image-to-video: first или last в зависимости от нажатой кнопки
         frame_slot = data.get("adding_video_frame", "first")
         key = "video_first_frame_file_id" if frame_slot == "first" else "video_last_frame_file_id"
-        await state.update_data(**{key: photo.file_id, "adding_video_frame": None})
+        await state.update_data(**{key: photo.file_id, "adding_video_frame": None, "adding_frame_from_confirm": None})
         await message.delete()
-        await _back_to_frames_menu(message.bot, message.chat.id, state)
+        if data.get("adding_frame_from_confirm"):
+            await _update_confirm_card(message, state)
+        else:
+            await _back_to_frames_menu(message.bot, message.chat.id, state)
         return
     await message.delete()
     _ref_upd: dict = {"reference_file_id": photo.file_id, "reference_type": "photo"}
@@ -1800,8 +1825,11 @@ async def receive_reference_video(message: Message, state: FSMContext) -> None:
             and data.get("adding_video_frame") == "last"
             and data.get("model_motion_control")):
         await message.delete()
-        await state.update_data(video_last_frame_file_id=message.video.file_id, adding_video_frame=None)
-        await _back_to_frames_menu(message.bot, message.chat.id, state)
+        await state.update_data(video_last_frame_file_id=message.video.file_id, adding_video_frame=None, adding_frame_from_confirm=None)
+        if data.get("adding_frame_from_confirm"):
+            await _update_confirm_card(message, state)
+        else:
+            await _back_to_frames_menu(message.bot, message.chat.id, state)
         return
     await message.delete()
     await state.update_data(reference_file_id=message.video.file_id, reference_type="video")

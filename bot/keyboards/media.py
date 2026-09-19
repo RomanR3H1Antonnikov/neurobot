@@ -226,6 +226,8 @@ def video_confirm_kb(
     show_first_frame_btn: bool = True,
     show_constructor_btn: bool = True,
     frames_mode: str | None = None,
+    show_first_frame_slot: bool = False,
+    show_last_frame_slot: bool = False,
     output_format: str | None = None,
     output_formats: list[str] | None = None,
     audio_enabled: bool = True,
@@ -281,6 +283,22 @@ def video_confirm_kb(
             row_btns.append(InlineKeyboardButton(text=constr_text, callback_data="media:toggle_frames"))
         if row_btns:
             builder.row(*row_btns)
+    if show_first_frame_slot:
+        if has_first_frame:
+            builder.row(
+                InlineKeyboardButton(text="📎 Начало видео ✅", callback_data="media:add_first_frame"),
+                InlineKeyboardButton(text="🗑", callback_data="media:delete_first_frame"),
+            )
+        else:
+            builder.row(InlineKeyboardButton(text="📎 Начало видео", callback_data="media:add_first_frame"))
+    if show_last_frame_slot:
+        if has_last_frame:
+            builder.row(
+                InlineKeyboardButton(text="📎 Конец видео ✅", callback_data="media:add_last_frame"),
+                InlineKeyboardButton(text="🗑", callback_data="media:delete_last_frame"),
+            )
+        else:
+            builder.row(InlineKeyboardButton(text="📎 Конец видео", callback_data="media:add_last_frame"))
     if max_audio_refs > 0:
         audio_text = f"🎵 Аудио: {audio_ref_count}/{max_audio_refs} ✅" if audio_ref_count else "🎵 Аудио"
         builder.row(InlineKeyboardButton(text=audio_text, callback_data="media:add_audio_ref"))
