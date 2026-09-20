@@ -410,8 +410,6 @@ def _confirm_kb(data: dict):
             show_first_frame_btn=_show_animate,
             show_constructor_btn=_show_constructor,
             frames_mode=_frames_mode,
-            show_first_frame_slot=bool(_show_first and not _frames_mode),
-            show_last_frame_slot=bool(_show_last and not _frames_mode),
             output_format=data.get("video_output_format"),
             output_formats=data.get("model_output_formats"),
             audio_enabled=data.get("video_audio_enabled", True),
