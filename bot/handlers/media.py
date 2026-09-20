@@ -2464,6 +2464,16 @@ async def confirm_unknown_input(message: Message, state: FSMContext, album: list
                     await state.update_data(prompt=_caption)
                 await _back_to_frames_menu(message.bot, message.chat.id, state)
                 return
+            # Конфликт: в конструкторе уже есть файлы — не принимаем фото в общие настройки
+            if data.get("video_frames_mode") is None:
+                _has_constructor = bool(data.get("style_reference_file_ids")) or bool(data.get("video_style_reference_file_ids"))
+                if _has_constructor:
+                    asyncio.create_task(_toast(
+                        message,
+                        "⚠️ В Конструкторе уже есть файлы.\n"
+                        "Выбери раздел: нажми «Оживить фото» или «Конструктор видео».",
+                    ))
+                    return
             # Animate-режим
             has_first_support = data.get("model_has_first_frame", True)
             has_last_support = data.get("model_has_last_frame", True)
