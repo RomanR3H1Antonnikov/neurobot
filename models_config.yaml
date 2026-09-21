@@ -269,10 +269,11 @@ tasks:
         constructor_includes_video: true
         model_id: bytedance/seedance-2
         provider: kie
-        cost_credits: 25
-        cost_per_second: 5.0
-        cost_per_second_by_resolution: {"480p": 5.0, "720p": 7.5, "1080p": 11.0, "4K": 22.0}
-        cost_usd: 0.06
+        cost_credits: 34
+        cost_per_second: 7.0
+        cost_per_second_by_resolution: {"480p": 7.0, "720p": 14.0, "1080p": 34.0, "4K": 66.0}
+        cost_per_second_by_resolution_no_video: {"480p": 12.0, "720p": 24.0, "1080p": 53.0, "4K": 108.0}
+        cost_usd: 0.0575
         enabled: true
 
       - id: seedance-2-mini
@@ -298,10 +299,11 @@ tasks:
         constructor_includes_video: true
         model_id: bytedance/seedance-2-mini
         provider: kie
-        cost_credits: 15
-        cost_per_second: 5.0
-        cost_per_second_by_resolution: {"480p": 5.0, "720p": 7.5}
-        cost_usd: 0.06
+        cost_credits: 4
+        cost_per_second: 3.0
+        cost_per_second_by_resolution: {"480p": 3.0, "720p": 4.0}
+        cost_per_second_by_resolution_no_video: {"480p": 3.0, "720p": 6.0}
+        cost_usd: 0.012
         enabled: true
 
       - id: kling-3
