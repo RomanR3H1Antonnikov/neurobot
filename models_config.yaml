@@ -239,10 +239,11 @@ tasks:
         output_formats: ["mp4", "mov"]
         model_id: bytedance/seedance-2-5
         provider: kie
-        cost_credits: 40
-        cost_per_second: 8.0
-        cost_per_second_by_resolution: {"480p": 8.0, "720p": 12.0, "1080p": 18.0}
-        cost_usd: 0.08
+        cost_credits: 55
+        cost_per_second: 11.0
+        cost_per_second_by_resolution: {"480p": 11.0, "720p": 22.0, "1080p": 50.0}
+        cost_per_second_by_resolution_no_video: {"480p": 17.0, "720p": 34.0, "1080p": 81.0}
+        cost_usd: 0.085
         enabled: true
 
       - id: seedance-2

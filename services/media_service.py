@@ -14,16 +14,26 @@ class RateLimitError(Exception):
     pass
 
 
-def get_cost(model_cfg: dict, resolution: str | None = None, duration: int | None = None) -> int:
+def get_cost(
+    model_cfg: dict,
+    resolution: str | None = None,
+    duration: int | None = None,
+    has_video_ref: bool = False,
+) -> int:
     """Возвращает стоимость генерации.
 
     Приоритет:
-      1. cost_per_second_by_resolution × duration
-      2. cost_per_second × duration
-      3. cost_by_resolution[resolution]
-      4. cost_credits (фиксированная)
+      1. cost_per_second_by_resolution_no_video × duration  (если нет видео-референса)
+      2. cost_per_second_by_resolution × duration
+      3. cost_per_second × duration
+      4. cost_by_resolution[resolution]
+      5. cost_credits (фиксированная)
     """
     if duration:
+        if not has_video_ref:
+            no_video = model_cfg.get("cost_per_second_by_resolution_no_video")
+            if no_video and resolution and resolution in no_video:
+                return max(1, round(no_video[resolution] * duration))
         by_dur_res = model_cfg.get("cost_per_second_by_resolution")
         if by_dur_res and resolution and resolution in by_dur_res:
             return max(1, round(by_dur_res[resolution] * duration))
@@ -39,6 +49,7 @@ def get_cost(model_cfg: dict, resolution: str | None = None, duration: int | Non
 async def _check_preconditions(
     telegram_id: int, username: str, task_type: TaskType, model_cfg: dict,
     resolution: str | None = None, duration: int | None = None,
+    has_video_ref: bool = False,
 ) -> int:
     """Проверяет лимиты и баланс. Возвращает user_id из БД."""
     user = await get_or_create_user(telegram_id, username)
@@ -49,7 +60,7 @@ async def _check_preconditions(
     if not ok:
         raise RateLimitError(f"Превышен лимит: не более {rate_limit} запросов в час")
 
-    cost = get_cost(model_cfg, resolution, duration)
+    cost = get_cost(model_cfg, resolution, duration, has_video_ref=has_video_ref)
     if user["balance"] < cost:
         raise InsufficientCreditsError(
             f"Недостаточно средств. Нужно: {cost} ₽, у вас: {user['balance']} ₽"
@@ -87,8 +98,10 @@ async def generate_video(
 ) -> GenerationResult:
     task = TaskType.VIDEO_GENERATION
     provider, model_cfg = get_provider_by_model_id(task, model_slug)
+    has_video_ref = bool(video_reference_urls)
     user_id = await _check_preconditions(telegram_id, username, task, model_cfg,
-                                         resolution=resolution, duration=duration)
+                                         resolution=resolution, duration=duration,
+                                         has_video_ref=has_video_ref)
 
     result = await provider.generate_video(
         prompt, duration=duration, model=model_cfg["model_id"],
@@ -102,7 +115,7 @@ async def generate_video(
         output_format=output_format,
         audio=audio,
     )
-    await deduct_credits(user_id, get_cost(model_cfg, resolution, duration), task.value)
+    await deduct_credits(user_id, get_cost(model_cfg, resolution, duration, has_video_ref=has_video_ref), task.value)
     return result
 
 
