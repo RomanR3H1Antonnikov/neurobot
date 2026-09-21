@@ -513,10 +513,10 @@ tasks:
         max_style_refs: 9
         model_id: alibaba/happyhorse-1.1
         provider: routerai
-        cost_credits: 15
-        cost_per_second: 3.0
-        cost_per_second_by_resolution: {"720p": 3.0, "1080p": 4.5}
-        cost_usd: 0.07
+        cost_credits: 14
+        cost_by_resolution: {"720p": 14}
+        cost_per_second_by_resolution: {"1080p": 16}
+        cost_usd: 0.1125
         enabled: true
 
       - id: pixverse-6
