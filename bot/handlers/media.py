@@ -45,7 +45,7 @@ _CANCEL_WINDOW_SEC = 5  # секунд, в течение которых отм�
 
 
 async def _update_sref_status(bot, chat_id: int, state: FSMContext, text: str, kb) -> None:
-    """Редактирует сообщение-счётчик ориентиров; если не удаётся — удаляет старое и отправляет новое."""
+    """Редактирует сообщение-счётчик ориентиров на месте; при transient-ошибках пропускает обновление."""
     data = await state.get_data()
     msg_id = data.get("_sref_msg_id")
     if msg_id:
@@ -55,11 +55,14 @@ async def _update_sref_status(bot, chat_id: int, state: FSMContext, text: str, k
             )
             return
         except TelegramBadRequest as e:
-            if "not modified" in str(e).lower():
-                return  # сообщение уже актуально, дубль не нужен
+            err = str(e).lower()
+            if "not modified" in err:
+                return  # сообщение уже актуально
+            if "message to edit not found" not in err and "message can't be edited" not in err:
+                return  # transient-ошибка (flood control и т.п.) — не дублируем
+            # Сообщение точно пропало — удаляем остаток и отправляем новое
         except Exception:
-            pass
-        # При реальной ошибке редактирования — удаляем старое сообщение перед отправкой нового
+            return  # сетевая или иная ошибка — пропускаем, не дублируем
         try:
             await bot.delete_message(chat_id=chat_id, message_id=msg_id)
         except Exception:
