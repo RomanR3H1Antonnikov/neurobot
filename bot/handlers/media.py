@@ -336,6 +336,17 @@ def _confirm_card_text(data: dict) -> str:
             if _srefs:
                 lines.append(f"<b>{'Ориентир' if len(_srefs) == 1 else 'Ориентиры'}:</b> {len(_srefs)} фото ✅")
         elif media_type == "video_edit":
+            _ve_dur = data.get("duration")
+            _ve_ratio = data.get("aspect_ratio")
+            _ve_res = data.get("resolution")
+            if _ve_dur:
+                lines.append(f"<b>Длительность:</b> {_ve_dur} сек")
+            if data.get("model_aspect_ratios") and data.get("model_resolutions") and _ve_ratio and _ve_res:
+                lines.append(f"<b>Масштаб:</b> {_ve_ratio}  |  <b>Качество:</b> {_ve_res}")
+            elif data.get("model_aspect_ratios") and _ve_ratio:
+                lines.append(f"<b>Масштаб:</b> {_ve_ratio}")
+            elif data.get("model_resolutions") and _ve_res:
+                lines.append(f"<b>Качество:</b> {_ve_res}")
             _edit_audio_mode = data.get("video_edit_audio_mode")
             if _edit_audio_mode == "remove":
                 lines.append("<b>Звук:</b> убрать ✅")
@@ -435,6 +446,12 @@ def _confirm_kb(data: dict):
             style_ref_count=style_ref_count,
             cost_credits=cost,
             video_edit_audio_mode=data.get("video_edit_audio_mode"),
+            duration=data.get("duration"),
+            duration_options=data.get("model_duration_options"),
+            aspect_ratio=data.get("aspect_ratio"),
+            has_aspect_ratios=bool(data.get("model_aspect_ratios")),
+            resolution=data.get("resolution"),
+            has_resolutions=bool(data.get("model_resolutions")),
         )
 
 
@@ -608,10 +625,10 @@ async def select_model(callback: CallbackQuery, state: FSMContext) -> None:
     allowed_res = model_cfg.get("resolutions")
     if allowed_res:
         current_res = data.get("resolution")
-        if media_type == "video" or not current_res or current_res not in allowed_res:
+        if media_type in ("video", "video_edit") or not current_res or current_res not in allowed_res:
             update["resolution"] = allowed_res[0]
-    # для видео — всегда ставим минимальную длительность (самый дешёвый дефолт)
-    if media_type == "video" and duration_options:
+    # для видео/редактирования видео — всегда ставим минимальную длительность (самый дешёвый дефолт)
+    if media_type in ("video", "video_edit") and duration_options:
         update["duration"] = duration_options[0]
     # для аудио — тип (voice/music) берём из конфига модели
     if media_type == "audio":
@@ -3329,6 +3346,9 @@ async def _run_generation(send_msg: Message, tg_user, state: FSMContext, data: d
         result = await media_service.edit_video(
             tg_user.id, tg_user.username, media_bytes, prompt, model_slug,
             video_url=video_url,
+            duration=data.get("duration", 5),
+            aspect_ratio=data.get("aspect_ratio"),
+            resolution=data.get("resolution"),
             audio=(_edit_audio_mode != "remove"),
             audio_url=_edit_audio_url,
         )

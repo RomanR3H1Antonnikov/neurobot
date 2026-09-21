@@ -677,6 +677,12 @@ def edit_confirm_kb(
     style_ref_count: int = 0,
     cost_credits: int | None = None,
     video_edit_audio_mode: str | None = None,
+    duration: int | None = None,
+    duration_options: list[int] | None = None,
+    aspect_ratio: str | None = None,
+    has_aspect_ratios: bool = False,
+    resolution: str | None = None,
+    has_resolutions: bool = False,
 ) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     if media_type == "photo_edit":
@@ -688,6 +694,20 @@ def edit_confirm_kb(
         style_text = f"🖼 Ориентиры: {style_ref_count} фото ✅" if style_ref_count else "📎 Добавить ориентир"
         builder.row(InlineKeyboardButton(text=style_text, callback_data="media:add_style_ref"))
     if media_type == "video_edit":
+        if duration is not None and duration_options:
+            builder.row(InlineKeyboardButton(
+                text=f"⏱ Длительность: {duration} сек",
+                callback_data="media:pick_duration",
+            ))
+        if has_aspect_ratios and has_resolutions and aspect_ratio and resolution:
+            builder.row(
+                InlineKeyboardButton(text=f"📐 Масштаб: {aspect_ratio}", callback_data="media:pick_ratio"),
+                InlineKeyboardButton(text=f"🖼 Качество: {resolution}", callback_data="media:pick_resolution"),
+            )
+        elif has_aspect_ratios and aspect_ratio:
+            builder.row(InlineKeyboardButton(text=f"📐 Масштаб: {aspect_ratio}", callback_data="media:pick_ratio"))
+        elif has_resolutions and resolution:
+            builder.row(InlineKeyboardButton(text=f"🖼 Качество: {resolution}", callback_data="media:pick_resolution"))
         if video_edit_audio_mode == "remove":
             sound_text = "🔕 Звук: убрать ✅"
         elif video_edit_audio_mode == "replace":
