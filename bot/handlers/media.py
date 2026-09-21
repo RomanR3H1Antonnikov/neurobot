@@ -1463,7 +1463,7 @@ async def add_video_ref(callback: CallbackQuery, state: FSMContext) -> None:
         if count else
         f"🎬 Отправь видеофайл — он добавится как видеореференс. Можно добавить до {max_refs} файлов.\nКогда закончишь — нажми «Назад»."
     )
-    await state.update_data(adding_video_ref=True, _sref_msg_id=callback.message.message_id)
+    await state.update_data(adding_video_ref=True, adding_video_frame=None, _sref_msg_id=callback.message.message_id)
     await callback.message.edit_text(hint, reply_markup=back_to_frames_kb())
     await state.set_state(MediaStates.enter_reference)
     await callback.answer()
@@ -1773,21 +1773,23 @@ async def receive_reference_video(message: Message, state: FSMContext) -> None:
         sent = await message.answer("Для редактирования фото пришли изображение, а не видео.", reply_markup=back_to_model_kb())
         await _track_msg(state, sent.message_id)
         return
-    # Фильтр типа: ожидается не видео
-    if data.get("adding_style_ref") or data.get("adding_video_extra_frame"):
-        await message.delete()
-        asyncio.create_task(_toast(message, "⚠️ Здесь нужно прислать фото 📷, а не видео."))
-        return
-    if data.get("adding_video_frame") and not (
-        data.get("adding_video_frame") == "last" and data.get("model_motion_control")
-    ):
-        await message.delete()
-        asyncio.create_task(_toast(message, "⚠️ Здесь нужно прислать фото 📷, а не видео."))
-        return
-    if data.get("adding_audio_ref") or data.get("receiving_edit_audio"):
-        await message.delete()
-        asyncio.create_task(_toast(message, "⚠️ Здесь нужно прислать аудиофайл 🎵, а не видео."))
-        return
+    # adding_video_ref имеет приоритет — проверяем до других фильтров
+    if not data.get("adding_video_ref"):
+        # Фильтр типа: ожидается не видео
+        if data.get("adding_style_ref") or data.get("adding_video_extra_frame"):
+            await message.delete()
+            asyncio.create_task(_toast(message, "⚠️ Здесь нужно прислать фото 📷, а не видео."))
+            return
+        if data.get("adding_video_frame") and not (
+            data.get("adding_video_frame") == "last" and data.get("model_motion_control")
+        ):
+            await message.delete()
+            asyncio.create_task(_toast(message, "⚠️ Здесь нужно прислать фото 📷, а не видео."))
+            return
+        if data.get("adding_audio_ref") or data.get("receiving_edit_audio"):
+            await message.delete()
+            asyncio.create_task(_toast(message, "⚠️ Здесь нужно прислать аудиофайл 🎵, а не видео."))
+            return
     # Видео-референс для генерации видео
     if data.get("adding_video_ref"):
         video_refs = list(data.get("video_style_reference_file_ids") or [])
