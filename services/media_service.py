@@ -23,26 +23,51 @@ def get_cost(
     """Возвращает стоимость генерации.
 
     Приоритет:
-      1. cost_per_second_by_resolution_no_video × duration  (если нет видео-референса)
-      2. cost_per_second_by_resolution × duration
-      3. cost_per_second × duration
-      4. cost_by_resolution[resolution]
-      5. cost_credits (фиксированная)
+      1. cost_by_resolution_with_video[resolution|default]   (если есть видео-референс)
+      2. cost_per_second_by_resolution_no_video × duration   (если нет видео-референса)
+      3. cost_by_duration_resolution[resolution|default][duration]  (дискретная таблица)
+      4. cost_per_second_by_resolution × duration
+      5. cost_per_second × duration
+      6. cost_by_resolution[resolution]
+      7. cost_credits (фиксированная)
     """
+    # 1. Фиксированная цена за генерацию при наличии видео-референса
+    if has_video_ref:
+        with_video = model_cfg.get("cost_by_resolution_with_video")
+        if with_video:
+            cost = (with_video.get(resolution) if resolution else None)
+            if cost is None:
+                cost = with_video.get("default")
+            if cost is not None:
+                return int(cost)
+
     if duration:
         if not has_video_ref:
+            # 2. Per-second по разрешению (без видео-референса)
             no_video = model_cfg.get("cost_per_second_by_resolution_no_video")
             if no_video and resolution and resolution in no_video:
                 return max(1, round(no_video[resolution] * duration))
+            # 3. Дискретная таблица по длительности и разрешению
+            dur_res = model_cfg.get("cost_by_duration_resolution")
+            if dur_res:
+                dur_map = (dur_res.get(resolution) if resolution else None) or dur_res.get("default")
+                if dur_map and str(duration) in dur_map:
+                    return int(dur_map[str(duration)])
+
+        # 4. Per-second по разрешению
         by_dur_res = model_cfg.get("cost_per_second_by_resolution")
         if by_dur_res and resolution and resolution in by_dur_res:
             return max(1, round(by_dur_res[resolution] * duration))
+        # 5. Flat per-second
         per_sec = model_cfg.get("cost_per_second")
         if per_sec:
             return max(1, round(per_sec * duration))
+
+    # 6. Фиксированная цена по разрешению
     by_res = model_cfg.get("cost_by_resolution")
     if by_res and resolution and resolution in by_res:
         return by_res[resolution]
+    # 7. Fallback
     return model_cfg["cost_credits"]
 
 
