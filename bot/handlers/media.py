@@ -1581,14 +1581,21 @@ async def back_to_confirm(callback: CallbackQuery, state: FSMContext) -> None:
         await callback.message.edit_text(text, parse_mode="HTML", reply_markup=kb)
         await state.update_data(confirm_msg_id=callback.message.message_id)
         await _delete_msgs_below(callback.bot, callback.message.chat.id, state, callback.message.message_id)
+    except TelegramBadRequest as e:
+        err = str(e).lower()
+        if "not modified" in err:
+            await _delete_msgs_below(callback.bot, callback.message.chat.id, state, callback.message.message_id)
+        elif "message to edit not found" in err or "message can't be edited" in err:
+            try:
+                await callback.message.edit_reply_markup(reply_markup=None)
+            except Exception:
+                pass
+            sent = await callback.message.answer(text, parse_mode="HTML", reply_markup=kb)
+            await _track_msg(state, sent.message_id)
+            await state.update_data(confirm_msg_id=sent.message_id)
+        # иначе transient — не дублируем
     except Exception:
-        try:
-            await callback.message.edit_reply_markup(reply_markup=None)
-        except Exception:
-            pass
-        sent = await callback.message.answer(text, parse_mode="HTML", reply_markup=kb)
-        await _track_msg(state, sent.message_id)
-        await state.update_data(confirm_msg_id=sent.message_id)
+        pass  # сетевая ошибка — не дублируем
     await callback.answer()
 
 
@@ -2200,6 +2207,17 @@ async def _update_confirm_card(message: Message, state: FSMContext) -> None:
             )
             await _delete_msgs_below(message.bot, message.chat.id, state, confirm_msg_id)
             return
+        except TelegramBadRequest as e:
+            err = str(e).lower()
+            if "not modified" in err:
+                await _delete_msgs_below(message.bot, message.chat.id, state, confirm_msg_id)
+                return
+            if "message to edit not found" not in err and "message can't be edited" not in err:
+                return  # transient — не дублируем
+        except Exception:
+            return  # сетевая ошибка — пропускаем
+        try:
+            await message.bot.delete_message(chat_id=message.chat.id, message_id=confirm_msg_id)
         except Exception:
             pass
     sent = await message.answer(text, parse_mode="HTML", reply_markup=kb)
