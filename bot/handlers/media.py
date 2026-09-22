@@ -128,6 +128,16 @@ async def _back_to_frames_menu(bot, chat_id: int, state: FSMContext) -> None:
                 parse_mode="HTML", reply_markup=frames_kb,
             )
             return
+        except TelegramBadRequest as e:
+            err = str(e).lower()
+            if "not modified" in err:
+                return
+            if "message to edit not found" not in err and "message can't be edited" not in err:
+                return  # transient — не дублируем
+        except Exception:
+            return  # сетевая ошибка — пропускаем
+        try:
+            await bot.delete_message(chat_id=chat_id, message_id=msg_id)
         except Exception:
             pass
     sent = await bot.send_message(chat_id, title, parse_mode="HTML", reply_markup=frames_kb)
@@ -1995,6 +2005,20 @@ async def receive_reference_document(message: Message, state: FSMContext) -> Non
         if data.get("media_type") == "photo_edit":
             sent = await message.answer("Для редактирования фото пришли изображение, а не видео.", reply_markup=back_to_model_kb())
             await _track_msg(state, sent.message_id)
+            return
+        # Видео-документ при добавлении видео-референса — обрабатываем как видео
+        if data.get("adding_video_ref"):
+            video_refs = list(data.get("video_style_reference_file_ids") or [])
+            max_refs = data.get("model_max_video_refs", 0)
+            await message.delete()
+            if len(video_refs) < max_refs:
+                video_refs.append(message.document.file_id)
+            await state.update_data(video_style_reference_file_ids=video_refs)
+            await _update_sref_status(
+                message.bot, message.chat.id, state,
+                f"✅ Видео добавлено! Всего: {len(video_refs)}/{max_refs}. Отправь ещё или нажми «Назад».",
+                back_to_frames_kb(),
+            )
             return
         await message.delete()
         await state.update_data(reference_file_id=message.document.file_id, reference_type="video")
