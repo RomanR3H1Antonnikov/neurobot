@@ -440,6 +440,7 @@ def _confirm_kb(data: dict):
             output_formats=data.get("model_output_formats"),
             audio_enabled=data.get("video_audio_enabled", True),
             show_audio_toggle=data.get("model_has_audio", True),
+            motion_orientation=data.get("motion_orientation"),
             cost_credits=cost,
         )
     elif media_type == "audio":
@@ -621,6 +622,7 @@ async def select_model(callback: CallbackQuery, state: FSMContext) -> None:
         "model_constructor_video": model_cfg.get("constructor_includes_video", False),
         "model_has_audio": model_cfg.get("audio", True),
         "video_audio_enabled": model_cfg.get("audio", True),
+        "motion_orientation": "image" if model_cfg.get("motion_control") else None,
         "video_frames_mode": None,
     }
     # если output_format не задан или недоступен у новой модели — сбрасываем
@@ -1346,6 +1348,30 @@ async def toggle_audio(callback: CallbackQuery, state: FSMContext) -> None:
     data = await state.get_data()
     new_audio = not data.get("video_audio_enabled", True)
     await state.update_data(video_audio_enabled=new_audio)
+    data = await state.get_data()
+    await callback.message.edit_reply_markup(reply_markup=_confirm_kb(data))
+    await callback.answer()
+
+
+@router.callback_query(MediaStates.confirm, F.data == "media:toggle_orientation")
+async def toggle_motion_orientation(callback: CallbackQuery, state: FSMContext) -> None:
+    """Переключение ориентации персонажа для Kling Motion Control."""
+    data = await state.get_data()
+    new_orient = "video" if data.get("motion_orientation") == "image" else "image"
+    # Корректируем ограничения длительности
+    if new_orient == "image":
+        new_max = 10
+        new_opts = [s for s in (data.get("model_duration_options") or [5, 10]) if s <= 10] or [5, 10]
+    else:
+        new_max = 30
+        new_opts = [5, 10, 15, 20, 25, 30]
+    cur_dur = data.get("duration", 5)
+    await state.update_data(
+        motion_orientation=new_orient,
+        model_max_duration=new_max,
+        model_duration_options=new_opts,
+        duration=min(cur_dur, new_max),
+    )
     data = await state.get_data()
     await callback.message.edit_reply_markup(reply_markup=_confirm_kb(data))
     await callback.answer()
@@ -3305,6 +3331,7 @@ async def _run_generation(send_msg: Message, tg_user, state: FSMContext, data: d
             video_reference_urls=video_reference_urls,
             output_format=data.get("video_output_format"),
             audio=data.get("video_audio_enabled", True),
+            character_orientation=data.get("motion_orientation"),
         )
         file = BufferedInputFile(result.data, filename=result.filename)
         if result.mime_type == "video/quicktime":

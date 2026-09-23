@@ -64,6 +64,7 @@ class AbstractProvider(ABC):
         video_reference_urls: list[str] | None = None,
         output_format: str | None = None,
         audio: bool = True,
+        character_orientation: str | None = None,
     ) -> GenerationResult:
         ...
 

@@ -367,6 +367,7 @@ class KieProvider(OpenAICompatProvider):
         video_reference_urls: list[str] | None = None,
         output_format: str | None = None,
         audio: bool = True,
+        character_orientation: str | None = None,
     ) -> GenerationResult:
         actual_model = model or "kling-3.0/video"
         corr_id = uuid.uuid4().hex
@@ -433,6 +434,10 @@ class KieProvider(OpenAICompatProvider):
         # ── Формат вывода ────────────────────────────────────────────────────
         if output_format and is_bytedance:
             input_data["output_format"] = output_format
+
+        # ── Ориентация персонажа (Kling Motion Control) ──────────────────────
+        if character_orientation and "motion-control" in actual_model:
+            input_data["character_orientation"] = character_orientation
 
         # ── Флаг аудио ───────────────────────────────────────────────────────
         input_data["audio"] = audio
