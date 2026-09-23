@@ -199,7 +199,8 @@ async def edit_video(
 ) -> GenerationResult:
     task = TaskType.VIDEO_EDIT
     provider, model_cfg = get_provider_by_model_id(task, model_slug)
-    user_id = await _check_preconditions(telegram_id, username, task, model_cfg)
+    user_id = await _check_preconditions(telegram_id, username, task, model_cfg,
+                                         resolution=resolution, duration=duration)
 
     result = await provider.edit_video(
         video_bytes, prompt, model=model_cfg["model_id"],
@@ -210,5 +211,5 @@ async def edit_video(
         audio=audio,
         audio_url=audio_url,
     )
-    await deduct_credits(user_id, get_cost(model_cfg), task.value)
+    await deduct_credits(user_id, get_cost(model_cfg, resolution, duration), task.value)
     return result
