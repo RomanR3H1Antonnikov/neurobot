@@ -329,9 +329,9 @@ tasks:
         max_style_refs: 0
         model_id: kling-3.0/video
         provider: kie
-        cost_credits: 25
-        cost_per_second: 5.0
-        cost_per_second_by_resolution: {"720p": 5.0, "1080p": 7.5, "4K": 15.0}
+        cost_credits: 10
+        cost_per_second_by_resolution: {"720p": 13.0, "1080p": 16.0, "4K": 36.0}
+        cost_per_second_by_resolution_no_audio: {"720p": 10.0, "1080p": 12.0}
         cost_usd: 0.08
         enabled: true
 
@@ -357,9 +357,8 @@ tasks:
         max_style_refs: 0
         model_id: kling/v3-turbo-text-to-video
         provider: kie
-        cost_credits: 28
-        cost_per_second: 5.6
-        cost_per_second_by_resolution: {"720p": 5.6, "1080p": 8.4}
+        cost_credits: 12
+        cost_per_second_by_resolution: {"720p": 12.0, "1080p": 13.0}
         cost_usd: 0.05
         enabled: true
 
@@ -388,9 +387,8 @@ tasks:
         max_style_refs: 0
         model_id: kling-3.0/motion-control
         provider: kie
-        cost_credits: 30
-        cost_per_second: 6.0
-        cost_per_second_by_resolution: {"720p": 6.0, "1080p": 9.0}
+        cost_credits: 12
+        cost_per_second_by_resolution: {"720p": 12.0, "1080p": 16.0}
         cost_usd: 0.08
         enabled: true
 
