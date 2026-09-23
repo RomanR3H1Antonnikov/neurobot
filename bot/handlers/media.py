@@ -608,6 +608,7 @@ async def select_model(callback: CallbackQuery, state: FSMContext) -> None:
         "model_duration_options": duration_options,
         "model_min_duration": min_duration,
         "model_max_duration": max_duration,
+        "duration": min_duration,
         "model_max_style_refs": model_cfg.get("max_style_refs", 14),
         "model_max_audio_refs": model_cfg.get("max_audio_refs", 0),
         "model_max_video_refs": model_cfg.get("max_video_refs", 0),
@@ -648,7 +649,7 @@ async def select_model(callback: CallbackQuery, state: FSMContext) -> None:
         update["has_music_settings"] = bool(model_cfg.get("has_music_settings"))
         update["has_udio_settings"] = bool(model_cfg.get("has_udio_settings"))
         if model_cfg.get("has_music_settings"):
-            update["music_duration"] = 30
+            update["music_duration"] = 5
             update["music_positive_styles"] = []
             update["music_negative_styles"] = []
             update["music_sections"] = []
