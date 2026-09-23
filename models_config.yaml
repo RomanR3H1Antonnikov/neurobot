@@ -378,9 +378,9 @@ tasks:
           инерция), детализация жестов рук и мимики, а также узнаваемость персонажа благодаря
           функции Element Binding (фиксирует черты лица, текстуру кожи и диапазон выражений
           даже при смене ракурсов или освещения).
-        duration_options: [5, 10, 15]
+        duration_options: [5, 10]
         min_duration: 3
-        max_duration: 15
+        max_duration: 10
         aspect_ratios: ["16:9", "9:16", "1:1"]
         resolutions: ["720p", "1080p"]
         motion_control: true
