@@ -775,6 +775,20 @@ tasks:
         cost_usd: 0.04
         enabled: true
 
+      - id: lyria-3-pro
+        label: "Lyria 3 Pro (Google)"
+        description: >-
+          Нейросеть Google для генерации музыкальных треков по текстовому описанию.
+          Создаёт фоновую музыку, саундтреки и креативное аудио в заданном стиле и жанре.
+          Можно добавить фото-ориентир — ИИ учтёт его настроение при создании музыки.
+        model_id: lyria-3-pro
+        provider: genapi
+        audio_type: music
+        max_style_refs: 1
+        cost_credits: 30
+        cost_usd: 0.05
+        enabled: true
+
       # bratuha.ru — нет публичного API, ожидаем подтверждения от клиента
       - id: suno
         label: "Suno"
