@@ -312,6 +312,9 @@ def _confirm_card_text(data: dict) -> str:
                 if data.get("music_respect_durations"):
                     lines.append("<b>Длит. секций:</b> Соблюдать")
                 lines.append(f"<b>Формат:</b> {data.get('music_format', 'mp3_44100_128')}")
+        _audio_srefs = data.get("style_reference_file_ids") or []
+        if _audio_srefs:
+            lines.append(f"<b>Фото-ориентир:</b> {len(_audio_srefs)} фото ✅")
         if data.get("has_udio_settings") and data.get("udio_show_advanced"):
             lt = data.get("udio_lyrics_type", "generate")
             lt_label = {"generate": "Авто", "custom": "Свои тексты", "instrumental": "Инструментал"}.get(lt, lt)
@@ -451,7 +454,11 @@ def _confirm_kb(data: dict):
         if data.get("has_voice_settings"):
             return voice_confirm_kb(data, cost_credits=cost)
         voice_label = data.get("selected_voice_label") if data.get("model_voices") else None
-        return audio_confirm_kb(has_prompt=has_prompt, cost_credits=cost, voice_label=voice_label)
+        return audio_confirm_kb(
+            has_prompt=has_prompt, cost_credits=cost, voice_label=voice_label,
+            style_ref_count=style_ref_count,
+            max_style_refs=data.get("model_max_style_refs", 0),
+        )
     elif media_type in ("photo_edit", "video_edit"):
         return edit_confirm_kb(
             has_prompt=has_prompt,
@@ -3390,6 +3397,10 @@ async def _run_generation(send_msg: Message, tg_user, state: FSMContext, data: d
                 "lyrics_placement_end": data.get("udio_lyrics_placement_end", 0.9),
                 "clarity_strength": data.get("udio_clarity_strength", 0.25),
             }
+        # Фото-ориентир (например, для Lyria) — передаём через music_params
+        if style_reference_urls:
+            music_params = music_params or {}
+            music_params["_image_url"] = style_reference_urls[0]
         result = await media_service.generate_audio(
             tg_user.id, tg_user.username, prompt, data.get("audio_type", "voice"), model_slug,
             music_params=music_params,

@@ -422,10 +422,15 @@ def audio_confirm_kb(
     has_prompt: bool = False,
     cost_credits: int | None = None,
     voice_label: str | None = None,
+    style_ref_count: int = 0,
+    max_style_refs: int = 0,
 ) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     if voice_label is not None:
         builder.row(InlineKeyboardButton(text=f"🗣 Голос: {voice_label}", callback_data="media:pick_voice"))
+    if max_style_refs > 0:
+        ref_text = f"🖼 Фото-ориентир: {style_ref_count} ✅" if style_ref_count else "📎 Добавить фото-ориентир"
+        builder.row(InlineKeyboardButton(text=ref_text, callback_data="media:add_style_ref"))
     edit_text = "✏️ Изменить описание" if has_prompt else "✏️ Ввести описание"
     builder.row(
         InlineKeyboardButton(text=edit_text, callback_data="media:edit_prompt"),

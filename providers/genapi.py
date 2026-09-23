@@ -193,6 +193,11 @@ class GenApiProvider(AbstractProvider):
             extra["lyrics_placement_end"] = music_params.get("lyrics_placement_end", 0.9)
             extra["clarity_strength"] = music_params.get("clarity_strength", 0.25)
 
+        # Если передан URL фото-ориентира (например, для lyria-3-pro) — включаем в extra
+        if music_params and music_params.get("_image_url"):
+            extra = extra or {}
+            extra["image_url"] = music_params["_image_url"]
+
         data = await self._run(actual_model, prompt, extra=extra)
 
         url = _extract_url(data)
