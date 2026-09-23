@@ -390,7 +390,8 @@ def _get_generation_cost(data: dict) -> int | None:
     try:
         _, model_cfg = get_provider_by_model_id(task_type, model_slug)
         has_video_ref = bool(data.get("video_style_reference_file_ids"))
-        return media_service.get_cost(model_cfg, data.get("resolution"), data.get("duration"), has_video_ref=has_video_ref)
+        has_audio = data.get("video_audio_enabled", True)
+        return media_service.get_cost(model_cfg, data.get("resolution"), data.get("duration"), has_video_ref=has_video_ref, has_audio=has_audio)
     except Exception:
         return None
 
