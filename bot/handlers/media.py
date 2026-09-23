@@ -750,8 +750,19 @@ async def select_group(callback: CallbackQuery, state: FSMContext) -> None:
 @router.callback_query(F.data == "media:back:type")
 async def back_to_type(callback: CallbackQuery, state: FSMContext) -> None:
     await _delete_msgs_below(callback.bot, callback.message.chat.id, state, callback.message.message_id)
+    data = await state.get_data()
+    current_state = await state.get_state()
     await state.set_state(MediaStates.select_type)
-    await callback.message.edit_text(MEDIA_MENU_TEXT, parse_mode="HTML", reply_markup=media_type_kb())
+    # Если возвращаемся из списка моделей edit-типа — показываем подменю редактирования.
+    # Проверяем именно состояние select_model чтобы не срабатывало при навигации с главного меню.
+    if (
+        current_state == MediaStates.select_model
+        and data.get("media_type") in ("photo_edit", "video_edit")
+    ):
+        await state.update_data(media_type=None)
+        await callback.message.edit_text("Выбери, что нужно изменить:", reply_markup=media_edit_kb())
+    else:
+        await callback.message.edit_text(MEDIA_MENU_TEXT, parse_mode="HTML", reply_markup=media_type_kb())
     await callback.answer()
 
 
