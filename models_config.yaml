@@ -438,9 +438,8 @@ tasks:
         constructor_includes_video: true
         model_id: wan/3-0-video
         provider: kie
-        cost_credits: 10
-        cost_per_second: 2.0
-        cost_per_second_by_resolution: {"480p": 2.0, "720p": 3.0, "1080p": 4.5}
+        cost_credits: 7
+        cost_per_second_by_resolution: {"480p": 7.0, "720p": 11.0, "1080p": 15.0}
         cost_usd: 0.08
         enabled: true
 
@@ -460,9 +459,8 @@ tasks:
         constructor_includes_video: true
         model_id: wan/3-0-video-prime
         provider: kie
-        cost_credits: 14
-        cost_per_second: 2.8
-        cost_per_second_by_resolution: {"480p": 2.8, "720p": 4.2, "1080p": 6.3}
+        cost_credits: 8
+        cost_per_second_by_resolution: {"480p": 8.0, "720p": 17.0, "1080p": 28.0}
         cost_usd: 0.08
         enabled: true
 
@@ -491,9 +489,8 @@ tasks:
         constructor_includes_video: true
         model_id: wan/2-7-text-to-video
         provider: kie
-        cost_credits: 17
-        cost_per_second: 3.4
-        cost_per_second_by_resolution: {"720p": 3.4, "1080p": 5.0}
+        cost_credits: 10
+        cost_per_second_by_resolution: {"720p": 10.0, "1080p": 15.0}
         cost_usd: 0.07
         enabled: true
 
