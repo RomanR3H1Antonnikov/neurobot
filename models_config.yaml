@@ -384,6 +384,7 @@ tasks:
         aspect_ratios: ["16:9", "9:16", "1:1"]
         resolutions: ["720p", "1080p"]
         motion_control: true
+        audio: false
         max_style_refs: 0
         model_id: kling-3.0/motion-control
         provider: kie

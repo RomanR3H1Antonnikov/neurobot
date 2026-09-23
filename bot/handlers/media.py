@@ -439,6 +439,7 @@ def _confirm_kb(data: dict):
             output_format=data.get("video_output_format"),
             output_formats=data.get("model_output_formats"),
             audio_enabled=data.get("video_audio_enabled", True),
+            show_audio_toggle=data.get("model_has_audio", True),
             cost_credits=cost,
         )
     elif media_type == "audio":
@@ -618,7 +619,8 @@ async def select_model(callback: CallbackQuery, state: FSMContext) -> None:
         "model_has_last_frame": model_cfg.get("last_frame", True),
         "model_output_formats": model_cfg.get("output_formats"),
         "model_constructor_video": model_cfg.get("constructor_includes_video", False),
-        "video_audio_enabled": True,
+        "model_has_audio": model_cfg.get("audio", True),
+        "video_audio_enabled": model_cfg.get("audio", True),
         "video_frames_mode": None,
     }
     # если output_format не задан или недоступен у новой модели — сбрасываем
