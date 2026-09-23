@@ -689,6 +689,25 @@ tasks:
         cost_usd: 0.023
         enabled: true
 
+      - id: kling-3-omni
+        label: "Kling 3.0 Omni"
+        description: >-
+          Kling 3.0 Omni — флагманская мультимодальная модель от Kuaishou (2026). Единая
+          архитектура Omni One объединяет генерацию видео, звука, работу с референсами и
+          редактирование в одном инструменте.
+        duration_options: [5, 10, 15]
+        min_duration: 3
+        max_duration: 15
+        aspect_ratios: ["16:9", "9:16", "1:1", "21:9"]
+        resolutions: ["720p", "1080p", "4K"]
+        model_id: kling-3.0-omni/video
+        provider: kie
+        cost_credits: 9
+        cost_per_second_by_resolution: {"720p": 12.0, "1080p": 13.0, "4K": 36.0}
+        cost_per_second_by_resolution_no_audio: {"720p": 9.0, "1080p": 12.0}
+        cost_usd: 0.07
+        enabled: true
+
   # ─── Генерация аудио ─────────────────────────────────────────────────────────
   audio_generation:
     rate_limit_per_hour: 20
@@ -975,6 +994,23 @@ tasks:
         provider: kie
         cost_credits: 1
         cost_usd: 0.08
+        enabled: true
+
+      - id: kling-3-omni-edit
+        label: "Kling 3.0 Omni"
+        description: >-
+          Kling 3.0 Omni трансформирует загруженное видео по текстовому описанию,
+          сохраняя движения персонажей и структуру сцены из оригинала.
+        duration_options: [5, 10, 15]
+        min_duration: 3
+        max_duration: 15
+        aspect_ratios: ["16:9", "9:16", "1:1", "21:9"]
+        resolutions: ["720p", "1080p", "4K"]
+        model_id: kling-3.0-omni/transformation
+        provider: kie
+        cost_credits: 12
+        cost_per_second_by_resolution: {"720p": 12.0, "1080p": 16.0, "4K": 36.0}
+        cost_usd: 0.10
         enabled: true
 
       - id: grok-video-1-5-edit
