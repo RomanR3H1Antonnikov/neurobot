@@ -49,6 +49,7 @@ tasks:
         provider: bratuha
         resolutions: ["1K", "2K", "4K"]
         cost_credits: 10
+        cost_by_resolution: {"1K": 10, "2K": 10, "4K": 14}
         cost_usd: 0.01
         enabled: true
 
