@@ -231,6 +231,7 @@ def video_confirm_kb(
     output_format: str | None = None,
     output_formats: list[str] | None = None,
     audio_enabled: bool = True,
+    show_audio_toggle: bool = True,
     cost_credits: int | None = None,
 ) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
@@ -302,8 +303,9 @@ def video_confirm_kb(
     if max_audio_refs > 0:
         audio_text = f"🎵 Аудио: {audio_ref_count}/{max_audio_refs} ✅" if audio_ref_count else "🎵 Аудио"
         builder.row(InlineKeyboardButton(text=audio_text, callback_data="media:add_audio_ref"))
-    audio_toggle_text = "🔊 Звуковое сопровождение: вкл" if audio_enabled else "🔇 Звуковое сопровождение: выкл"
-    builder.row(InlineKeyboardButton(text=audio_toggle_text, callback_data="media:toggle_audio"))
+    if show_audio_toggle:
+        audio_toggle_text = "🔊 Звуковое сопровождение: вкл" if audio_enabled else "🔇 Звуковое сопровождение: выкл"
+        builder.row(InlineKeyboardButton(text=audio_toggle_text, callback_data="media:toggle_audio"))
     edit_text = "✏️ Изменить описание" if has_prompt else "✏️ Ввести описание"
     builder.row(
         InlineKeyboardButton(text=edit_text, callback_data="media:edit_prompt"),
