@@ -534,7 +534,6 @@ tasks:
         provider: kie
         cost_credits: 25
         cost_per_second_by_resolution: {"360p": 5.0, "540p": 6.0, "720p": 7.0, "1080p": 12.0}
-        cost_per_second_by_resolution_no_audio: {"360p": 4.0, "540p": 5.0, "720p": 6.0, "1080p": 9.0}
         cost_usd: 0.028
         enabled: true
 
