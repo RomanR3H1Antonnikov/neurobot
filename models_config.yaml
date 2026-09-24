@@ -691,6 +691,8 @@ tasks:
 
       - id: kling-3-omni
         label: "Kling 3.0 Omni"
+        group: kling-3
+        group_label: "Kling 3.0"
         description: >-
           Kling 3.0 Omni — флагманская мультимодальная модель от Kuaishou (2026). Единая
           архитектура Omni One объединяет генерацию видео, звука, работу с референсами и
