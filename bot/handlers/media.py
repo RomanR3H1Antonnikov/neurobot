@@ -651,9 +651,6 @@ async def select_model(callback: CallbackQuery, state: FSMContext) -> None:
         current_res = data.get("resolution")
         if media_type in ("video", "video_edit") or not current_res or current_res not in allowed_res:
             update["resolution"] = allowed_res[0]
-    # для видео/редактирования видео — всегда ставим минимальную длительность (самый дешёвый дефолт)
-    if media_type in ("video", "video_edit") and duration_options:
-        update["duration"] = duration_options[0]
     # для аудио — тип (voice/music) берём из конфига модели
     if media_type == "audio":
         update["audio_type"] = model_cfg.get("audio_type", "voice")
