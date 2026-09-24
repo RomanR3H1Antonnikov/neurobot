@@ -401,13 +401,15 @@ def video_duration_picker_kb(
     max_d: int,
 ) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
-    for d in options:
+    # если текущее значение не в списке пресетов — добавляем его первым
+    display_options = options if current in options else [current] + [d for d in options if d != current]
+    for d in display_options:
         prefix = "✅ " if d == current else ""
         builder.add(InlineKeyboardButton(
             text=f"{prefix}{d} сек",
             callback_data=f"media:duration:{d}",
         ))
-    builder.adjust(min(len(options), 3))
+    builder.adjust(min(len(display_options), 3))
     builder.row(InlineKeyboardButton(
         text=f"✏️ Своя ({min_d}–{max_d} сек)",
         callback_data="media:duration_custom",
