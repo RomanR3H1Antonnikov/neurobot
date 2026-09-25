@@ -13,7 +13,8 @@ from services.kie_webhook import register_pending, unregister_pending
 logger = logging.getLogger(__name__)
 
 _BASE_URL = "https://api.gen-api.ru/api/v1"
-_CALLBACK_TIMEOUT = 600  # 10 минут
+_CALLBACK_TIMEOUT = 600       # 10 минут — для фото/видео
+_CALLBACK_TIMEOUT_AUDIO = 1800  # 30 минут — для аудио (Lyria занимает ~15 мин)
 
 
 def _extract_url(body: dict) -> str | None:
@@ -60,7 +61,7 @@ class GenApiProvider(AbstractProvider):
         from config import config
         return getattr(config, "kie_callback_base_url", "https://bot.rehy.ru").rstrip("/")
 
-    async def _run(self, model: str, prompt: str, extra: dict | None = None) -> dict:
+    async def _run(self, model: str, prompt: str, extra: dict | None = None, timeout: int | None = None) -> dict:
         """POST /networks/{model} с callback_url → ждёт callback."""
         corr_id = uuid.uuid4().hex
         callback_url = f"{self._callback_base()}/genapi/callback/{corr_id}"
@@ -69,6 +70,7 @@ class GenApiProvider(AbstractProvider):
         if extra:
             payload.update(extra)
 
+        wait_timeout = timeout if timeout is not None else _CALLBACK_TIMEOUT
         fut = register_pending(corr_id)
         try:
             async with aiohttp.ClientSession(
@@ -89,7 +91,7 @@ class GenApiProvider(AbstractProvider):
 
             logger.info("GenAPI task created: model=%s, id=%s", model, task.get("id"))
 
-            result = await asyncio.wait_for(fut, timeout=_CALLBACK_TIMEOUT)
+            result = await asyncio.wait_for(fut, timeout=wait_timeout)
         except asyncio.TimeoutError:
             raise ProviderUnavailableError("GenAPI: истекло время ожидания результата")
         finally:
@@ -198,7 +200,7 @@ class GenApiProvider(AbstractProvider):
             extra = extra or {}
             extra["image_url"] = music_params["_image_url"]
 
-        data = await self._run(actual_model, prompt, extra=extra)
+        data = await self._run(actual_model, prompt, extra=extra, timeout=_CALLBACK_TIMEOUT_AUDIO)
 
         url = _extract_url(data)
         if not url:
