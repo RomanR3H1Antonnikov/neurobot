@@ -772,6 +772,14 @@ def back_to_frames_kb() -> InlineKeyboardMarkup:
     return builder.as_markup()
 
 
+def video_ref_delete_kb() -> InlineKeyboardMarkup:
+    """Клавиатура в режиме удаления конкретного видео-ориентира."""
+    builder = InlineKeyboardBuilder()
+    builder.row(InlineKeyboardButton(text="🗑 Удалить все", callback_data="media:delete_video_refs_all"))
+    builder.row(InlineKeyboardButton(text="◀️ Назад", callback_data="media:back:frames"))
+    return builder.as_markup()
+
+
 # ─── После генерации ─────────────────────────────────────────────────────────
 
 def error_kb() -> InlineKeyboardMarkup:

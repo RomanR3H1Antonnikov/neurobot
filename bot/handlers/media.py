@@ -26,7 +26,7 @@ from bot.keyboards.media import (
     music_confirm_kb, music_format_kb,
     udio_confirm_kb, udio_lyrics_type_kb, udio_model_type_kb,
     voice_picker_kb, voice_confirm_kb, voice_language_kb,
-    style_ref_collecting_kb, style_ref_delete_kb, after_generation_kb, gen_waiting_kb, error_kb,
+    style_ref_collecting_kb, style_ref_delete_kb, video_ref_delete_kb, after_generation_kb, gen_waiting_kb, error_kb,
 )
 from providers.base import ProviderError, ProviderContentPolicyError, TaskType
 from providers.router import get_models_for_task
@@ -1694,9 +1694,32 @@ async def delete_extra_frames(callback: CallbackQuery, state: FSMContext) -> Non
 
 @router.callback_query(MediaStates.confirm, F.data == "media:delete_video_refs")
 async def delete_video_refs(callback: CallbackQuery, state: FSMContext) -> None:
-    await state.update_data(video_style_reference_file_ids=[], _sref_msg_id=callback.message.message_id)
+    """Запрашивает номер видео для удаления."""
+    data = await state.get_data()
+    count = len(data.get("video_style_reference_file_ids") or [])
+    await state.update_data(
+        adding_video_ref=True,
+        managing_video_ref="delete",
+        _sref_msg_id=callback.message.message_id,
+    )
+    await callback.message.edit_text(
+        f"Введи номер видео, которое хочешь удалить (1–{count}):",
+        reply_markup=video_ref_delete_kb(),
+    )
+    await state.set_state(MediaStates.enter_reference)
+    await callback.answer()
+
+
+@router.callback_query(MediaStates.enter_reference, F.data == "media:delete_video_refs_all")
+async def delete_video_refs_all(callback: CallbackQuery, state: FSMContext) -> None:
+    """Удаляет все видео-ориентиры."""
+    await state.update_data(
+        video_style_reference_file_ids=[],
+        adding_video_ref=None,
+        managing_video_ref=None,
+    )
     await _back_to_frames_menu(callback.bot, callback.message.chat.id, state)
-    await callback.answer("Видео удалены")
+    await callback.answer("Все видео удалены")
 
 
 @router.callback_query(MediaStates.confirm, F.data == "media:replace_extra_frame")
@@ -2126,6 +2149,27 @@ async def enter_reference_text_input(message: Message, state: FSMContext) -> Non
             f"Пришли новое фото для замены #{idx + 1}:",
             back_to_frames_kb(),
         )
+        return
+
+    # ── Удаление конкретного видео в конструкторе ────────────────────────────
+    if data.get("adding_video_ref") and managing_video == "delete":
+        video_refs = list(data.get("video_style_reference_file_ids") or [])
+        max_refs = data.get("model_max_video_refs", 0)
+        try:
+            idx = int(message.text.strip()) - 1
+            if idx < 0 or idx >= len(video_refs):
+                raise ValueError
+        except ValueError:
+            sent = await message.answer(f"Введи число от 1 до {len(video_refs)}.")
+            await _track_msg(state, sent.message_id)
+            return
+        video_refs.pop(idx)
+        await state.update_data(
+            video_style_reference_file_ids=video_refs,
+            adding_video_ref=None,
+            managing_video_ref=None,
+        )
+        await _back_to_frames_menu(message.bot, message.chat.id, state)
         return
 
     # ── Замена видео в конструкторе видео ────────────────────────────────────
