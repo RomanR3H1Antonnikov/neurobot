@@ -1269,10 +1269,20 @@ async def style_ref_clear(callback: CallbackQuery, state: FSMContext) -> None:
 
 @router.callback_query(F.data == "media:style_ref_delete")
 async def style_ref_delete_start(callback: CallbackQuery, state: FSMContext) -> None:
-    """Запрашивает номер фото для удаления."""
+    """Запрашивает номер фото для удаления (или сразу удаляет, если фото одно)."""
     data = await state.get_data()
-    count = len(data.get("style_reference_file_ids") or [])
+    refs = list(data.get("style_reference_file_ids") or [])
+    count = len(refs)
     max_refs = data.get("model_max_style_refs", 14)
+    if count == 1:
+        refs.pop(0)
+        await state.update_data(style_reference_file_ids=refs, managing_style_ref=None)
+        await callback.message.edit_text(
+            f"📎 Пришли фото-ориентиры (до {max_refs} штук). Нейросеть будет ориентироваться на них при генерации:",
+            reply_markup=style_ref_collecting_kb(0, max_refs),
+        )
+        await callback.answer("Фото удалено", show_alert=False)
+        return
     await state.update_data(managing_style_ref="delete")
     await callback.message.edit_text(
         f"Введите номер фото, которое хотите удалить (1–{count}):",
