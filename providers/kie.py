@@ -624,6 +624,7 @@ class KieProvider(OpenAICompatProvider):
         resolution: str | None = None,
         audio: bool = True,
         audio_url: str | None = None,
+        style_reference_urls: list[str] | None = None,
     ) -> GenerationResult:
         if not video_url:
             raise ProviderUnavailableError("KIE edit_video: не передан URL видео")
@@ -636,4 +637,5 @@ class KieProvider(OpenAICompatProvider):
             resolution=resolution,
             audio=audio,
             audio_reference_urls=[audio_url] if audio_url else None,
+            style_reference_urls=style_reference_urls,
         )

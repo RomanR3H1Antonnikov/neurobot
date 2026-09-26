@@ -179,6 +179,7 @@ class OpenAICompatProvider(AbstractProvider):
         resolution: str | None = None,
         audio: bool = True,
         audio_url: str | None = None,
+        style_reference_urls: list[str] | None = None,
     ) -> GenerationResult:
         actual_model = model or self.video_edit_model
 

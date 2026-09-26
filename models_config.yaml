@@ -1024,6 +1024,7 @@ tasks:
         resolutions: ["720p", "1080p", "4K"]
         model_id: kling-3.0-omni/transformation
         provider: kie
+        max_style_refs: 4
         cost_credits: 12
         cost_per_second_by_resolution: {"720p": 12.0, "1080p": 16.0, "4K": 36.0}
         cost_usd: 0.10

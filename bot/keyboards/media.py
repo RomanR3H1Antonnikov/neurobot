@@ -697,6 +697,7 @@ def edit_confirm_kb(
     has_reference: bool = False,
     media_type: str = "photo_edit",
     style_ref_count: int = 0,
+    max_style_refs: int = 0,
     cost_credits: int | None = None,
     video_edit_audio_mode: str | None = None,
     duration: int | None = None,
@@ -714,6 +715,9 @@ def edit_confirm_kb(
     builder.row(InlineKeyboardButton(text=ref_text, callback_data="media:add_reference"))
     if media_type == "photo_edit":
         style_text = f"🖼 Ориентиры: {style_ref_count} фото ✅" if style_ref_count else "📎 Добавить ориентир"
+        builder.row(InlineKeyboardButton(text=style_text, callback_data="media:add_style_ref"))
+    if media_type == "video_edit" and max_style_refs > 0:
+        style_text = f"🖼 Ориентиры: {style_ref_count} фото ✅" if style_ref_count else "📎 Фото-ориентиры"
         builder.row(InlineKeyboardButton(text=style_text, callback_data="media:add_style_ref"))
     if media_type == "video_edit":
         if duration is not None and duration_options:

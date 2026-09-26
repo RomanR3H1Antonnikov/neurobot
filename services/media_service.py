@@ -196,6 +196,7 @@ async def edit_video(
     resolution: str | None = None,
     audio: bool = True,
     audio_url: str | None = None,
+    style_reference_urls: list[str] | None = None,
 ) -> GenerationResult:
     task = TaskType.VIDEO_EDIT
     provider, model_cfg = get_provider_by_model_id(task, model_slug)
@@ -210,6 +211,7 @@ async def edit_video(
         resolution=resolution,
         audio=audio,
         audio_url=audio_url,
+        style_reference_urls=style_reference_urls,
     )
     await deduct_credits(user_id, get_cost(model_cfg, resolution, duration), task.value)
     return result
