@@ -26,7 +26,7 @@ from bot.keyboards.media import (
     music_confirm_kb, music_format_kb,
     udio_confirm_kb, udio_lyrics_type_kb, udio_model_type_kb,
     voice_picker_kb, voice_confirm_kb, voice_language_kb,
-    style_ref_collecting_kb, style_ref_delete_kb, video_ref_delete_kb, after_generation_kb, gen_waiting_kb, error_kb,
+    style_ref_collecting_kb, style_ref_delete_kb, video_ref_delete_kb, audio_ref_delete_kb, after_generation_kb, gen_waiting_kb, error_kb,
 )
 from providers.base import ProviderError, ProviderContentPolicyError, TaskType
 from providers.router import get_models_for_task
@@ -942,6 +942,7 @@ async def back_to_model(callback: CallbackQuery, state: FSMContext) -> None:
         model_has_first_frame=None, model_has_last_frame=None,
         managing_style_ref=None, managing_style_ref_index=None,
         managing_video_ref=None, managing_video_ref_index=None,
+        managing_audio_ref=None,
         video_first_frame_file_id=None, video_last_frame_file_id=None,
         video_frames_expanded=None,
         video_edit_audio_mode=None, video_edit_audio_file_id=None, video_edit_audio_file_name=None,
@@ -1047,6 +1048,7 @@ async def generate_again(callback: CallbackQuery, state: FSMContext) -> None:
         video_style_reference_file_ids=None,
         managing_style_ref=None, managing_style_ref_index=None,
         managing_video_ref=None, managing_video_ref_index=None,
+        managing_audio_ref=None,
         video_frames_expanded=None,
         entering_duration=None,
         entering_music_duration=False, entering_music_pos_styles=False,
@@ -1285,7 +1287,7 @@ async def style_ref_delete_start(callback: CallbackQuery, state: FSMContext) -> 
         return
     await state.update_data(managing_style_ref="delete")
     await callback.message.edit_text(
-        f"Введите номер фото, которое хотите удалить (1–{count}):",
+        f"Введи номер фото, которое хочешь удалить (1–{count}):",
         reply_markup=style_ref_delete_kb(count, max_refs),
     )
     await callback.answer()
@@ -1492,12 +1494,9 @@ async def add_extra_frames(callback: CallbackQuery, state: FSMContext) -> None:
 def _audio_ref_kb(audio_names: list[str]) -> InlineKeyboardMarkup:
     rows = []
     for i, name in enumerate(audio_names):
-        rows.append([
-            InlineKeyboardButton(text=f"🎵 {name}", callback_data=f"media:audio_ref_noop:{i}"),
-            InlineKeyboardButton(text="🗑", callback_data=f"media:delete_audio_ref:{i}"),
-        ])
+        rows.append([InlineKeyboardButton(text=f"🎵 {name}", callback_data=f"media:audio_ref_noop:{i}")])
     if audio_names:
-        rows.append([InlineKeyboardButton(text="🗑 Удалить все", callback_data="media:delete_audio_refs_all")])
+        rows.append([InlineKeyboardButton(text="🗑 Удалить", callback_data="media:audio_ref_delete_start")])
     rows.append([InlineKeyboardButton(text="◀️ Назад", callback_data="media:back:confirm")])
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
@@ -1568,6 +1567,49 @@ async def delete_audio_refs_all(callback: CallbackQuery, state: FSMContext) -> N
         _audio_ref_kb([]),
     )
     await callback.answer("Все аудио удалены")
+
+
+@router.callback_query(MediaStates.enter_reference, F.data == "media:audio_ref_delete_start")
+async def delete_audio_ref_start(callback: CallbackQuery, state: FSMContext) -> None:
+    data = await state.get_data()
+    audio_names = list(data.get("audio_reference_file_names") or [])
+    audio_refs = list(data.get("audio_reference_file_ids") or [])
+    max_refs = data.get("model_max_audio_refs", 0)
+    count = len(audio_names)
+    if count == 1:
+        audio_refs.pop(0)
+        audio_names.pop(0)
+        await state.update_data(
+            audio_reference_file_ids=audio_refs or None,
+            audio_reference_file_names=audio_names or None,
+            managing_audio_ref=None,
+        )
+        await _update_sref_status(
+            callback.bot, callback.message.chat.id, state,
+            _audio_ref_hint([], max_refs),
+            _audio_ref_kb([]),
+        )
+        await callback.answer("Аудио удалено", show_alert=False)
+        return
+    await state.update_data(managing_audio_ref="delete")
+    await callback.message.edit_text(
+        f"Введи номер аудио, которое хочешь удалить (1–{count}):",
+        reply_markup=audio_ref_delete_kb(),
+    )
+    await callback.answer()
+
+
+@router.callback_query(MediaStates.enter_reference, F.data == "media:audio_ref_back_to_list")
+async def audio_ref_back_to_list(callback: CallbackQuery, state: FSMContext) -> None:
+    data = await state.get_data()
+    audio_names = list(data.get("audio_reference_file_names") or [])
+    max_refs = data.get("model_max_audio_refs", 0)
+    await state.update_data(managing_audio_ref=None)
+    await callback.message.edit_text(
+        _audio_ref_hint(audio_names, max_refs),
+        reply_markup=_audio_ref_kb(audio_names),
+    )
+    await callback.answer()
 
 
 @router.callback_query(MediaStates.enter_reference, F.data.startswith("media:audio_ref_noop:"))
@@ -1658,6 +1700,7 @@ async def back_to_confirm(callback: CallbackQuery, state: FSMContext) -> None:
         adding_video_ref=None, adding_video_frame=None, adding_frame_from_confirm=None,
         managing_style_ref=None, managing_style_ref_index=None,
         managing_video_ref=None, managing_video_ref_index=None,
+        managing_audio_ref=None,
         entering_duration=None,
         entering_music_duration=False, entering_music_pos_styles=False,
         entering_music_neg_styles=False, entering_music_sections=False,
@@ -2207,6 +2250,34 @@ async def enter_reference_text_input(message: Message, state: FSMContext) -> Non
             managing_video_ref=None,
         )
         await _back_to_frames_menu(message.bot, message.chat.id, state)
+        return
+
+    # ── Удаление конкретного аудио ────────────────────────────────────────────
+    if data.get("adding_audio_ref") and data.get("managing_audio_ref") == "delete":
+        audio_refs = list(data.get("audio_reference_file_ids") or [])
+        audio_names = list(data.get("audio_reference_file_names") or [])
+        max_refs = data.get("model_max_audio_refs", 0)
+        try:
+            idx = int(message.text.strip()) - 1
+            if idx < 0 or idx >= len(audio_refs):
+                raise ValueError
+        except ValueError:
+            sent = await message.answer(f"Введи число от 1 до {len(audio_refs)}.")
+            await _track_msg(state, sent.message_id)
+            return
+        audio_refs.pop(idx)
+        if 0 <= idx < len(audio_names):
+            audio_names.pop(idx)
+        await state.update_data(
+            audio_reference_file_ids=audio_refs or None,
+            audio_reference_file_names=audio_names or None,
+            managing_audio_ref=None,
+        )
+        await _update_sref_status(
+            message.bot, message.chat.id, state,
+            _audio_ref_hint(audio_names, max_refs),
+            _audio_ref_kb(audio_names),
+        )
         return
 
     # ── Замена видео в конструкторе видео ────────────────────────────────────
