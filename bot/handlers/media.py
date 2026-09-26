@@ -1342,7 +1342,7 @@ async def animate_photo(callback: CallbackQuery, state: FSMContext) -> None:
     else:
         await state.update_data(confirm_mode_switch=None)
 
-    await state.update_data(video_frames_mode="animate")
+    await state.update_data(video_frames_mode="animate", _sref_msg_id=callback.message.message_id)
     data = await state.get_data()
     motion_control = bool(data.get("model_motion_control"))
     show_first = data.get("model_has_first_frame", True)
@@ -1425,7 +1425,7 @@ async def toggle_frames(callback: CallbackQuery, state: FSMContext) -> None:
     else:
         await state.update_data(confirm_mode_switch=None)
 
-    await state.update_data(video_frames_mode="constructor")
+    await state.update_data(video_frames_mode="constructor", _sref_msg_id=callback.message.message_id)
     data = await state.get_data()
     max_extra_refs = data.get("model_max_style_refs", 0)
     extra_ref_count = len(data.get("style_reference_file_ids") or [])
@@ -1657,7 +1657,7 @@ async def back_to_confirm(callback: CallbackQuery, state: FSMContext) -> None:
 @router.callback_query(F.data == "media:back:frames")
 async def back_to_frames(callback: CallbackQuery, state: FSMContext) -> None:
     """Возврат в меню кадров из hint-сообщения (когда нажали 'Начало/Конец видео')."""
-    await state.update_data(adding_video_frame=None)
+    await state.update_data(adding_video_frame=None, _sref_msg_id=callback.message.message_id)
     await state.set_state(MediaStates.confirm)
     await _back_to_frames_menu(callback.bot, callback.message.chat.id, state)
     await callback.answer()
