@@ -1180,6 +1180,14 @@ async def add_reference_prompt(callback: CallbackQuery, state: FSMContext) -> No
     await callback.answer()
 
 
+@router.callback_query(MediaStates.confirm, F.data == "media:delete_reference")
+async def delete_reference(callback: CallbackQuery, state: FSMContext) -> None:
+    """Кнопка 'Удалить фото' — сбрасывает загруженное редактируемое фото."""
+    await state.update_data(reference_file_id=None, reference_type=None)
+    await _update_confirm_card(callback.message, state)
+    await callback.answer("Фото удалено")
+
+
 @router.callback_query(MediaStates.confirm, F.data == "media:edit_sound")
 async def edit_sound_menu(callback: CallbackQuery, state: FSMContext) -> None:
     """Открывает меню управления звуком для редактирования видео."""
