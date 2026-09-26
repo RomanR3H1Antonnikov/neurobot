@@ -349,6 +349,9 @@ def _confirm_card_text(data: dict) -> str:
             if _srefs:
                 lines.append(f"<b>{'Ориентир' if len(_srefs) == 1 else 'Ориентиры'}:</b> {len(_srefs)} фото ✅")
         elif media_type == "video_edit":
+            _ve_srefs = data.get("style_reference_file_ids") or []
+            if _ve_srefs:
+                lines.append(f"<b>{'Ориентир' if len(_ve_srefs) == 1 else 'Ориентиры'}:</b> {len(_ve_srefs)} фото ✅")
             _ve_dur = data.get("duration")
             _ve_ratio = data.get("aspect_ratio")
             _ve_res = data.get("resolution")
@@ -465,6 +468,7 @@ def _confirm_kb(data: dict):
             has_reference=bool(data.get("reference_file_id")),
             media_type=media_type,
             style_ref_count=style_ref_count,
+            max_style_refs=data.get("model_max_style_refs", 0),
             cost_credits=cost,
             video_edit_audio_mode=data.get("video_edit_audio_mode"),
             duration=data.get("duration"),
@@ -3630,6 +3634,7 @@ async def _run_generation(send_msg: Message, tg_user, state: FSMContext, data: d
             resolution=data.get("resolution"),
             audio=(_edit_audio_mode != "remove"),
             audio_url=_edit_audio_url,
+            style_reference_urls=style_reference_urls,
         )
         file = BufferedInputFile(result.data, filename=result.filename)
         sent = await send_msg.answer_video(file, reply_markup=after_generation_kb())
