@@ -1131,17 +1131,17 @@ tasks:
       - id: pixverse-6-edit
         label: "Pixverse 6.0"
         description: >-
-          Нейросеть для редактирования видео (до 15 сек, 4K) по тексту: поддерживает точную
+          Нейросеть для редактирования видео (до 15 сек) по тексту: поддерживает точную
           проработку движений, сохранение идентичности персонажей и мультисценные переходы.
         duration_options: [5, 10, 15]
         min_duration: 1
         max_duration: 15
-        aspect_ratios: ["16:9", "4:3", "1:1", "3:4", "9:16", "2:3", "3:2", "21:9"]
         resolutions: ["360p", "540p", "720p", "1080p"]
-        model_id: pixverse-v6/text-to-video
+        model_id: pixverse-v6/video-edit
         provider: kie
         cost_credits: 25
         cost_per_second_by_resolution: {"360p": 5.0, "540p": 6.0, "720p": 7.0, "1080p": 12.0}
+        cost_per_second_by_resolution_no_audio: {"360p": 4.0, "540p": 5.0, "720p": 6.0, "1080p": 9.0}
         cost_usd: 0.028
         enabled: true
 
