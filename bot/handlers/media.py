@@ -2837,10 +2837,15 @@ async def confirm_unknown_input(message: Message, state: FSMContext, album: list
 
         # image: если модель поддерживает ориентиры — добавляем туда и обновляем карточку.
         if max_refs > 0:
-            await message.delete()
+            album_msgs = album or [message]
             srefs = list(data.get("style_reference_file_ids") or [])
-            if len(srefs) < max_refs:
-                srefs.append(photo.file_id)
+            for msg in album_msgs:
+                try:
+                    await msg.delete()
+                except Exception:
+                    pass
+                if msg.photo and len(srefs) < max_refs:
+                    srefs.append(msg.photo[-1].file_id)
             _upd = {"style_reference_file_ids": srefs}
             if _caption:
                 _upd["prompt"] = _caption
