@@ -1496,6 +1496,8 @@ def _audio_ref_kb(audio_names: list[str]) -> InlineKeyboardMarkup:
             InlineKeyboardButton(text=f"🎵 {name}", callback_data=f"media:audio_ref_noop:{i}"),
             InlineKeyboardButton(text="🗑", callback_data=f"media:delete_audio_ref:{i}"),
         ])
+    if audio_names:
+        rows.append([InlineKeyboardButton(text="🗑 Удалить все", callback_data="media:delete_audio_refs_all")])
     rows.append([InlineKeyboardButton(text="◀️ Назад", callback_data="media:back:confirm")])
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
@@ -1550,6 +1552,22 @@ async def delete_audio_ref(callback: CallbackQuery, state: FSMContext) -> None:
         _audio_ref_kb(audio_names),
     )
     await callback.answer()
+
+
+@router.callback_query(MediaStates.enter_reference, F.data == "media:delete_audio_refs_all")
+async def delete_audio_refs_all(callback: CallbackQuery, state: FSMContext) -> None:
+    data = await state.get_data()
+    max_refs = data.get("model_max_audio_refs", 0)
+    await state.update_data(
+        audio_reference_file_ids=None,
+        audio_reference_file_names=None,
+    )
+    await _update_sref_status(
+        callback.bot, callback.message.chat.id, state,
+        _audio_ref_hint([], max_refs),
+        _audio_ref_kb([]),
+    )
+    await callback.answer("Все аудио удалены")
 
 
 @router.callback_query(MediaStates.enter_reference, F.data.startswith("media:audio_ref_noop:"))
