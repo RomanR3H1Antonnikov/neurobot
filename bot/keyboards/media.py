@@ -738,6 +738,8 @@ def edit_confirm_kb(
             sound_text = "🔕 Звук: убрать ✅"
         elif video_edit_audio_mode == "replace":
             sound_text = "🔊 Звук: заменить ✅"
+        elif video_edit_audio_mode == "origin":
+            sound_text = "🎵 Звук: оригинальный ✅"
         else:
             sound_text = "🔊 Звук"
         builder.row(InlineKeyboardButton(text=sound_text, callback_data="media:edit_sound"))
@@ -751,21 +753,27 @@ def edit_confirm_kb(
     return builder.as_markup()
 
 
-def edit_sound_kb(audio_mode: str | None, audio_file_name: str | None = None) -> InlineKeyboardMarkup:
+def edit_sound_kb(audio_mode: str | None, audio_file_name: str | None = None, wan: bool = False) -> InlineKeyboardMarkup:
     """Клавиатура выбора режима звука при редактировании видео."""
     builder = InlineKeyboardBuilder()
-    if audio_mode == "remove":
-        remove_text = "✅ Убрать звук"
+    if wan:
+        auto_text = "✅ Авто" if audio_mode != "origin" else "🔊 Авто"
+        origin_text = "✅ Оригинальный звук" if audio_mode == "origin" else "🎵 Оригинальный звук"
+        builder.row(InlineKeyboardButton(text=auto_text, callback_data="media:edit_sound:auto"))
+        builder.row(InlineKeyboardButton(text=origin_text, callback_data="media:edit_sound:origin"))
     else:
-        remove_text = "🔇 Убрать звук"
-    builder.row(InlineKeyboardButton(text=remove_text, callback_data="media:edit_sound:remove"))
-    if audio_mode == "remove":
-        builder.row(InlineKeyboardButton(text="🔊 Заменить звук", callback_data="media:edit_sound:replace_blocked"))
-    elif audio_mode == "replace" and audio_file_name:
-        short_name = audio_file_name[:22] + "…" if len(audio_file_name) > 22 else audio_file_name
-        builder.row(InlineKeyboardButton(text=f"✅ Заменить: {short_name}", callback_data="media:edit_sound:replace"))
-    else:
-        builder.row(InlineKeyboardButton(text="🔊 Заменить звук", callback_data="media:edit_sound:replace"))
+        if audio_mode == "remove":
+            remove_text = "✅ Убрать звук"
+        else:
+            remove_text = "🔇 Убрать звук"
+        builder.row(InlineKeyboardButton(text=remove_text, callback_data="media:edit_sound:remove"))
+        if audio_mode == "remove":
+            builder.row(InlineKeyboardButton(text="🔊 Заменить звук", callback_data="media:edit_sound:replace_blocked"))
+        elif audio_mode == "replace" and audio_file_name:
+            short_name = audio_file_name[:22] + "…" if len(audio_file_name) > 22 else audio_file_name
+            builder.row(InlineKeyboardButton(text=f"✅ Заменить: {short_name}", callback_data="media:edit_sound:replace"))
+        else:
+            builder.row(InlineKeyboardButton(text="🔊 Заменить звук", callback_data="media:edit_sound:replace"))
     builder.row(InlineKeyboardButton(text="◀️ Назад", callback_data="media:back:confirm"))
     return builder.as_markup()
 

@@ -1047,6 +1047,24 @@ tasks:
         cost_usd: 0.023
         enabled: true
 
+      - id: wan-2-7-edit
+        label: "Wan 2.7"
+        description: >-
+          Wan 2.7 от Alibaba редактирует загруженное видео по текстовому описанию.
+          Поддерживает фото-ориентиры для задания стиля редактирования.
+        duration_options: [5, 9, 10]
+        min_duration: 2
+        max_duration: 10
+        aspect_ratios: ["16:9", "9:16", "1:1", "4:3", "3:4"]
+        resolutions: ["720p", "1080p"]
+        max_style_refs: 4
+        wan_audio_setting: true
+        model_id: wan/2-7-video-to-video
+        provider: kie
+        cost_credits: 10
+        cost_per_second_by_resolution: {"720p": 10.0, "1080p": 15.0}
+        enabled: true
+
       - id: happyhorse-1-1-edit
         label: "HappyHorse 1.1"
         description: >-

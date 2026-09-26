@@ -383,9 +383,11 @@ class KieProvider(OpenAICompatProvider):
         is_minimax = actual_model.startswith("minimax")
 
         # Bytedance (Seedance) требует "adaptive" когда задан первый/последний кадр;
-        # Wan в image/reference-режиме не принимает aspect_ratio и resolution
+        # Wan в image/reference-режиме не принимает aspect_ratio и resolution,
+        # но video-to-video режим (video_reference_urls) принимает — не подавляем.
         _has_frame = bool(first_frame_url or last_frame_url)
-        _wan_with_images = is_wan and (_has_frame or bool(style_reference_urls))
+        _wan_video_edit = is_wan and bool(video_reference_urls)
+        _wan_with_images = is_wan and not _wan_video_edit and (_has_frame or bool(style_reference_urls))
         _effective_ratio = (
             "adaptive"
             if is_bytedance and _has_frame
@@ -440,7 +442,11 @@ class KieProvider(OpenAICompatProvider):
             input_data["character_orientation"] = character_orientation
 
         # ── Флаг аудио ───────────────────────────────────────────────────────
-        input_data["audio"] = audio
+        # WAN video-to-video использует audio_setting: "auto"/"origin", а не audio: bool
+        if _wan_video_edit:
+            input_data["audio_setting"] = "origin" if not audio else "auto"
+        else:
+            input_data["audio"] = audio
 
         # ── Аудио-референсы ─────────────────────────────────────────────────
         if audio_reference_urls:
