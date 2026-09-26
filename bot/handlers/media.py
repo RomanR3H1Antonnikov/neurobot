@@ -2763,13 +2763,34 @@ async def confirm_unknown_input(message: Message, state: FSMContext, album: list
         # Подпись к фото → используем как промпт в любом режиме
         _caption = (message.caption or "").strip()
 
-        # photo_edit: прямая отправка фото всегда заменяет основное редактируемое фото
-        # (ориентиры добавляются только через кнопку «Добавить ориентир»)
+        # photo_edit: первое фото → редактируемое (если ещё не загружено),
+        # остальные → ориентиры; если редактируемое уже есть — все фото идут в ориентиры.
         if media_type == "photo_edit":
-            await message.delete()
-            _upd: dict = {"reference_file_id": photo.file_id, "reference_type": "photo"}
+            album_msgs = album or [message]
+            album_photos = [msg.photo[-1].file_id for msg in album_msgs if msg.photo]
+            for msg in album_msgs:
+                try:
+                    await msg.delete()
+                except Exception:
+                    pass
+            _upd: dict = {}
             if _caption:
                 _upd["prompt"] = _caption
+            srefs = list(data.get("style_reference_file_ids") or [])
+            if not data.get("reference_file_id") and album_photos:
+                # Редактируемое фото ещё не загружено → первое становится им
+                _upd["reference_file_id"] = album_photos[0]
+                _upd["reference_type"] = "photo"
+                ref_candidates = album_photos[1:]
+            else:
+                # Редактируемое уже есть → все фото идут в ориентиры
+                ref_candidates = album_photos
+            if max_refs > 0:
+                for fid in ref_candidates:
+                    if len(srefs) >= max_refs:
+                        break
+                    srefs.append(fid)
+                _upd["style_reference_file_ids"] = srefs
             await state.update_data(**_upd)
             await _update_confirm_card(message, state)
             return
