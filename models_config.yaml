@@ -214,7 +214,7 @@ tasks:
         model_id: gpt-image-2
         provider: aitunnel
         max_style_refs: 16
-        resolutions: ["1K", "2K", "4K"]
+        resolutions: ["1K", "2K"]
         cost_credits: 5
         cost_usd: 0.04
         enabled: true
@@ -894,7 +894,7 @@ tasks:
         model_id: gpt-image-2
         provider: aitunnel
         max_style_refs: 3
-        resolutions: ["1K", "2K", "4K"]
+        resolutions: ["1K", "2K"]
         cost_credits: 5
         cost_usd: 0.04
         enabled: true
