@@ -153,6 +153,71 @@ async def _handle_callback(request: web.Request) -> web.Response:
     return web.json_response({"code": 200, "msg": "ok"})
 
 
+async def _deliver_genapi_orphaned(corr_id: str, body: dict) -> None:
+    """Доставляет результат GenAPI когда ожидающего Future нет (таймаут или перезапуск)."""
+    from providers.genapi import _extract_url, _is_failed
+    from db.queries import get_pending_job, delete_pending_job, save_generation
+
+    job = await get_pending_job(corr_id)
+    if not job:
+        logger.warning("GenAPI orphaned: нет записи в pending_jobs для corr_id=%s", corr_id)
+        return
+
+    await delete_pending_job(corr_id)
+
+    if _is_failed(body):
+        logger.info("GenAPI orphaned: job завершился с ошибкой, corr_id=%s — уведомление не отправляем", corr_id)
+        return
+
+    url = _extract_url(body)
+    if not url:
+        logger.warning("GenAPI orphaned: нет URL в теле callback, corr_id=%s body=%s", corr_id, str(body)[:200])
+        return
+
+    try:
+        media_data = await _download_url(url)
+    except Exception as e:
+        logger.error("GenAPI orphaned: ошибка загрузки медиа, corr_id=%s: %s", corr_id, e)
+        return
+
+    telegram_id = job["telegram_id"]
+    chat_id = job["chat_id"]
+    media_type = job["media_type"]
+    model_label = job["model_label"] or ""
+    prompt = job["prompt"]
+
+    _ready_phrases = {
+        "photo": "Ваше фото сгенерировано",
+        "video": "Ваше видео сгенерировано",
+        "audio": "Ваше аудио сгенерировано",
+    }
+    caption = f"✅ <b>Готово!</b> {_ready_phrases.get(media_type, 'Результат готов')}."
+    if model_label:
+        caption += f"\n<i>{model_label}</i>"
+    if media_type in ("photo", "video"):
+        caption += "\n\nЧтобы отредактировать — скачайте файл и загрузите его в раздел «Редактировать медиа»."
+
+    try:
+        file = BufferedInputFile(media_data, filename=_media_filename(media_type))
+        if media_type == "video":
+            sent = await _bot.send_video(chat_id, file, caption=caption, parse_mode="HTML")
+            file_id = sent.video.file_id
+        elif media_type == "audio":
+            sent = await _bot.send_audio(chat_id, file, caption=caption, parse_mode="HTML")
+            file_id = sent.audio.file_id
+        else:
+            sent = await _bot.send_photo(chat_id, file, caption=caption, parse_mode="HTML")
+            file_id = sent.photo[-1].file_id
+
+        await save_generation(telegram_id, media_type, file_id, prompt=prompt, model_label=model_label)
+        logger.info(
+            "GenAPI orphaned: доставлен %s пользователю telegram_id=%s (chat_id=%s)",
+            media_type, telegram_id, chat_id,
+        )
+    except Exception as e:
+        logger.error("GenAPI orphaned: ошибка отправки пользователю telegram_id=%s: %s", telegram_id, e)
+
+
 async def _handle_genapi_callback(request: web.Request) -> web.Response:
     corr_id = request.match_info["corr_id"]
     try:
@@ -165,8 +230,11 @@ async def _handle_genapi_callback(request: web.Request) -> web.Response:
     fut = _pending.get(corr_id)
     if fut and not fut.done():
         fut.set_result(body)
+        asyncio.create_task(_cleanup_job_record(corr_id))
     else:
-        logger.warning("GenAPI callback for unknown or already resolved corr_id=%s", corr_id)
+        logger.warning("GenAPI callback for unknown or already resolved corr_id=%s — пробуем orphaned delivery", corr_id)
+        if _bot is not None:
+            asyncio.create_task(_deliver_genapi_orphaned(corr_id, body))
 
     return web.json_response({"ok": True})
 

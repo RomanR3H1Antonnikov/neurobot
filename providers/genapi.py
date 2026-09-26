@@ -13,7 +13,7 @@ from services.kie_webhook import register_pending, unregister_pending
 logger = logging.getLogger(__name__)
 
 _BASE_URL = "https://api.gen-api.ru/api/v1"
-_CALLBACK_TIMEOUT = 600       # 10 минут — для фото/видео
+_CALLBACK_TIMEOUT = 900       # 15 минут — для фото/видео (генерации занимают до 13+ мин)
 _CALLBACK_TIMEOUT_AUDIO = 1800  # 30 минут — для аудио (Lyria занимает ~15 мин)
 
 
@@ -93,6 +93,16 @@ class GenApiProvider(AbstractProvider):
                     task = await resp.json()
 
             logger.info("GenAPI task created: model=%s, id=%s", model, task.get("id"))
+
+            # Сохраняем контекст job в БД для orphaned delivery (если бот перезапустится до callback)
+            try:
+                from providers.kie import _pending_job_ctx
+                ctx = _pending_job_ctx.get()
+                if ctx:
+                    from db.queries import save_pending_job
+                    await save_pending_job(corr_id, **ctx)
+            except Exception as _e:
+                logger.warning("GenAPI: не удалось сохранить контекст job %s: %s", corr_id, _e)
 
             result = await asyncio.wait_for(fut, timeout=wait_timeout)
         except asyncio.TimeoutError:
