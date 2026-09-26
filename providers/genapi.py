@@ -82,10 +82,13 @@ class GenApiProvider(AbstractProvider):
                         raise ProviderUnavailableError("Недостаточно средств на балансе GenAPI")
                     if resp.status == 400 or resp.status == 422:
                         body = await resp.text()
+                        logger.error("GenAPI %s error for model=%s payload_keys=%s: %s", resp.status, model, list(payload.keys()), body[:500])
                         if "content" in body.lower() or "policy" in body.lower():
                             raise ProviderContentPolicyError("Запрос не прошёл проверку безопасности GenAPI")
                         raise ProviderUnavailableError(f"GenAPI ошибка запроса: {body[:300]}")
                     if resp.status >= 400:
+                        body = await resp.text()
+                        logger.error("GenAPI HTTP %s for model=%s: %s", resp.status, model, body[:300])
                         raise ProviderUnavailableError(f"GenAPI ответил HTTP {resp.status}")
                     task = await resp.json()
 
@@ -101,6 +104,7 @@ class GenApiProvider(AbstractProvider):
         logger.info("GenAPI callback result field: %s", str(result.get("result"))[:500])
 
         if _is_failed(result):
+            logger.error("GenAPI task failed: model=%s status=%s body=%s", model, result.get("status"), str(result)[:300])
             raise ProviderUnavailableError("GenAPI: задача завершилась с ошибкой")
 
         return result
