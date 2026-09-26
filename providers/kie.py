@@ -388,6 +388,7 @@ class KieProvider(OpenAICompatProvider):
         _has_frame = bool(first_frame_url or last_frame_url)
         _wan_video_edit = is_wan and bool(video_reference_urls)
         _wan_with_images = is_wan and not _wan_video_edit and (_has_frame or bool(style_reference_urls))
+        _pixverse_video_edit = is_pixverse and bool(video_reference_urls)
         _effective_ratio = (
             "adaptive"
             if is_bytedance and _has_frame
@@ -397,10 +398,13 @@ class KieProvider(OpenAICompatProvider):
             "prompt": prompt,
             "duration": str(duration) if (is_kling or is_google) else duration,
         }
-        if not _wan_with_images:
+        if not _wan_with_images and not _pixverse_video_edit:
             input_data["aspect_ratio"] = _effective_ratio
         if (is_kling or is_wan or is_bytedance or is_google or is_grok_video or is_pixverse) and not _wan_with_images:
-            input_data["resolution"] = resolution or "720p"
+            if _pixverse_video_edit:
+                input_data["quality"] = resolution or "720p"
+            else:
+                input_data["resolution"] = resolution or "720p"
 
         # ── Первый / последний кадр ──────────────────────────────────────────
         if is_bytedance:
@@ -443,8 +447,11 @@ class KieProvider(OpenAICompatProvider):
 
         # ── Флаг аудио ───────────────────────────────────────────────────────
         # WAN video-to-video использует audio_setting: "auto"/"origin", а не audio: bool
+        # Pixverse video edit использует generate_audio_switch
         if _wan_video_edit:
             input_data["audio_setting"] = "origin" if not audio else "auto"
+        elif _pixverse_video_edit:
+            input_data["generate_audio_switch"] = audio
         else:
             input_data["audio"] = audio
 
