@@ -1291,6 +1291,25 @@ async def style_ref_delete_start(callback: CallbackQuery, state: FSMContext) -> 
     await callback.answer()
 
 
+@router.callback_query(F.data.startswith("media:style_ref_delete_idx:"))
+async def style_ref_delete_by_idx(callback: CallbackQuery, state: FSMContext) -> None:
+    """Удаление конкретного ориентира по нажатию кнопки с номером."""
+    idx = int(callback.data.split(":")[-1])
+    data = await state.get_data()
+    refs = list(data.get("style_reference_file_ids") or [])
+    max_refs = data.get("model_max_style_refs", 14)
+    if 0 <= idx < len(refs):
+        refs.pop(idx)
+    await state.update_data(style_reference_file_ids=refs, managing_style_ref=None)
+    hint = (
+        f"📎 Пришли фото-ориентиры (до {max_refs} штук). Нейросеть будет ориентироваться на них при генерации:"
+        if not refs else
+        f"📎 Уже добавлено {len(refs)} фото. Пришли ещё (до {max_refs} всего):"
+    )
+    await callback.message.edit_text(hint, reply_markup=style_ref_collecting_kb(len(refs), max_refs))
+    await callback.answer("Фото удалено", show_alert=False)
+
+
 @router.callback_query(F.data == "media:style_ref_back_to_collect")
 async def style_ref_back_to_collect(callback: CallbackQuery, state: FSMContext) -> None:
     """Назад из режима удаления к экрану сбора ориентиров."""
