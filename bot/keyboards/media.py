@@ -710,9 +710,16 @@ def edit_confirm_kb(
     builder = InlineKeyboardBuilder()
     if media_type == "photo_edit":
         ref_text = "📎 Изменить фото" if has_reference else "📎 Добавить фото"
+        if has_reference:
+            builder.row(
+                InlineKeyboardButton(text=ref_text, callback_data="media:add_reference"),
+                InlineKeyboardButton(text="🗑 Удалить фото", callback_data="media:delete_reference"),
+            )
+        else:
+            builder.row(InlineKeyboardButton(text=ref_text, callback_data="media:add_reference"))
     else:
         ref_text = "📎 Изменить видео" if has_reference else "📎 Добавить видео"
-    builder.row(InlineKeyboardButton(text=ref_text, callback_data="media:add_reference"))
+        builder.row(InlineKeyboardButton(text=ref_text, callback_data="media:add_reference"))
     if media_type == "photo_edit":
         style_text = f"🖼 Ориентиры: {style_ref_count} фото ✅" if style_ref_count else "📎 Добавить ориентир"
         builder.row(InlineKeyboardButton(text=style_text, callback_data="media:add_style_ref"))
