@@ -28,7 +28,7 @@ class SQLiteFSMStorage(BaseStorage):
                     "DELETE FROM fsm_states WHERE chat_id=? AND user_id=? AND destiny=?",
                     (key.chat_id, key.user_id, key.destiny),
                 )
-            else:/
+            else:
                 await db.execute(
                     """INSERT INTO fsm_states (chat_id, user_id, destiny, state)
                        VALUES (?, ?, ?, ?)
