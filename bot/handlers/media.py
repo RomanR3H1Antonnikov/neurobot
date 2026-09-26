@@ -1892,6 +1892,18 @@ async def receive_reference_photo(message: Message, state: FSMContext, album: li
                 back_to_frames_kb(),
             )
             return
+        if len(srefs) >= max_refs:
+            for msg in album_msgs:
+                try:
+                    await msg.delete()
+                except Exception:
+                    pass
+            await _update_sref_status(
+                message.bot, message.chat.id, state,
+                f"📎 Уже добавлено максимальное количество кадров ({max_refs}/{max_refs}). Чтобы добавить новые — сначала удали лишние.",
+                back_to_frames_kb(),
+            )
+            return
         for msg in album_msgs:
             if len(srefs) >= max_refs:
                 break
@@ -1925,6 +1937,18 @@ async def receive_reference_photo(message: Message, state: FSMContext, album: li
                 message.bot, message.chat.id, state,
                 f"✅ Фото #{idx + 1} заменено. Всего: {len(srefs)}/{max_refs}",
                 style_ref_collecting_kb(len(srefs), max_refs),
+            )
+            return
+        if len(srefs) >= max_refs:
+            for msg in album_msgs:
+                try:
+                    await msg.delete()
+                except Exception:
+                    pass
+            await _update_sref_status(
+                message.bot, message.chat.id, state,
+                f"📎 Уже добавлено максимальное количество фото ({max_refs}/{max_refs}). Чтобы добавить новые — сначала удали лишние.",
+                style_ref_collecting_kb(max_refs, max_refs),
             )
             return
         for msg in album_msgs:
