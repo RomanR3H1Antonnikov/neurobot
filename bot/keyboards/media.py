@@ -136,8 +136,14 @@ ALL_RESOLUTIONS = ["1K", "2K", "3K", "4K"]
 
 
 def style_ref_delete_kb(count: int, max_refs: int = 14) -> InlineKeyboardMarkup:
-    """Клавиатура в режиме удаления конкретного ориентира."""
+    """Клавиатура в режиме удаления конкретного ориентира — кнопки-номера."""
     builder = InlineKeyboardBuilder()
+    for i in range(1, count + 1):
+        builder.add(InlineKeyboardButton(
+            text=str(i),
+            callback_data=f"media:style_ref_delete_idx:{i - 1}",
+        ))
+    builder.adjust(min(count, 5))
     builder.row(InlineKeyboardButton(text="🗑 Удалить все", callback_data="media:style_ref_clear"))
     builder.row(InlineKeyboardButton(text="◀️ Назад", callback_data="media:style_ref_back_to_collect"))
     return builder.as_markup()
