@@ -61,7 +61,7 @@ class GenApiProvider(AbstractProvider):
         from config import config
         return getattr(config, "kie_callback_base_url", "https://bot.rehy.ru").rstrip("/")
 
-    async def _run(self, model: str, prompt: str, extra: dict | None = None, timeout: int | None = None) -> dict:
+    async def _run(self, model: str, prompt: str, extra: dict | None = None, timeout: int | None = None, post_timeout: int = 120) -> dict:
         """POST /networks/{model} с callback_url → ждёт callback."""
         corr_id = uuid.uuid4().hex
         callback_url = f"{self._callback_base()}/genapi/callback/{corr_id}"
@@ -75,7 +75,7 @@ class GenApiProvider(AbstractProvider):
         try:
             async with aiohttp.ClientSession(
                 headers=self._headers(),
-                timeout=aiohttp.ClientTimeout(total=30),
+                timeout=aiohttp.ClientTimeout(total=post_timeout),
             ) as session:
                 async with session.post(f"{_BASE_URL}/networks/{model}", json=payload) as resp:
                     if resp.status == 402:
@@ -200,11 +200,14 @@ class GenApiProvider(AbstractProvider):
             extra["clarity_strength"] = music_params.get("clarity_strength", 0.25)
 
         # Если передан URL фото-ориентира (например, для lyria-3-pro) — включаем в extra
-        if music_params and music_params.get("_image_url"):
+        _has_image = bool(music_params and music_params.get("_image_url"))
+        if _has_image:
             extra = extra or {}
             extra["image_url"] = music_params["_image_url"]
 
-        data = await self._run(actual_model, prompt, extra=extra, timeout=_CALLBACK_TIMEOUT_AUDIO)
+        # GenAPI скачивает изображение синхронно перед ответом → увеличиваем POST-таймаут
+        _post_timeout = 120 if _has_image else 60
+        data = await self._run(actual_model, prompt, extra=extra, timeout=_CALLBACK_TIMEOUT_AUDIO, post_timeout=_post_timeout)
 
         url = _extract_url(data)
         if not url:
