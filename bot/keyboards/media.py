@@ -831,6 +831,19 @@ def video_ref_delete_kb() -> InlineKeyboardMarkup:
     return builder.as_markup()
 
 
+def video_extra_frames_delete_kb(count: int) -> InlineKeyboardMarkup:
+    """Экран выборочного удаления фото-ориентиров в видеомодели."""
+    builder = InlineKeyboardBuilder()
+    for i in range(count):
+        builder.row(InlineKeyboardButton(
+            text=f"🗑 Удалить фото {i + 1}",
+            callback_data=f"media:del_extra_frame:{i}",
+        ))
+    builder.row(InlineKeyboardButton(text="🗑 Удалить всё", callback_data="media:delete_extra_frames_all"))
+    builder.row(InlineKeyboardButton(text="◀️ Назад", callback_data="media:back:frames"))
+    return builder.as_markup()
+
+
 # ─── После генерации ─────────────────────────────────────────────────────────
 
 def error_kb() -> InlineKeyboardMarkup:
