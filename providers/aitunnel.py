@@ -5,10 +5,14 @@ from providers.base import GenerationResult
 
 # aitunnel ограничивает gpt-image-2: длинная сторона ≤ 3840px
 _GPT2_LONG_EDGE = {"1K": 1024, "2K": 2048, "4K": 3840}
+_GPT2_MIN_PIXELS = 786_432  # OpenAI минимальный pixel budget (~768×1024)
+
+import math as _math
 
 
 def _gpt2_size(aspect_ratio: str, resolution: str) -> str:
-    """Вычисляет WxH для gpt-image-2, используя ДЛИННУЮ сторону как базу."""
+    """Вычисляет WxH для gpt-image-2, используя ДЛИННУЮ сторону как базу.
+    Масштабирует вверх если итоговый размер ниже минимального pixel budget OpenAI."""
     max_long = _GPT2_LONG_EDGE.get(resolution, 1024)
     try:
         w_r, h_r = map(int, aspect_ratio.split(":"))
@@ -20,6 +24,11 @@ def _gpt2_size(aspect_ratio: str, resolution: str) -> str:
     else:
         h = max_long
         w = max(64, round(max_long * w_r / h_r / 64) * 64)
+    # Если ниже минимального pixel budget — масштабируем вверх (ceil к 64px)
+    if w * h < _GPT2_MIN_PIXELS:
+        scale = _math.sqrt(_GPT2_MIN_PIXELS / (w * h))
+        w = _math.ceil(w * scale / 64) * 64
+        h = _math.ceil(h * scale / 64) * 64
     return f"{w}x{h}"
 
 
