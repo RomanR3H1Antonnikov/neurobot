@@ -649,8 +649,7 @@ async def select_model(callback: CallbackQuery, state: FSMContext) -> None:
         "model_output_formats": model_cfg.get("output_formats"),
         "model_constructor_video": model_cfg.get("constructor_includes_video", False),
         "model_wan_audio": model_cfg.get("wan_audio_setting", False),
-        # audio_toggle — показывать ли кнопку переключения звука (False если API игнорирует параметр)
-        "model_has_audio": model_cfg.get("audio_toggle", model_cfg.get("audio", True)),
+        "model_has_audio": model_cfg.get("audio", True),
         "video_audio_enabled": model_cfg.get("audio", True),
         "motion_orientation": "image" if model_cfg.get("motion_control") else None,
         "video_frames_mode": None,

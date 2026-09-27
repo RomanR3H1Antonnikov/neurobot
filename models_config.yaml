@@ -548,7 +548,6 @@ tasks:
         first_frame: true
         last_frame: false
         max_style_refs: 9
-        audio_toggle: false
         model_id: alibaba/happyhorse-1.1
         provider: routerai
         cost_credits: 12
@@ -723,7 +722,6 @@ tasks:
         first_frame: false
         last_frame: false
         max_style_refs: 7
-        audio_toggle: false
         model_id: grok-imagine-video-1-5-preview
         provider: kie
         cost_credits: 13
@@ -1127,7 +1125,6 @@ tasks:
         max_duration: 15
         aspect_ratios: ["1:1", "9:16", "16:9", "2:3", "3:2"]
         resolutions: ["480p", "720p"]
-        audio_toggle: false
         model_id: grok-imagine-video-1-5-preview
         provider: kie
         cost_credits: 13
@@ -1163,7 +1160,6 @@ tasks:
         max_duration: 15
         aspect_ratios: ["16:9", "9:16", "1:1", "4:3", "3:4"]
         resolutions: ["720p", "1080p"]
-        audio_toggle: false
         model_id: alibaba/happyhorse-1.1
         provider: routerai
         cost_credits: 12
