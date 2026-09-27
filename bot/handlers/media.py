@@ -2803,6 +2803,8 @@ async def confirm_unknown_input(message: Message, state: FSMContext, album: list
                         break
                     srefs.append(fid)
                 _upd["style_reference_file_ids"] = srefs
+            elif ref_candidates:
+                asyncio.create_task(_toast(message, "⚠️ Модель не поддерживает фото-ориентиры"))
             await state.update_data(**_upd)
             await _update_confirm_card(message, state)
             return
