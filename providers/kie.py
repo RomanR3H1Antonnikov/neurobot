@@ -545,7 +545,7 @@ class KieProvider(OpenAICompatProvider):
         self, image_bytes: bytes, prompt: str, model: str | None = None,
         image_url: str | None = None, style_reference_urls: list[str] | None = None,
         provider_task_id: str | None = None, resolution: str | None = None,
-        quality: str | None = None,
+        quality: str | None = None, aspect_ratio: str | None = None,
     ) -> GenerationResult:
         """Job-based редактирование через KIE createTask."""
         actual_model = model or "google/nano-banana-edit"
@@ -563,7 +563,7 @@ class KieProvider(OpenAICompatProvider):
                 )
             input_data: dict = {
                 "prompt": prompt,
-                "aspect_ratio": "1:1",
+                "aspect_ratio": aspect_ratio or "1:1",
                 "image_urls": [src_url] + _srefs,
             }
         elif actual_model.startswith("flux-2/"):
@@ -572,7 +572,7 @@ class KieProvider(OpenAICompatProvider):
             input_data = {
                 "prompt": prompt,
                 "input_urls": [image_url] + _srefs,
-                "aspect_ratio": "auto",
+                "aspect_ratio": aspect_ratio or "auto",
                 "resolution": resolution or "1K",
             }
         elif actual_model.startswith("seedream/") and "image-to-image" in actual_model:
@@ -581,7 +581,7 @@ class KieProvider(OpenAICompatProvider):
             input_data = {
                 "prompt": prompt,
                 "image_urls": [image_url] + _srefs,
-                "aspect_ratio": "1:1",
+                "aspect_ratio": aspect_ratio or "1:1",
                 "quality": _SEEDREAM_QUALITY.get(resolution or "2K", "basic"),
                 "output_format": "png",
             }
@@ -591,7 +591,7 @@ class KieProvider(OpenAICompatProvider):
             input_data = {
                 "prompt": prompt,
                 "image_urls": [image_url] + _srefs,
-                "aspect_ratio": "auto",
+                "aspect_ratio": aspect_ratio or "auto",
             }
         elif actual_model == "nano-banana-pro":
             if not image_url:
@@ -600,7 +600,7 @@ class KieProvider(OpenAICompatProvider):
             input_data = {
                 "prompt": prompt,
                 "image_input": [image_url] + _srefs,
-                "aspect_ratio": "1:1",
+                "aspect_ratio": aspect_ratio or "1:1",
                 "resolution": resolution or "1K",
                 "output_format": "png",
             }
@@ -610,7 +610,7 @@ class KieProvider(OpenAICompatProvider):
             input_data = {
                 "prompt": prompt,
                 "input_urls": [image_url] + _srefs,
-                "aspect_ratio": "auto",
+                "aspect_ratio": aspect_ratio or "auto",
                 "resolution": resolution or "1K",
             }
         else:
@@ -620,8 +620,11 @@ class KieProvider(OpenAICompatProvider):
             input_data = {
                 "prompt": prompt,
                 "image_urls": [image_url] + _srefs,
+                "aspect_ratio": aspect_ratio,
                 "output_format": "png",
             }
+            if not aspect_ratio:
+                input_data.pop("aspect_ratio")
 
         try:
             await self._create_job(actual_model, input_data, corr_id)

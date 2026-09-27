@@ -175,7 +175,7 @@ async def edit_image(
     telegram_id: int, username: str, image_bytes: bytes, prompt: str, model_slug: str,
     image_url: str | None = None, style_reference_urls: list[str] | None = None,
     provider_task_id: str | None = None, resolution: str | None = None,
-    quality: str | None = None,
+    quality: str | None = None, aspect_ratio: str | None = None,
 ) -> GenerationResult:
     task = TaskType.IMAGE_EDIT
     provider, model_cfg = get_provider_by_model_id(task, model_slug)
@@ -187,6 +187,7 @@ async def edit_image(
         provider_task_id=provider_task_id,  # для KIE Grok: CDN URL из генерации
         resolution=resolution,
         quality=quality,
+        aspect_ratio=aspect_ratio,
     )
     await deduct_credits(user_id, get_cost(model_cfg, resolution), task.value)
     return result

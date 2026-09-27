@@ -744,7 +744,14 @@ def edit_confirm_kb(
     if media_type == "photo_edit":
         style_text = f"🖼 Ориентиры: {style_ref_count} фото ✅" if style_ref_count else "📎 Добавить ориентир"
         builder.row(InlineKeyboardButton(text=style_text, callback_data="media:add_style_ref"))
-        if has_resolutions and resolution:
+        if has_aspect_ratios and has_resolutions and aspect_ratio and resolution:
+            builder.row(
+                InlineKeyboardButton(text=f"📐 Масштаб: {aspect_ratio}", callback_data="media:pick_ratio"),
+                InlineKeyboardButton(text=f"🖼 Качество: {resolution}", callback_data="media:pick_resolution"),
+            )
+        elif has_aspect_ratios and aspect_ratio:
+            builder.row(InlineKeyboardButton(text=f"📐 Масштаб: {aspect_ratio}", callback_data="media:pick_ratio"))
+        elif has_resolutions and resolution:
             builder.row(InlineKeyboardButton(text=f"🖼 Качество: {resolution}", callback_data="media:pick_resolution"))
         if quality_options:
             q_label = _QUALITY_LABELS.get(quality or "medium", quality or "medium")

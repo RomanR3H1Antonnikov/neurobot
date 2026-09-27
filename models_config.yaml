@@ -850,6 +850,7 @@ tasks:
           разрешением и соотношением сторон, а также позволяет итеративно дорабатывать картинку
           в диалоге.
         variant_description: "Стандартная версия редактирования с поддержкой разрешений 1K и 2K."
+        aspect_ratios: ["1:1", "4:3", "3:4", "3:2", "2:3", "16:9", "9:16"]
         model_id: google/nano-banana-edit
         provider: kie
         resolutions: ["1K", "2K"]
@@ -864,6 +865,7 @@ tasks:
         group_label: "Nano Banana AI"
         description: ""
         variant_description: "Версия на базе Gemini — высокое качество и глубокое понимание сложных описаний."
+        aspect_ratios: ["1:1", "4:3", "3:4", "3:2", "2:3", "16:9", "9:16"]
         model_id: nano-banana-pro
         provider: kie
         resolutions: ["1K", "2K"]
@@ -877,6 +879,7 @@ tasks:
         group_label: "Nano Banana AI"
         description: ""
         variant_description: "Облегчённая версия — максимальная скорость и низкая стоимость, разрешение 1K."
+        aspect_ratios: ["1:1", "4:3", "3:4", "3:2", "2:3", "16:9", "9:16"]
         model_id: nano-banana-2-lite
         provider: kie
         resolutions: ["1K"]
@@ -924,6 +927,7 @@ tasks:
           работает со сложными описаниями и стилями. Модель точно соблюдает композицию, освещение
           и текстуры, хорошо понимает контекст и семантику запроса. Сильная сторона — гибкость
           в генерации разных форматов: от иллюстраций до фотореалистичных сцен.
+        aspect_ratios: ["1:1", "4:3", "3:4", "3:2", "2:3", "5:4", "4:5", "16:9", "9:16", "21:9"]
         model_id: gpt-image-2-image-to-image
         provider: kie
         max_style_refs: 3
@@ -939,6 +943,7 @@ tasks:
           GPT Image 2.5 Flare — быстрая генерация и точечное редактирование изображений от OpenAI.
           Скорость генерации примерно на 50% выше по сравнению с Image 2.0 при сохранении высокой
           детализации и точного следования промпту.
+        aspect_ratios: ["1:1", "4:3", "3:4", "3:2", "2:3", "5:4", "4:5", "16:9", "9:16", "21:9"]
         model_id: gpt-image-2-5-flare-image-to-image
         provider: kie
         max_style_refs: 3
@@ -953,6 +958,7 @@ tasks:
         description: >-
           GPT Image 2.5 Sunburst — версия OpenAI с максимальным контролем над деталями:
           лучше сохраняет объекты, персонажей, композицию и текст при последовательных правках.
+        aspect_ratios: ["1:1", "4:3", "3:4", "3:2", "2:3", "5:4", "4:5", "16:9", "9:16", "21:9"]
         model_id: gpt-image-2-5-sunburst-image-to-image
         provider: kie
         max_style_refs: 3

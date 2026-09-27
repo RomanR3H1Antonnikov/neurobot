@@ -70,7 +70,7 @@ class AitunnelProvider(OpenAICompatProvider):
         self, image_bytes: bytes, prompt: str, model: str | None = None,
         image_url: str | None = None, style_reference_urls: list[str] | None = None,
         provider_task_id: str | None = None, resolution: str | None = None,
-        quality: str | None = None,
+        quality: str | None = None, aspect_ratio: str | None = None,
     ) -> GenerationResult:
         actual_model = model or self.image_edit_model
         if actual_model == "gpt-image-2":
