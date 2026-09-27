@@ -734,7 +734,7 @@ def edit_confirm_kb(
         if has_reference:
             builder.row(
                 InlineKeyboardButton(text=ref_text, callback_data="media:add_reference"),
-                InlineKeyboardButton(text="🗑 Удалить фото", callback_data="media:delete_reference"),
+                InlineKeyboardButton(text="🗑", callback_data="media:delete_reference"),
             )
         else:
             builder.row(InlineKeyboardButton(text=ref_text, callback_data="media:add_reference"))
