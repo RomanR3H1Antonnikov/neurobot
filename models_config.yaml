@@ -221,11 +221,16 @@ tasks:
         enabled: true
 
       - id: gpt-image-2-5-flare
-        label: "GPT Image 2.5 Flare"
+        label: "Flare"
+        group: gpt-image-2-5
+        group_label: "GPT Image 2.5 AI"
         description: >-
-          GPT Image 2.5 Flare — быстрая генерация и точечное редактирование изображений от OpenAI.
-          Скорость генерации примерно на 50% выше по сравнению с Image 2.0 при сохранении высокой
-          детализации и точного следования промпту.
+          GPT Image 2.5 AI — новое поколение моделей OpenAI для генерации и редактирования
+          изображений. Высокая детализация, точное следование промпту, поддержка широкого набора
+          соотношений сторон и разрешений до 4K.
+        variant_description: >-
+          Flare — быстрая генерация: задержка снижена примерно на 50% по сравнению с Image 2.0
+          при сохранении высокого качества деталей.
         aspect_ratios: ["1:1", "4:3", "3:4", "3:2", "2:3", "5:4", "4:5", "16:9", "9:16", "21:9"]
         model_id: gpt-image-2-5-flare-text-to-image
         provider: kie
@@ -237,10 +242,13 @@ tasks:
         enabled: true
 
       - id: gpt-image-2-5-sunburst
-        label: "GPT Image 2.5 Sunburst"
-        description: >-
-          GPT Image 2.5 Sunburst — версия OpenAI с максимальным контролем над деталями:
-          лучше сохраняет объекты, персонажей, композицию и текст при последовательных правках.
+        label: "Sunburst"
+        group: gpt-image-2-5
+        group_label: "GPT Image 2.5 AI"
+        description: ""
+        variant_description: >-
+          Sunburst — максимальный контроль над деталями: лучше сохраняет объекты, персонажей,
+          композицию и текст при последовательных правках.
         aspect_ratios: ["1:1", "4:3", "3:4", "3:2", "2:3", "5:4", "4:5", "16:9", "9:16", "21:9"]
         model_id: gpt-image-2-5-sunburst-text-to-image
         provider: kie
@@ -938,11 +946,16 @@ tasks:
         enabled: true
 
       - id: gpt-image-2-5-flare-edit
-        label: "GPT Image 2.5 Flare"
+        label: "Flare"
+        group: gpt-image-2-5-edit
+        group_label: "GPT Image 2.5 AI"
         description: >-
-          GPT Image 2.5 Flare — быстрая генерация и точечное редактирование изображений от OpenAI.
-          Скорость генерации примерно на 50% выше по сравнению с Image 2.0 при сохранении высокой
-          детализации и точного следования промпту.
+          GPT Image 2.5 AI — новое поколение моделей OpenAI для генерации и редактирования
+          изображений. Высокая детализация, точное следование промпту, поддержка широкого набора
+          соотношений сторон и разрешений до 4K.
+        variant_description: >-
+          Flare — быстрая генерация: задержка снижена примерно на 50% по сравнению с Image 2.0
+          при сохранении высокого качества деталей.
         aspect_ratios: ["1:1", "4:3", "3:4", "3:2", "2:3", "5:4", "4:5", "16:9", "9:16", "21:9"]
         model_id: gpt-image-2-5-flare-image-to-image
         provider: kie
@@ -954,10 +967,13 @@ tasks:
         enabled: true
 
       - id: gpt-image-2-5-sunburst-edit
-        label: "GPT Image 2.5 Sunburst"
-        description: >-
-          GPT Image 2.5 Sunburst — версия OpenAI с максимальным контролем над деталями:
-          лучше сохраняет объекты, персонажей, композицию и текст при последовательных правках.
+        label: "Sunburst"
+        group: gpt-image-2-5-edit
+        group_label: "GPT Image 2.5 AI"
+        description: ""
+        variant_description: >-
+          Sunburst — максимальный контроль над деталями: лучше сохраняет объекты, персонажей,
+          композицию и текст при последовательных правках.
         aspect_ratios: ["1:1", "4:3", "3:4", "3:2", "2:3", "5:4", "4:5", "16:9", "9:16", "21:9"]
         model_id: gpt-image-2-5-sunburst-image-to-image
         provider: kie
