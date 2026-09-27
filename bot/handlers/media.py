@@ -3079,7 +3079,7 @@ async def pick_ratio(callback: CallbackQuery, state: FSMContext) -> None:
 async def pick_resolution(callback: CallbackQuery, state: FSMContext) -> None:
     data = await state.get_data()
     resolutions = data.get("model_resolutions") or []
-    if len(resolutions) <= 1:
+    if not resolutions:
         await callback.answer()
         return
     await callback.message.edit_text(
