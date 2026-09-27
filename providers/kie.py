@@ -84,7 +84,7 @@ def _image_input(
                 "image_list": [{"image_url": u} for u in style_reference_urls],
             }
         return payload
-    if model in ("gpt-image-2-text-to-image", "gpt-image-2-5-flare-text-to-image"):
+    if model in ("gpt-image-2-text-to-image", "gpt-image-2-5-flare-text-to-image", "gpt-image-2-5-sunburst-text-to-image"):
         payload = {
             "prompt": prompt,
             "aspect_ratio": _kie_ratio(aspect_ratio),
@@ -604,7 +604,7 @@ class KieProvider(OpenAICompatProvider):
                 "resolution": resolution or "1K",
                 "output_format": "png",
             }
-        elif actual_model in ("gpt-image-2-image-to-image", "gpt-image-2-5-flare-image-to-image"):
+        elif actual_model in ("gpt-image-2-image-to-image", "gpt-image-2-5-flare-image-to-image", "gpt-image-2-5-sunburst-image-to-image"):
             if not image_url:
                 raise ProviderUnavailableError("KIE edit_image: не передан URL изображения")
             input_data = {
