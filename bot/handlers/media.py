@@ -21,7 +21,7 @@ def _has_yookassa() -> bool:
 from bot.keyboards.media import (
     media_type_kb, media_edit_kb, media_info_kb, model_top_kb, model_variant_kb,
     model_select_text, model_variant_text, back_to_model_kb, back_to_confirm_kb, back_to_frames_kb,
-    image_confirm_kb, image_ratio_kb, image_resolution_kb,
+    image_confirm_kb, image_ratio_kb, image_resolution_kb, image_quality_kb,
     video_confirm_kb, video_format_kb, video_frames_menu_kb, video_duration_picker_kb, audio_confirm_kb, edit_confirm_kb, edit_sound_kb,
     music_confirm_kb, music_format_kb,
     udio_confirm_kb, udio_lyrics_type_kb, udio_model_type_kb,
@@ -247,6 +247,10 @@ def _confirm_card_text(data: dict) -> str:
 
     if media_type == "image":
         lines.append(f"<b>Масштаб:</b> {data.get('aspect_ratio', '1:1')}  |  <b>Качество:</b> {data.get('resolution', '1K')}")
+        if data.get("model_quality_options"):
+            _q_labels = {"low": "Быстрый", "medium": "Стандарт", "high": "Высокий"}
+            _q = data.get("quality", "medium")
+            lines.append(f"<b>Детализация:</b> {_q_labels.get(_q, _q)}")
         _srefs = data.get("style_reference_file_ids") or []
         if _srefs:
             lines.append(f"<b>{'Ориентир' if len(_srefs) == 1 else 'Ориентиры'}:</b> {len(_srefs)} фото ✅")
@@ -348,6 +352,12 @@ def _confirm_card_text(data: dict) -> str:
             _srefs = data.get("style_reference_file_ids") or []
             if _srefs:
                 lines.append(f"<b>{'Ориентир' if len(_srefs) == 1 else 'Ориентиры'}:</b> {len(_srefs)} фото ✅")
+            if data.get("model_resolutions") and data.get("resolution"):
+                lines.append(f"<b>Качество:</b> {data.get('resolution')}")
+            if data.get("model_quality_options"):
+                _q_labels = {"low": "Быстрый", "medium": "Стандарт", "high": "Высокий"}
+                _q = data.get("quality", "medium")
+                lines.append(f"<b>Детализация:</b> {_q_labels.get(_q, _q)}")
         elif media_type == "video_edit":
             _ve_srefs = data.get("style_reference_file_ids") or []
             if _ve_srefs:
@@ -416,6 +426,8 @@ def _confirm_kb(data: dict):
             has_prompt=has_prompt, style_ref_count=style_ref_count,
             max_style_refs=data.get("model_max_style_refs", 14),
             cost_credits=cost,
+            quality=data.get("quality"),
+            quality_options=data.get("model_quality_options"),
         )
     elif media_type == "video":
         _show_first = data.get("model_has_first_frame", True)
@@ -480,6 +492,8 @@ def _confirm_kb(data: dict):
             has_aspect_ratios=bool(data.get("model_aspect_ratios")),
             resolution=data.get("resolution"),
             has_resolutions=bool(data.get("model_resolutions")),
+            quality=data.get("quality"),
+            quality_options=data.get("model_quality_options"),
         )
 
 
@@ -659,6 +673,15 @@ async def select_model(callback: CallbackQuery, state: FSMContext) -> None:
         current_res = data.get("resolution")
         if media_type in ("video", "video_edit") or not current_res or current_res not in allowed_res:
             update["resolution"] = allowed_res[0]
+    # quality_options у новой модели — сбрасываем quality если вышло за пределы допустимых значений
+    update["model_quality_options"] = model_cfg.get("quality_options")
+    allowed_quality = model_cfg.get("quality_options")
+    if allowed_quality:
+        current_quality = data.get("quality")
+        if not current_quality or current_quality not in allowed_quality:
+            update["quality"] = "medium" if "medium" in allowed_quality else allowed_quality[0]
+    else:
+        update["quality"] = None
     # для аудио — тип (voice/music) берём из конфига модели
     if media_type == "audio":
         update["audio_type"] = model_cfg.get("audio_type", "voice")
@@ -3052,6 +3075,34 @@ async def set_resolution(callback: CallbackQuery, state: FSMContext) -> None:
     await callback.answer()
 
 
+@router.callback_query(MediaStates.confirm, F.data == "media:pick_quality")
+async def pick_quality(callback: CallbackQuery, state: FSMContext) -> None:
+    data = await state.get_data()
+    quality_options = data.get("model_quality_options") or []
+    if len(quality_options) <= 1:
+        await callback.answer()
+        return
+    await callback.message.edit_text(
+        "<b>Выбери детализацию:</b>\n\n"
+        "Быстрый — меньше деталей, выше скорость.\n"
+        "Стандарт — баланс качества и скорости.\n"
+        "Высокий — максимальная детализация.",
+        parse_mode="HTML",
+        reply_markup=image_quality_kb(data.get("quality", "medium"), quality_options),
+    )
+    await callback.answer()
+
+
+@router.callback_query(MediaStates.confirm, F.data.startswith("media:quality:"))
+async def set_quality(callback: CallbackQuery, state: FSMContext) -> None:
+    quality = callback.data.split(":")[2]
+    await state.update_data(quality=quality)
+    data = await state.get_data()
+    await callback.message.edit_text(_confirm_card_text(data), parse_mode="HTML", reply_markup=_confirm_kb(data))
+    await _delete_msgs_below(callback.bot, callback.message.chat.id, state, callback.message.message_id)
+    await callback.answer()
+
+
 @router.callback_query(MediaStates.confirm, F.data == "media:pick_format")
 async def pick_format(callback: CallbackQuery, state: FSMContext) -> None:
     data = await state.get_data()
@@ -3553,6 +3604,7 @@ async def _run_generation(send_msg: Message, tg_user, state: FSMContext, data: d
             tg_user.id, tg_user.username, prompt,
             data.get("aspect_ratio", "1:1"), data.get("resolution", "1K"), model_slug,
             style_reference_urls=style_reference_urls,
+            quality=data.get("quality"),
         )
         gen_nonce = data.get("_gen_nonce")
         if result.variants:
@@ -3677,6 +3729,7 @@ async def _run_generation(send_msg: Message, tg_user, state: FSMContext, data: d
             image_url=image_url, style_reference_urls=style_reference_urls,
             provider_task_id=data.get("kie_gen_task_id"),
             resolution=data.get("resolution"),
+            quality=data.get("quality"),
         )
         file = BufferedInputFile(result.data, filename=result.filename)
         sent = await send_msg.answer_photo(file, reply_markup=after_generation_kb(is_image=True))
