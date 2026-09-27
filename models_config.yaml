@@ -211,12 +211,12 @@ tasks:
           и текстуры, хорошо понимает контекст и семантику запроса. Сильная сторона — гибкость
           в генерации разных форматов: от иллюстраций до фотореалистичных сцен.
         aspect_ratios: ["1:1", "4:3", "3:4", "3:2", "2:3", "5:4", "4:5", "16:9", "9:16", "21:9"]
-        model_id: gpt-image-2
-        provider: aitunnel
+        model_id: gpt-image-2-text-to-image
+        provider: kie
         max_style_refs: 16
-        resolutions: ["1K", "2K"]
-        quality_options: ["low", "medium", "high"]
+        resolutions: ["1K", "2K", "4K"]
         cost_credits: 5
+        cost_by_resolution: {"1K": 5, "2K": 7, "4K": 10}
         cost_usd: 0.04
         enabled: true
 

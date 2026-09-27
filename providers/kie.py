@@ -84,6 +84,15 @@ def _image_input(
                 "image_list": [{"image_url": u} for u in style_reference_urls],
             }
         return payload
+    if model == "gpt-image-2-text-to-image":
+        payload = {
+            "prompt": prompt,
+            "aspect_ratio": _kie_ratio(aspect_ratio),
+            "resolution": resolution,
+        }
+        if style_reference_urls:
+            payload["image_urls"] = list(style_reference_urls)
+        return payload
     # Nano Banana 2 и прочие — стандартный формат; поддерживает до 14 ориентиров
     result: dict = {
         "prompt": prompt,
