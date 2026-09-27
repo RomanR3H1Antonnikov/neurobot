@@ -2827,7 +2827,7 @@ async def confirm_unknown_input(message: Message, state: FSMContext, album: list
         return
 
     # Фото в confirm state
-    if message.photo and media_type in ("image", "photo_edit", "video"):
+    if message.photo and media_type in ("image", "photo_edit", "video", "audio"):
         photo = message.photo[-1]
         max_refs = data.get("model_max_style_refs", 0)
         # Подпись к фото → используем как промпт в любом режиме
@@ -2956,6 +2956,12 @@ async def confirm_unknown_input(message: Message, state: FSMContext, album: list
                     [InlineKeyboardButton(text="✏️ Перейти в редактирование фото", callback_data="media:switch_to_photo_edit")],
                 ]),
             )
+            return
+
+        # audio без поддержки ориентиров → молча игнорируем фото
+        if media_type == "audio":
+            await message.delete()
+            asyncio.create_task(_toast(message, "⚠️ Эта модель не поддерживает фото-ориентиры"))
             return
 
         # photo_edit, ориентиры не поддерживаются → заменяем основное фото
