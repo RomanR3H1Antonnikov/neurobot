@@ -1062,7 +1062,42 @@ async def generate_again(callback: CallbackQuery, state: FSMContext) -> None:
     # Для редактирования (photo_edit/video_edit) сохраняем основной медиафайл,
     # ориентиры и промпт — пользователь хочет повторить с теми же настройками.
     # Для генерации (image/video/audio) — очищаем всё и начинаем с чистого листа.
+    # Исключение: если редактирование было запущено кнопкой «Редактировать» после генерации
+    # (quick_edit=True, есть _gen_snapshot) — возвращаем в исходный режим генерации.
+    snapshot = data.get("_gen_snapshot")
     is_edit_mode = data.get("media_type") in ("photo_edit", "video_edit")
+    if is_edit_mode and snapshot and snapshot.get("media_type") == "image":
+        await state.update_data(
+            media_type=snapshot["media_type"],
+            model_slug=snapshot["model_slug"],
+            model_label=snapshot.get("model_label"),
+            model_description=snapshot.get("model_description"),
+            model_variant_description=snapshot.get("model_variant_description"),
+            model_has_group=snapshot.get("model_has_group"),
+            model_actual_id=snapshot.get("model_actual_id"),
+            model_aspect_ratios=snapshot.get("model_aspect_ratios"),
+            model_resolutions=snapshot.get("model_resolutions"),
+            model_max_style_refs=snapshot.get("model_max_style_refs"),
+            prompt=None,
+            reference_file_id=None, reference_type=None,
+            style_reference_file_ids=None,
+            generated_file_id=None, kie_gen_task_id=None,
+            _gen_snapshot=None, quick_edit=None,
+            _is_generating=None, _cleanup_warned_msg_id=None, confirm_msg_id=None,
+        )
+        await state.set_state(MediaStates.confirm)
+        data = await state.get_data()
+        try:
+            await callback.message.edit_reply_markup(reply_markup=None)
+        except Exception:
+            pass
+        sent = await callback.message.answer(
+            _confirm_card_text(data), parse_mode="HTML", reply_markup=_confirm_kb(data),
+        )
+        await _track_msg(state, sent.message_id)
+        await state.update_data(confirm_msg_id=sent.message_id)
+        await callback.answer()
+        return
     await state.update_data(
         prompt=data.get("prompt") if is_edit_mode else None,
         reference_file_id=data.get("reference_file_id") if is_edit_mode else None,
