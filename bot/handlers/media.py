@@ -26,7 +26,7 @@ from bot.keyboards.media import (
     music_confirm_kb, music_format_kb,
     udio_confirm_kb, udio_lyrics_type_kb, udio_model_type_kb,
     voice_picker_kb, voice_confirm_kb, voice_language_kb,
-    style_ref_collecting_kb, style_ref_delete_kb, video_ref_delete_kb, audio_ref_delete_kb, after_generation_kb, gen_waiting_kb, error_kb,
+    style_ref_collecting_kb, style_ref_delete_kb, video_ref_delete_kb, audio_ref_delete_kb, video_extra_frames_delete_kb, after_generation_kb, gen_waiting_kb, error_kb,
 )
 from providers.base import ProviderError, ProviderContentPolicyError, TaskType
 from providers.router import get_models_for_task
@@ -1871,9 +1871,46 @@ async def delete_last_frame(callback: CallbackQuery, state: FSMContext) -> None:
 
 @router.callback_query(MediaStates.confirm, F.data == "media:delete_extra_frames")
 async def delete_extra_frames(callback: CallbackQuery, state: FSMContext) -> None:
+    """Показывает экран выборочного удаления фото-ориентиров."""
+    data = await state.get_data()
+    refs = list(data.get("style_reference_file_ids") or [])
+    count = len(refs)
+    if count == 0:
+        await callback.answer("Нет фото для удаления", show_alert=False)
+        return
+    await callback.message.edit_text(
+        f"Выбери фото для удаления (загружено {count}):",
+        reply_markup=video_extra_frames_delete_kb(count),
+    )
+    await callback.answer()
+
+
+@router.callback_query(MediaStates.confirm, F.data.startswith("media:del_extra_frame:"))
+async def del_extra_frame_by_idx(callback: CallbackQuery, state: FSMContext) -> None:
+    """Удаляет конкретное фото-ориентир по индексу."""
+    idx = int(callback.data.split(":")[-1])
+    data = await state.get_data()
+    refs = list(data.get("style_reference_file_ids") or [])
+    if 0 <= idx < len(refs):
+        refs.pop(idx)
+    await state.update_data(style_reference_file_ids=refs)
+    if not refs:
+        await _back_to_frames_menu(callback.bot, callback.message.chat.id, state)
+        await callback.answer("Фото удалено")
+        return
+    await callback.message.edit_text(
+        f"Выбери фото для удаления (загружено {len(refs)}):",
+        reply_markup=video_extra_frames_delete_kb(len(refs)),
+    )
+    await callback.answer("Фото удалено", show_alert=False)
+
+
+@router.callback_query(MediaStates.confirm, F.data == "media:delete_extra_frames_all")
+async def delete_extra_frames_all(callback: CallbackQuery, state: FSMContext) -> None:
+    """Удаляет все фото-ориентиры в видеомодели."""
     await state.update_data(style_reference_file_ids=[], _sref_msg_id=callback.message.message_id)
     await _back_to_frames_menu(callback.bot, callback.message.chat.id, state)
-    await callback.answer("Кадры удалены")
+    await callback.answer("Все кадры удалены")
 
 
 @router.callback_query(MediaStates.confirm, F.data == "media:delete_video_refs")
