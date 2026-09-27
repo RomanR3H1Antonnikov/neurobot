@@ -187,6 +187,7 @@ class KieProvider(OpenAICompatProvider):
             "callBackUrl": callback_url,
             "input": input_data,
         }
+        logger.info("KIE _create_job: model=%s input=%s", model, input_data)
         async with self._session(timeout=30) as session:
             async with session.post(f"{_KIE_API_BASE}/jobs/createTask", json=payload) as resp:
                 if resp.status == 402:
