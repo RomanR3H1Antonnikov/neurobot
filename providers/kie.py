@@ -604,6 +604,15 @@ class KieProvider(OpenAICompatProvider):
                 "resolution": resolution or "1K",
                 "output_format": "png",
             }
+        elif actual_model == "gpt-image-2-image-to-image":
+            if not image_url:
+                raise ProviderUnavailableError("KIE edit_image: не передан URL изображения")
+            input_data = {
+                "prompt": prompt,
+                "input_urls": [image_url] + _srefs,
+                "aspect_ratio": "auto",
+                "resolution": resolution or "1K",
+            }
         else:
             if not image_url:
                 raise ProviderUnavailableError("KIE edit_image: не передан URL изображения")
