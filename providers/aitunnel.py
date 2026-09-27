@@ -35,6 +35,7 @@ class AitunnelProvider(OpenAICompatProvider):
     async def generate_image(
         self, prompt: str, aspect_ratio: str = "1:1", resolution: str = "1K",
         model: str | None = None, style_reference_urls: list[str] | None = None,
+        quality: str | None = None,
     ) -> GenerationResult:
         actual_model = model or self.image_model
         if actual_model == "gpt-image-2":
@@ -47,18 +48,20 @@ class AitunnelProvider(OpenAICompatProvider):
                     "model": actual_model,
                     "prompt": effective_prompt,
                     "size": size,
+                    "quality": quality or "medium",
                     "response_format": "b64_json",
                     "n": 1,
                 }) as resp:
                     data = await self._handle_response(resp)
             image_bytes = base64.b64decode(data["data"][0]["b64_json"])
             return GenerationResult(data=image_bytes, mime_type="image/png", filename="image.png")
-        return await super().generate_image(prompt, aspect_ratio, resolution, model, style_reference_urls)
+        return await super().generate_image(prompt, aspect_ratio, resolution, model, style_reference_urls, quality)
 
     async def edit_image(
         self, image_bytes: bytes, prompt: str, model: str | None = None,
         image_url: str | None = None, style_reference_urls: list[str] | None = None,
         provider_task_id: str | None = None, resolution: str | None = None,
+        quality: str | None = None,
     ) -> GenerationResult:
         actual_model = model or self.image_edit_model
         if actual_model == "gpt-image-2":
@@ -72,10 +75,11 @@ class AitunnelProvider(OpenAICompatProvider):
             form.add_field("image", image_bytes, filename="image.png", content_type="image/png")
             form.add_field("response_format", "b64_json")
             form.add_field("size", size)
+            form.add_field("quality", quality or "medium")
             headers = {"Authorization": f"Bearer {self._api_key}"}
             async with aiohttp.ClientSession(headers=headers, timeout=aiohttp.ClientTimeout(total=120)) as session:
                 async with session.post(f"{self.base_url}/images/edits", data=form) as resp:
                     data = await self._handle_response(resp)
             image_out = base64.b64decode(data["data"][0]["b64_json"])
             return GenerationResult(data=image_out, mime_type="image/png", filename="edited.png")
-        return await super().edit_image(image_bytes, prompt, model, image_url, style_reference_urls, provider_task_id, resolution)
+        return await super().edit_image(image_bytes, prompt, model, image_url, style_reference_urls, provider_task_id, resolution, quality)

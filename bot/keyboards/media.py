@@ -163,16 +163,24 @@ def style_ref_collecting_kb(count: int, max_refs: int = 14) -> InlineKeyboardMar
     return builder.as_markup()
 
 
+_QUALITY_LABELS = {"low": "Быстрый", "medium": "Стандарт", "high": "Высокий"}
+
+
 def image_confirm_kb(
     aspect_ratio: str, resolution: str = "1K", has_prompt: bool = False,
     style_ref_count: int = 0, max_style_refs: int = 14,
     cost_credits: int | None = None,
+    quality: str | None = None,
+    quality_options: list[str] | None = None,
 ) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     builder.row(
         InlineKeyboardButton(text=f"📐 Масштаб: {aspect_ratio}", callback_data="media:pick_ratio"),
         InlineKeyboardButton(text=f"🖼 Качество: {resolution}", callback_data="media:pick_resolution"),
     )
+    if quality_options:
+        q_label = _QUALITY_LABELS.get(quality or "medium", quality or "medium")
+        builder.row(InlineKeyboardButton(text=f"🎨 Детализация: {q_label}", callback_data="media:pick_quality"))
     if max_style_refs > 0:
         ref_text = f"🖼 Ориентиры: {style_ref_count} фото ✅" if style_ref_count else "📎 Добавить ориентир"
         builder.row(InlineKeyboardButton(text=ref_text, callback_data="media:add_style_ref"))
@@ -206,6 +214,17 @@ def image_resolution_kb(current: str, allowed_resolutions: list[str] | None = No
     for res in resolutions:
         prefix = "✅ " if res == current else ""
         builder.add(InlineKeyboardButton(text=f"{prefix}{res}", callback_data=f"media:resolution:{res}"))
+    builder.adjust(3)
+    builder.row(InlineKeyboardButton(text="◀️ Назад", callback_data="media:back:confirm"))
+    return builder.as_markup()
+
+
+def image_quality_kb(current: str, quality_options: list[str]) -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    for q in quality_options:
+        label = _QUALITY_LABELS.get(q, q)
+        prefix = "✅ " if q == current else ""
+        builder.add(InlineKeyboardButton(text=f"{prefix}{label}", callback_data=f"media:quality:{q}"))
     builder.adjust(3)
     builder.row(InlineKeyboardButton(text="◀️ Назад", callback_data="media:back:confirm"))
     return builder.as_markup()
@@ -706,6 +725,8 @@ def edit_confirm_kb(
     has_aspect_ratios: bool = False,
     resolution: str | None = None,
     has_resolutions: bool = False,
+    quality: str | None = None,
+    quality_options: list[str] | None = None,
 ) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     if media_type == "photo_edit":
@@ -723,6 +744,11 @@ def edit_confirm_kb(
     if media_type == "photo_edit":
         style_text = f"🖼 Ориентиры: {style_ref_count} фото ✅" if style_ref_count else "📎 Добавить ориентир"
         builder.row(InlineKeyboardButton(text=style_text, callback_data="media:add_style_ref"))
+        if has_resolutions and resolution:
+            builder.row(InlineKeyboardButton(text=f"🖼 Качество: {resolution}", callback_data="media:pick_resolution"))
+        if quality_options:
+            q_label = _QUALITY_LABELS.get(quality or "medium", quality or "medium")
+            builder.row(InlineKeyboardButton(text=f"🎨 Детализация: {q_label}", callback_data="media:pick_quality"))
     if media_type == "video_edit" and max_style_refs > 0:
         style_text = f"🖼 Ориентиры: {style_ref_count} фото ✅" if style_ref_count else "📎 Фото-ориентиры"
         builder.row(InlineKeyboardButton(text=style_text, callback_data="media:add_style_ref"))

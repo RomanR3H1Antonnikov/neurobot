@@ -316,6 +316,7 @@ class KieProvider(OpenAICompatProvider):
     async def generate_image(
         self, prompt: str, aspect_ratio: str = "1:1", resolution: str = "1K",
         model: str | None = None, style_reference_urls: list[str] | None = None,
+        quality: str | None = None,
     ) -> GenerationResult:
         actual_model = model or "nano-banana-2"
         corr_id = uuid.uuid4().hex
@@ -534,6 +535,7 @@ class KieProvider(OpenAICompatProvider):
         self, image_bytes: bytes, prompt: str, model: str | None = None,
         image_url: str | None = None, style_reference_urls: list[str] | None = None,
         provider_task_id: str | None = None, resolution: str | None = None,
+        quality: str | None = None,
     ) -> GenerationResult:
         """Job-based редактирование через KIE createTask."""
         actual_model = model or "google/nano-banana-edit"
