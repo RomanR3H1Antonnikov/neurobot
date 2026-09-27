@@ -28,7 +28,8 @@ def set_pending_job_ctx(
 logger = logging.getLogger(__name__)
 
 _KIE_API_BASE = "https://api.kie.ai/api/v1"
-_JOB_TIMEOUT = 600  # секунд ожидания callback'а (10 минут)
+_JOB_TIMEOUT = 600        # секунд ожидания callback'а (10 минут)
+_JOB_TIMEOUT_AUDIO = 1200  # 20 минут для аудио-генерации
 
 # Формат соотношения сторон для KIE: "1:1" → "1:1" (совпадает), "auto" для произвольного
 _RATIO_MAP: dict[str, str] = {}  # пустой = передаём as-is
@@ -288,7 +289,7 @@ class KieProvider(OpenAICompatProvider):
 
         try:
             await self._create_job(actual_model, input_data, corr_id)
-            callback_body = await asyncio.wait_for(fut, timeout=_JOB_TIMEOUT)
+            callback_body = await asyncio.wait_for(fut, timeout=_JOB_TIMEOUT_AUDIO)
         except asyncio.TimeoutError:
             raise ProviderUnavailableError("KIE: истекло время ожидания аудио")
         finally:
