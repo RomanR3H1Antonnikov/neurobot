@@ -72,6 +72,18 @@ class GenApiProvider(AbstractProvider):
 
         wait_timeout = timeout if timeout is not None else _CALLBACK_TIMEOUT
         fut = register_pending(corr_id)
+
+        # Сохраняем ДО POST — если POST завис/таймаутит, GenAPI всё равно обработает задачу
+        # и пришлёт callback; orphaned delivery найдёт запись и доставит результат.
+        try:
+            from providers.kie import _pending_job_ctx
+            ctx = _pending_job_ctx.get()
+            if ctx:
+                from db.queries import save_pending_job
+                await save_pending_job(corr_id, **ctx)
+        except Exception as _e:
+            logger.warning("GenAPI: не удалось сохранить контекст job %s: %s", corr_id, _e)
+
         try:
             async with aiohttp.ClientSession(
                 headers=self._headers(),
@@ -93,16 +105,6 @@ class GenApiProvider(AbstractProvider):
                     task = await resp.json()
 
             logger.info("GenAPI task created: model=%s, id=%s", model, task.get("id"))
-
-            # Сохраняем контекст job в БД для orphaned delivery (если бот перезапустится до callback)
-            try:
-                from providers.kie import _pending_job_ctx
-                ctx = _pending_job_ctx.get()
-                if ctx:
-                    from db.queries import save_pending_job
-                    await save_pending_job(corr_id, **ctx)
-            except Exception as _e:
-                logger.warning("GenAPI: не удалось сохранить контекст job %s: %s", corr_id, _e)
 
             result = await asyncio.wait_for(fut, timeout=wait_timeout)
         except asyncio.TimeoutError:
@@ -216,8 +218,8 @@ class GenApiProvider(AbstractProvider):
             extra = extra or {}
             extra["image_url"] = music_params["_image_url"]
 
-        # GenAPI скачивает изображение синхронно перед ответом → увеличиваем POST-таймаут
-        _post_timeout = 120 if _has_image else 60
+        # GenAPI обрабатывает аудио синхронно перед ответом → длинный POST-таймаут
+        _post_timeout = 600
         data = await self._run(actual_model, prompt, extra=extra, timeout=_CALLBACK_TIMEOUT_AUDIO, post_timeout=_post_timeout)
 
         url = _extract_url(data)
