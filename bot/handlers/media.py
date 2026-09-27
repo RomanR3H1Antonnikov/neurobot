@@ -3817,6 +3817,7 @@ async def _run_generation(send_msg: Message, tg_user, state: FSMContext, data: d
             provider_task_id=data.get("kie_gen_task_id"),
             resolution=data.get("resolution"),
             quality=data.get("quality"),
+            aspect_ratio=data.get("aspect_ratio"),
         )
         file = BufferedInputFile(result.data, filename=result.filename)
         sent = await send_msg.answer_photo(file, reply_markup=after_generation_kb(is_image=True))
