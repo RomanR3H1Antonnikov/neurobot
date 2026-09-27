@@ -1871,44 +1871,36 @@ async def delete_last_frame(callback: CallbackQuery, state: FSMContext) -> None:
 
 @router.callback_query(MediaStates.confirm, F.data == "media:delete_extra_frames")
 async def delete_extra_frames(callback: CallbackQuery, state: FSMContext) -> None:
-    """Показывает экран выборочного удаления фото-ориентиров."""
+    """Запрашивает номер фото-ориентира для удаления (или сразу удаляет, если фото одно)."""
     data = await state.get_data()
     refs = list(data.get("style_reference_file_ids") or [])
     count = len(refs)
     if count == 0:
         await callback.answer("Нет фото для удаления", show_alert=False)
         return
-    await callback.message.edit_text(
-        f"Выбери фото для удаления (загружено {count}):",
-        reply_markup=video_extra_frames_delete_kb(count),
-    )
-    await callback.answer()
-
-
-@router.callback_query(MediaStates.confirm, F.data.startswith("media:del_extra_frame:"))
-async def del_extra_frame_by_idx(callback: CallbackQuery, state: FSMContext) -> None:
-    """Удаляет конкретное фото-ориентир по индексу."""
-    idx = int(callback.data.split(":")[-1])
-    data = await state.get_data()
-    refs = list(data.get("style_reference_file_ids") or [])
-    if 0 <= idx < len(refs):
-        refs.pop(idx)
-    await state.update_data(style_reference_file_ids=refs)
-    if not refs:
+    if count == 1:
+        await state.update_data(style_reference_file_ids=[], _sref_msg_id=callback.message.message_id)
         await _back_to_frames_menu(callback.bot, callback.message.chat.id, state)
         await callback.answer("Фото удалено")
         return
+    await state.update_data(managing_video_extra_frame="delete", _sref_msg_id=callback.message.message_id)
     await callback.message.edit_text(
-        f"Выбери фото для удаления (загружено {len(refs)}):",
-        reply_markup=video_extra_frames_delete_kb(len(refs)),
+        f"Введи номер фото, которое хочешь удалить (1–{count}):",
+        reply_markup=video_extra_frames_delete_kb(),
     )
-    await callback.answer("Фото удалено", show_alert=False)
+    await state.set_state(MediaStates.enter_reference)
+    await callback.answer()
 
 
-@router.callback_query(MediaStates.confirm, F.data == "media:delete_extra_frames_all")
+@router.callback_query(F.data == "media:delete_extra_frames_all")
 async def delete_extra_frames_all(callback: CallbackQuery, state: FSMContext) -> None:
     """Удаляет все фото-ориентиры в видеомодели."""
-    await state.update_data(style_reference_file_ids=[], _sref_msg_id=callback.message.message_id)
+    await state.update_data(
+        style_reference_file_ids=[],
+        managing_video_extra_frame=None,
+        _sref_msg_id=callback.message.message_id,
+    )
+    await state.set_state(MediaStates.confirm)
     await _back_to_frames_menu(callback.bot, callback.message.chat.id, state)
     await callback.answer("Все кадры удалены")
 
@@ -2443,6 +2435,23 @@ async def enter_reference_text_input(message: Message, state: FSMContext) -> Non
             _audio_ref_hint(audio_names, max_refs),
             _audio_ref_kb(audio_names),
         )
+        return
+
+    # ── Удаление конкретного фото-ориентира в видеомодели ────────────────────
+    if data.get("managing_video_extra_frame") == "delete":
+        srefs = list(data.get("style_reference_file_ids") or [])
+        try:
+            idx = int(message.text.strip()) - 1
+            if idx < 0 or idx >= len(srefs):
+                raise ValueError
+        except ValueError:
+            sent = await message.answer(f"Введи число от 1 до {len(srefs)}.")
+            await _track_msg(state, sent.message_id)
+            return
+        srefs.pop(idx)
+        await state.update_data(style_reference_file_ids=srefs, managing_video_extra_frame=None)
+        await state.set_state(MediaStates.confirm)
+        await _back_to_frames_menu(message.bot, message.chat.id, state)
         return
 
     # ── Замена видео в конструкторе видео ────────────────────────────────────
