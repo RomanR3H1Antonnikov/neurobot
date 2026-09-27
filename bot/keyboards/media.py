@@ -41,11 +41,31 @@ def media_edit_kb() -> InlineKeyboardMarkup:
 
 # ─── Выбор модели (двухуровневый) ────────────────────────────────────────────
 
+def _model_cost_range(m: dict) -> tuple[int, int]:
+    """Возвращает (min_cost, max_cost) для одной модели в рублях."""
+    by_res = m.get("cost_by_resolution")
+    if by_res:
+        return min(by_res.values()), max(by_res.values())
+    cps = m.get("cost_per_second_by_resolution")
+    if cps:
+        lo = min(cps.values())
+        return lo, lo
+    credits = m.get("cost_credits", 0)
+    return credits, credits
+
+
 def _top_level_items(models: list[dict]) -> list[dict]:
     """
     Строит список первого уровня: группы (→ выбор версии) + одиночные модели.
     Группы дедуплицируются и идут в порядке первого появления в yaml.
     """
+    # Собираем варианты по группам для расчёта диапазона цен
+    group_models: dict[str, list[dict]] = {}
+    for m in models:
+        g = m.get("group")
+        if g:
+            group_models.setdefault(g, []).append(m)
+
     seen_groups: set[str] = set()
     result = []
     for m in models:
@@ -53,10 +73,15 @@ def _top_level_items(models: list[dict]) -> list[dict]:
         if group:
             if group not in seen_groups:
                 seen_groups.add(group)
+                variants = group_models[group]
+                lo = min(_model_cost_range(v)[0] for v in variants)
+                hi = max(_model_cost_range(v)[1] for v in variants)
+                cost_lbl = f"{lo}–{hi} ₽" if lo != hi else f"{lo} ₽"
                 result.append({
                     "_type": "group",
                     "group_id": group,
                     "label": m.get("group_label", group),
+                    "cost_label": cost_lbl,
                 })
         else:
             result.append({"_type": "model", **m})
@@ -68,8 +93,11 @@ def _cost_label(model: dict) -> str:
     if by_res:
         lo, hi = min(by_res.values()), max(by_res.values())
         return f"{lo}–{hi} ₽" if lo != hi else f"{lo} ₽"
+    cps = model.get("cost_per_second_by_resolution")
+    if cps:
+        return f"от {min(cps.values())} ₽/с"
     if model.get("cost_per_second"):
-        return f"от {model['cost_credits']} ₽"
+        return f"от {model['cost_credits']} ₽/с"
     return f"{model['cost_credits']} ₽"
 
 
@@ -79,12 +107,12 @@ def model_top_kb(models: list[dict]) -> InlineKeyboardMarkup:
     for item in _top_level_items(models):
         if item["_type"] == "group":
             builder.row(InlineKeyboardButton(
-                text=f"{item['label']} ›",
+                text=f"{item['label']}  {item['cost_label']} ›",
                 callback_data=f"media:group:{item['group_id']}",
             ))
         else:
             builder.row(InlineKeyboardButton(
-                text=item['label'],
+                text=f"{item['label']}  {_cost_label(item)}",
                 callback_data=f"media:model:{item['id']}",
             ))
     builder.row(InlineKeyboardButton(text="◀️ Назад", callback_data="media:back:type"))
@@ -96,7 +124,7 @@ def model_variant_kb(variants: list[dict]) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     for m in variants:
         builder.row(InlineKeyboardButton(
-            text=m['label'],
+            text=f"{m['label']}  {_cost_label(m)}",
             callback_data=f"media:model:{m['id']}",
         ))
     builder.row(InlineKeyboardButton(text="◀️ Назад", callback_data="media:back:model"))
