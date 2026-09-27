@@ -1036,11 +1036,15 @@ async def generate_again(callback: CallbackQuery, state: FSMContext) -> None:
         await callback.answer()
         return
 
-    # Очищаем контент (промпт, референсы, ориентиры), сохраняем модель и формат
+    # Для редактирования (photo_edit/video_edit) сохраняем основной медиафайл,
+    # ориентиры и промпт — пользователь хочет повторить с теми же настройками.
+    # Для генерации (image/video/audio) — очищаем всё и начинаем с чистого листа.
+    is_edit_mode = data.get("media_type") in ("photo_edit", "video_edit")
     await state.update_data(
-        prompt=None,
-        reference_file_id=None, reference_type=None,
-        style_reference_file_ids=None,
+        prompt=data.get("prompt") if is_edit_mode else None,
+        reference_file_id=data.get("reference_file_id") if is_edit_mode else None,
+        reference_type=data.get("reference_type") if is_edit_mode else None,
+        style_reference_file_ids=data.get("style_reference_file_ids") if is_edit_mode else None,
         audio_reference_file_ids=None, audio_reference_file_names=None,
         generated_file_id=None,
         kie_gen_task_id=None,
