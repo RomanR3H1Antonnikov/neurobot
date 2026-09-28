@@ -26,7 +26,7 @@ from bot.keyboards.media import (
     music_confirm_kb, music_format_kb,
     udio_confirm_kb, udio_lyrics_type_kb, udio_model_type_kb,
     voice_picker_kb, voice_confirm_kb, voice_language_kb,
-    style_ref_collecting_kb, style_ref_delete_kb, video_ref_delete_kb, audio_ref_delete_kb, video_extra_frames_delete_kb, after_generation_kb, gen_waiting_kb, error_kb,
+    style_ref_collecting_kb, style_ref_delete_kb, video_ref_delete_kb, audio_ref_delete_kb, video_extra_frames_delete_kb, after_generation_kb, after_orphaned_photo_kb, gen_waiting_kb, error_kb,
 )
 from providers.base import ProviderError, ProviderContentPolicyError, TaskType
 from providers.router import get_models_for_task
@@ -1226,6 +1226,26 @@ async def edit_generated_image(callback: CallbackQuery, state: FSMContext) -> No
         reply_markup=back_to_confirm_kb(),
     )
     await _track_msg(state, sent.message_id)
+    await callback.answer()
+
+
+@router.callback_query(F.data == "media:edit_orphaned")
+async def edit_orphaned_photo(callback: CallbackQuery, state: FSMContext) -> None:
+    """Редактировать фото, доставленное через orphaned delivery.
+    file_id берётся прямо из сообщения, FSM-снапшот генерации недоступен."""
+    if not callback.message or not callback.message.photo:
+        await callback.answer("Не удалось получить фото.", show_alert=True)
+        return
+    file_id = callback.message.photo[-1].file_id
+    await state.set_data({"media_type": "photo_edit", "reference_file_id": file_id, "reference_type": "photo"})
+    models = get_models_for_task(TaskType.IMAGE_EDIT)
+    sent = await callback.message.answer(
+        model_select_text("Изменить фото", models),
+        parse_mode="HTML",
+        reply_markup=model_top_kb(models),
+    )
+    await state.update_data(_tracked_msg_ids=[sent.message_id])
+    await state.set_state(MediaStates.select_model)
     await callback.answer()
 
 

@@ -12,6 +12,7 @@ import logging
 import aiohttp
 from aiohttp import web
 from aiogram.types import BufferedInputFile
+from bot.keyboards.media import after_orphaned_photo_kb
 
 logger = logging.getLogger(__name__)
 
@@ -109,8 +110,6 @@ async def _deliver_orphaned(corr_id: str, body: dict) -> None:
     caption = f"✅ <b>Готово!</b> {_ready_phrases.get(media_type, 'Результат готов')}."
     if model_label:
         caption += f"\n<i>{model_label}</i>"
-    if media_type in ("photo", "video"):
-        caption += "\n\nЧтобы отредактировать — скачайте файл и загрузите его в раздел «Редактировать медиа»."
 
     try:
         file = BufferedInputFile(media_data, filename=_media_filename(media_type))
@@ -121,7 +120,8 @@ async def _deliver_orphaned(corr_id: str, body: dict) -> None:
             sent = await _bot.send_audio(chat_id, file, caption=caption, parse_mode="HTML")
             file_id = sent.audio.file_id
         else:
-            sent = await _bot.send_photo(chat_id, file, caption=caption, parse_mode="HTML")
+            sent = await _bot.send_photo(chat_id, file, caption=caption, parse_mode="HTML",
+                                         reply_markup=after_orphaned_photo_kb())
             file_id = sent.photo[-1].file_id
 
         await save_generation(telegram_id, media_type, file_id, prompt=prompt, model_label=model_label)
@@ -194,8 +194,6 @@ async def _deliver_genapi_orphaned(corr_id: str, body: dict) -> None:
     caption = f"✅ <b>Готово!</b> {_ready_phrases.get(media_type, 'Результат готов')}."
     if model_label:
         caption += f"\n<i>{model_label}</i>"
-    if media_type in ("photo", "video"):
-        caption += "\n\nЧтобы отредактировать — скачайте файл и загрузите его в раздел «Редактировать медиа»."
 
     try:
         file = BufferedInputFile(media_data, filename=_media_filename(media_type))
@@ -206,7 +204,8 @@ async def _deliver_genapi_orphaned(corr_id: str, body: dict) -> None:
             sent = await _bot.send_audio(chat_id, file, caption=caption, parse_mode="HTML")
             file_id = sent.audio.file_id
         else:
-            sent = await _bot.send_photo(chat_id, file, caption=caption, parse_mode="HTML")
+            sent = await _bot.send_photo(chat_id, file, caption=caption, parse_mode="HTML",
+                                         reply_markup=after_orphaned_photo_kb())
             file_id = sent.photo[-1].file_id
 
         await save_generation(telegram_id, media_type, file_id, prompt=prompt, model_label=model_label)
