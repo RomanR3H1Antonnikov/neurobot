@@ -102,17 +102,17 @@ def _cost_label(model: dict) -> str:
 
 
 def model_top_kb(models: list[dict]) -> InlineKeyboardMarkup:
-    """Первый уровень выбора: группы со стрелкой + одиночные модели с ценой."""
+    """Первый уровень выбора: группы со стрелкой + одиночные модели."""
     builder = InlineKeyboardBuilder()
     for item in _top_level_items(models):
         if item["_type"] == "group":
             builder.row(InlineKeyboardButton(
-                text=f"{item['label']}  {item['cost_label']} ›",
+                text=f"{item['label']} ›",
                 callback_data=f"media:group:{item['group_id']}",
             ))
         else:
             builder.row(InlineKeyboardButton(
-                text=f"{item['label']}  {_cost_label(item)}",
+                text=item['label'],
                 callback_data=f"media:model:{item['id']}",
             ))
     builder.row(InlineKeyboardButton(text="◀️ Назад", callback_data="media:back:type"))
@@ -124,7 +124,7 @@ def model_variant_kb(variants: list[dict]) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     for m in variants:
         builder.row(InlineKeyboardButton(
-            text=f"{m['label']}  {_cost_label(m)}",
+            text=m['label'],
             callback_data=f"media:model:{m['id']}",
         ))
     builder.row(InlineKeyboardButton(text="◀️ Назад", callback_data="media:back:model"))
