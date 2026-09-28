@@ -1099,7 +1099,7 @@ tasks:
         provider: kie
         cost_credits: 1
         cost_usd: 0.08
-        enabled: true
+        enabled: false
 
       - id: kling-3-omni-edit
         label: "Kling 3.0 Omni"
@@ -1134,7 +1134,7 @@ tasks:
         cost_credits: 13
         cost_per_second_by_resolution: {"480p": 2.5, "720p": 3.5}
         cost_usd: 0.023
-        enabled: true
+        enabled: false
 
       - id: wan-2-7-edit
         label: "Wan 2.7"
@@ -1169,7 +1169,7 @@ tasks:
         cost_credits: 12
         cost_per_second_by_resolution: {"720p": 12, "1080p": 16}
         cost_usd: 0.07
-        enabled: true
+        enabled: false
 
       - id: veo-3-1-lite-edit
         label: "Veo 3.1 Lite"
@@ -1187,7 +1187,7 @@ tasks:
         provider: kie
         cost_credits: 1
         cost_usd: 0.06
-        enabled: true
+        enabled: false
 
       - id: veo-3-1-fast-edit
         label: "Veo 3.1 Fast"
@@ -1203,7 +1203,7 @@ tasks:
         provider: kie
         cost_credits: 1
         cost_usd: 0.08
-        enabled: true
+        enabled: false
 
       - id: veo-3-1-quality-edit
         label: "Veo 3.1 Quality"
@@ -1216,7 +1216,7 @@ tasks:
         provider: kie
         cost_credits: 1
         cost_usd: 0.10
-        enabled: true
+        enabled: false
 
       - id: pixverse-6-edit
         label: "Pixverse 6.0"
