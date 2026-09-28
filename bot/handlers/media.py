@@ -2645,7 +2645,7 @@ async def receive_prompt(message: Message, state: FSMContext) -> None:
             await waiting.delete()
         except GenerationCancelledError:
             await _delete_msgs_below(message.bot, message.chat.id, state, waiting.message_id)
-            await waiting.delete()
+            await waiting.edit_text("⚠️ Генерация была прервана. Кредиты не списаны — попробуй ещё раз.", reply_markup=error_kb())
         except InsufficientCreditsError as e:
             await state.update_data(pending_retry_type="media")
             await waiting.edit_text(
@@ -2846,6 +2846,8 @@ async def update_prompt_in_confirm(message: Message, state: FSMContext) -> None:
             try:
                 await _run_generation(message, message.from_user, state, edit_data)
                 await waiting.delete()
+            except GenerationCancelledError:
+                await waiting.edit_text("⚠️ Генерация была прервана. Кредиты не списаны — попробуй ещё раз.", reply_markup=error_kb())
             except InsufficientCreditsError as e:
                 await state.update_data(pending_retry_type="media")
                 await waiting.edit_text(
@@ -3909,10 +3911,12 @@ async def start_generation(callback: CallbackQuery, state: FSMContext) -> None:
         # state не очищаем — данные нужны для кнопки "Назад"
 
     except GenerationCancelledError:
-        # Удаляем всё, что успело появиться ниже waiting-сообщения, и восстанавливаем карточку
         await _delete_msgs_below(callback.bot, callback.message.chat.id, state, callback.message.message_id)
         data = await state.get_data()
-        await callback.message.edit_text(_confirm_card_text(data), parse_mode="HTML", reply_markup=_confirm_kb(data))
+        interrupted_note = "⚠️ <i>Генерация была прервана. Кредиты не списаны — попробуй ещё раз.</i>\n\n"
+        await callback.message.edit_text(
+            interrupted_note + _confirm_card_text(data), parse_mode="HTML", reply_markup=_confirm_kb(data)
+        )
     except InsufficientCreditsError as e:
         await state.update_data(pending_retry_type="media")
         await callback.message.edit_text(
