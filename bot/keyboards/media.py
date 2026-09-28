@@ -452,6 +452,7 @@ def video_duration_picker_kb(
     options: list[int],
     min_d: int,
     max_d: int,
+    allow_custom: bool = True,
 ) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     # если текущее значение не в списке пресетов — добавляем его первым
@@ -463,10 +464,11 @@ def video_duration_picker_kb(
             callback_data=f"media:duration:{d}",
         ))
     builder.adjust(min(len(display_options), 3))
-    builder.row(InlineKeyboardButton(
-        text=f"✏️ Своя ({min_d}–{max_d} сек)",
-        callback_data="media:duration_custom",
-    ))
+    if allow_custom:
+        builder.row(InlineKeyboardButton(
+            text=f"✏️ Своя ({min_d}–{max_d} сек)",
+            callback_data="media:duration_custom",
+        ))
     builder.row(InlineKeyboardButton(text="◀️ Назад", callback_data="media:back:confirm"))
     return builder.as_markup()
 

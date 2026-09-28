@@ -688,6 +688,7 @@ tasks:
         duration_options: [4, 6, 8, 10]
         min_duration: 4
         max_duration: 10
+        duration_custom: false
         aspect_ratios: ["16:9", "9:16"]
         resolutions: ["360p", "720p", "1080p", "4K"]
         first_frame: true

@@ -649,6 +649,7 @@ async def select_model(callback: CallbackQuery, state: FSMContext) -> None:
         "model_output_formats": model_cfg.get("output_formats"),
         "model_constructor_video": model_cfg.get("constructor_includes_video", False),
         "model_wan_audio": model_cfg.get("wan_audio_setting", False),
+        "model_duration_custom": model_cfg.get("duration_custom", True),
         "model_has_audio": model_cfg.get("audio", True),
         "video_audio_enabled": model_cfg.get("audio", True),
         "motion_orientation": "image" if model_cfg.get("motion_control") else None,
@@ -3255,10 +3256,11 @@ async def pick_duration(callback: CallbackQuery, state: FSMContext) -> None:
     min_d = data.get("model_min_duration") or min(options)
     max_d = data.get("model_max_duration") or max(options)
     current = data.get("duration", options[0])
+    allow_custom = data.get("model_duration_custom", True)
     await callback.message.edit_text(
         "⏱ <b>Выбери длительность видео:</b>",
         parse_mode="HTML",
-        reply_markup=video_duration_picker_kb(current, options, min_d, max_d),
+        reply_markup=video_duration_picker_kb(current, options, min_d, max_d, allow_custom=allow_custom),
     )
     await callback.answer()
 
