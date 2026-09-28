@@ -113,11 +113,15 @@ class RouteraiProvider(OpenAICompatProvider):
                 await asyncio.sleep(_POLL_INTERVAL)
                 elapsed += _POLL_INTERVAL
 
-                async with session.get(f"{_BASE_URL}/videos/{task_id}") as resp:
-                    if resp.status >= 400:
-                        logger.warning("RouteAI poll error: HTTP %d for task %s", resp.status, task_id)
-                        continue
-                    data = await resp.json()
+                try:
+                    async with session.get(f"{_BASE_URL}/videos/{task_id}") as resp:
+                        if resp.status >= 400:
+                            logger.warning("RouteAI poll error: HTTP %d for task %s", resp.status, task_id)
+                            continue
+                        data = await resp.json()
+                except (asyncio.TimeoutError, aiohttp.ClientError) as e:
+                    logger.warning("RouteAI poll request error (task %s): %s", task_id, e)
+                    continue
 
                 status = (data.get("status") or "").lower()
                 logger.info("RouteAI video %s: status=%s (elapsed=%ds)", task_id, status, elapsed)
