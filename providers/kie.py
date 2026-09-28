@@ -397,10 +397,12 @@ class KieProvider(OpenAICompatProvider):
         # Bytedance (Seedance) требует "adaptive" когда задан первый/последний кадр;
         # Wan в image/reference-режиме не принимает aspect_ratio и resolution,
         # но video-to-video режим (video_reference_urls) принимает — не подавляем.
+        # Minimax не принимает aspect_ratio в image-to-video режиме (первый/последний кадр).
         _has_frame = bool(first_frame_url or last_frame_url)
         _wan_video_edit = is_wan and bool(video_reference_urls)
         _wan_with_images = is_wan and not _wan_video_edit and (_has_frame or bool(style_reference_urls))
         _pixverse_video_edit = is_pixverse and bool(video_reference_urls)
+        _minimax_with_frames = is_minimax and _has_frame
         _effective_ratio = (
             "adaptive"
             if is_bytedance and _has_frame
@@ -410,7 +412,7 @@ class KieProvider(OpenAICompatProvider):
             "prompt": prompt,
             "duration": str(duration) if (is_kling or is_google) else duration,
         }
-        if not _wan_with_images and not _pixverse_video_edit:
+        if not _wan_with_images and not _pixverse_video_edit and not _minimax_with_frames:
             input_data["aspect_ratio"] = _effective_ratio
         # wan/3-0-video-prime не принимает поле resolution совсем (ни text, ни video-edit)
         # pixverse всегда использует поле quality (не resolution), во всех режимах
