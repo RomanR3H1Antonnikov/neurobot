@@ -970,7 +970,7 @@ async def back_to_model(callback: CallbackQuery, state: FSMContext) -> None:
         generated_file_id=None,
         style_reference_file_ids=None, adding_style_ref=None, adding_video_extra_frame=None,
         audio_reference_file_ids=None, audio_reference_file_names=None, adding_audio_ref=None, model_max_audio_refs=None,
-        video_style_reference_file_ids=None, adding_video_ref=None, model_max_video_refs=None,
+        video_style_reference_file_ids=None, video_ref_durations=None, adding_video_ref=None, model_max_video_refs=None,
         model_has_first_frame=None, model_has_last_frame=None,
         managing_style_ref=None, managing_style_ref_index=None,
         managing_video_ref=None, managing_video_ref_index=None,
@@ -1117,6 +1117,7 @@ async def generate_again(callback: CallbackQuery, state: FSMContext) -> None:
         adding_audio_ref=None,
         adding_video_ref=None,
         video_style_reference_file_ids=None,
+        video_ref_durations=None,
         managing_style_ref=None, managing_style_ref_index=None,
         managing_video_ref=None, managing_video_ref_index=None,
         managing_audio_ref=None,
@@ -1483,6 +1484,7 @@ async def animate_photo(callback: CallbackQuery, state: FSMContext) -> None:
         await state.update_data(
             style_reference_file_ids=None,
             video_style_reference_file_ids=None,
+            video_ref_durations=None,
             confirm_mode_switch=None,
         )
     else:
@@ -1935,6 +1937,7 @@ async def delete_video_refs(callback: CallbackQuery, state: FSMContext) -> None:
     if count == 1:
         await state.update_data(
             video_style_reference_file_ids=[],
+            video_ref_durations=[],
             managing_video_ref=None,
             _sref_msg_id=callback.message.message_id,
         )
@@ -1959,6 +1962,7 @@ async def delete_video_refs_all(callback: CallbackQuery, state: FSMContext) -> N
     """Удаляет все видео-ориентиры."""
     await state.update_data(
         video_style_reference_file_ids=[],
+        video_ref_durations=[],
         adding_video_ref=None,
         managing_video_ref=None,
     )
@@ -2177,14 +2181,33 @@ async def receive_reference_video(message: Message, state: FSMContext) -> None:
     # Видео-референс для генерации видео
     if data.get("adding_video_ref"):
         video_refs = list(data.get("video_style_reference_file_ids") or [])
+        durations = list(data.get("video_ref_durations") or [])
         max_refs = data.get("model_max_video_refs", 0)
+        max_dur = data.get("model_max_duration") or 999
+        new_dur = message.video.duration or 0
         # Замена конкретного видео
         if data.get("managing_video_ref") == "replace_video":
             idx = data.get("managing_video_ref_index", 0)
+            old_dur = durations[idx] if idx < len(durations) else 0
+            total_without = sum(d for i, d in enumerate(durations) if i != idx)
+            if total_without + new_dur > max_dur:
+                await message.delete()
+                await _update_sref_status(
+                    message.bot, message.chat.id, state,
+                    f"⚠️ Нельзя заменить: суммарная длительность видео-ориентиров превысит {max_dur} сек. "
+                    f"(уже {total_without} сек + {new_dur} сек нового).",
+                    back_to_frames_kb(),
+                )
+                return
             if 0 <= idx < len(video_refs):
                 video_refs[idx] = message.video.file_id
+            if idx < len(durations):
+                durations[idx] = new_dur
+            else:
+                durations.append(new_dur)
             await state.update_data(
                 video_style_reference_file_ids=video_refs,
+                video_ref_durations=durations,
                 managing_video_ref=None, managing_video_ref_index=None,
             )
             await message.delete()
@@ -2194,10 +2217,22 @@ async def receive_reference_video(message: Message, state: FSMContext) -> None:
                 back_to_frames_kb(),
             )
             return
+        # Добавление нового видео-ориентира
+        total = sum(durations) + new_dur
+        if total > max_dur:
+            await message.delete()
+            await _update_sref_status(
+                message.bot, message.chat.id, state,
+                f"⚠️ Нельзя добавить: суммарная длительность видео-ориентиров превысит {max_dur} сек. "
+                f"(уже {sum(durations)} сек + {new_dur} сек нового).",
+                back_to_frames_kb(),
+            )
+            return
         await message.delete()
         if len(video_refs) < max_refs:
             video_refs.append(message.video.file_id)
-        await state.update_data(video_style_reference_file_ids=video_refs)
+            durations.append(new_dur)
+        await state.update_data(video_style_reference_file_ids=video_refs, video_ref_durations=durations)
         await _update_sref_status(
             message.bot, message.chat.id, state,
             f"✅ Видео добавлено! Всего: {len(video_refs)}/{max_refs}. Отправь ещё или нажми «Назад».",
@@ -2422,6 +2457,7 @@ async def enter_reference_text_input(message: Message, state: FSMContext) -> Non
     # ── Удаление конкретного видео в конструкторе ────────────────────────────
     if data.get("adding_video_ref") and managing_video == "delete":
         video_refs = list(data.get("video_style_reference_file_ids") or [])
+        durations = list(data.get("video_ref_durations") or [])
         max_refs = data.get("model_max_video_refs", 0)
         try:
             idx = int(message.text.strip()) - 1
@@ -2432,8 +2468,11 @@ async def enter_reference_text_input(message: Message, state: FSMContext) -> Non
             await _track_msg(state, sent.message_id)
             return
         video_refs.pop(idx)
+        if idx < len(durations):
+            durations.pop(idx)
         await state.update_data(
             video_style_reference_file_ids=video_refs,
+            video_ref_durations=durations,
             adding_video_ref=None,
             managing_video_ref=None,
         )
@@ -3055,9 +3094,13 @@ async def confirm_unknown_input(message: Message, state: FSMContext, album: list
             await message.delete()
             if max_video_refs > 0:
                 vrefs = list(data.get("video_style_reference_file_ids") or [])
-                if len(vrefs) < max_video_refs:
+                vdurs = list(data.get("video_ref_durations") or [])
+                new_dur = (message.video and message.video.duration) or 0
+                max_dur = data.get("model_max_duration") or 999
+                if len(vrefs) < max_video_refs and sum(vdurs) + new_dur <= max_dur:
                     vrefs.append(video_file_id)
-                await state.update_data(video_style_reference_file_ids=vrefs)
+                    vdurs.append(new_dur)
+                await state.update_data(video_style_reference_file_ids=vrefs, video_ref_durations=vdurs)
             await _back_to_frames_menu(message.bot, message.chat.id, state)
             return
         await message.delete()
