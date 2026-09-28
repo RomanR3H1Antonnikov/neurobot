@@ -903,6 +903,14 @@ def gen_waiting_kb() -> InlineKeyboardMarkup:
     ])
 
 
+def after_orphaned_photo_kb() -> InlineKeyboardMarkup:
+    """Клавиатура под фото, доставленным через orphaned delivery (после перезапуска бота)."""
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="✏️ Редактировать", callback_data="media:edit_orphaned")],
+        [InlineKeyboardButton(text="🏠 Главное меню", callback_data="media:back:menu")],
+    ])
+
+
 def after_generation_kb(is_image: bool = False) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     if is_image:
