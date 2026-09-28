@@ -1751,7 +1751,7 @@ async def add_video_ref(callback: CallbackQuery, state: FSMContext) -> None:
     hint = (
         f"🎬 Добавлено {count}/{max_refs} видео. Отправь ещё или нажми «Назад»."
         if count else
-        f"🎬 Отправь видеофайл — он добавится как видеореференс. Можно добавить до {max_refs} файлов.\nКогда закончишь — нажми «Назад»."
+        f"🎬 Отправь видеофайл — он добавится как видео-ориентир. Можно добавить до {max_refs} файлов.\nКогда закончишь — нажми «Назад»."
     )
     await state.update_data(adding_video_ref=True, adding_video_frame=None, _sref_msg_id=callback.message.message_id)
     await callback.message.edit_text(hint, reply_markup=back_to_frames_kb())
