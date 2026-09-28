@@ -456,6 +456,12 @@ class KieProvider(OpenAICompatProvider):
         if character_orientation and "motion-control" in actual_model:
             input_data["character_orientation"] = character_orientation
 
+        # ── Режим Kling (только для новых моделей вида kling-X.X/...) ────────
+        # Старые модели kling/v*-{mode}-* кодируют режим в названии.
+        # Новые (kling-3.0/video, kling-3.0-omni/video и др.) требуют явного mode.
+        if is_kling and "-" in actual_model.split("/")[0] and "." in actual_model:
+            input_data.setdefault("mode", "std")
+
         # ── Флаг аудио ───────────────────────────────────────────────────────
         # WAN video-to-video использует audio_setting: "auto"/"origin", а не audio: bool
         # Pixverse video edit использует generate_audio_switch
