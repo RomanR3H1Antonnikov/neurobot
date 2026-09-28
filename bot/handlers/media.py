@@ -1928,9 +1928,19 @@ async def delete_extra_frames_all(callback: CallbackQuery, state: FSMContext) ->
 
 @router.callback_query(MediaStates.confirm, F.data == "media:delete_video_refs")
 async def delete_video_refs(callback: CallbackQuery, state: FSMContext) -> None:
-    """Запрашивает номер видео для удаления."""
+    """Запрашивает номер видео для удаления (или сразу удаляет, если видео одно)."""
     data = await state.get_data()
-    count = len(data.get("video_style_reference_file_ids") or [])
+    refs = list(data.get("video_style_reference_file_ids") or [])
+    count = len(refs)
+    if count == 1:
+        await state.update_data(
+            video_style_reference_file_ids=[],
+            managing_video_ref=None,
+            _sref_msg_id=callback.message.message_id,
+        )
+        await _back_to_frames_menu(callback.bot, callback.message.chat.id, state)
+        await callback.answer("Видео удалено", show_alert=False)
+        return
     await state.update_data(
         adding_video_ref=True,
         managing_video_ref="delete",
