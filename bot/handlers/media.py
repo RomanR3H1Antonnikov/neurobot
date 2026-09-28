@@ -2544,6 +2544,19 @@ async def enter_reference_text_input(message: Message, state: FSMContext) -> Non
         )
         return
 
+    # ── Текст без активного manage → сохранить как описание видео ──────────
+    _no_manage = (
+        not managing
+        and not managing_video
+        and not data.get("managing_audio_ref")
+        and not data.get("managing_video_extra_frame")
+    )
+    if _no_manage:
+        await state.update_data(prompt=message.text)
+        sent = await message.answer("✅ Описание сохранено.")
+        await _track_msg(state, sent.message_id)
+        return
+
     # ── Ориентиры для генерации изображений ──────────────────────────────────
     if data.get("adding_style_ref") and not managing:
         sent = await message.answer("Текст не принимается в качестве ориентира — пришли фото 📎")
