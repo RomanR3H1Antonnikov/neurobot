@@ -416,7 +416,7 @@ class KieProvider(OpenAICompatProvider):
             input_data["aspect_ratio"] = _effective_ratio
         # wan/3-0-video-prime не принимает поле resolution совсем (ни text, ни video-edit)
         # pixverse всегда использует поле quality (не resolution), во всех режимах
-        if (is_kling or is_wan or is_bytedance or is_google or is_grok_video or is_pixverse) and not _wan_with_images and not is_wan_prime:
+        if (is_kling or is_wan or is_bytedance or is_google or is_grok_video or is_pixverse or is_minimax) and not _wan_with_images and not is_wan_prime:
             if is_pixverse:
                 input_data["quality"] = resolution or "720p"
             else:
