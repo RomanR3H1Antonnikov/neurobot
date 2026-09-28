@@ -1,9 +1,40 @@
 """
 Оркестрация медиагенерации: лимит → баланс → провайдер → списание → результат.
 """
+import asyncio
+import logging
+import os
+import tempfile
+
 from providers.base import TaskType, GenerationResult
 from providers.router import get_provider_by_model_id, get_task_rate_limit
 from db.queries import get_or_create_user, deduct_credits, check_and_increment_rate_limit
+
+logger = logging.getLogger(__name__)
+
+
+async def _strip_audio(video_bytes: bytes) -> bytes:
+    """Removes the audio track from a video using ffmpeg (-an -c:v copy)."""
+    with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as inp:
+        inp.write(video_bytes)
+        inp_path = inp.name
+    out_path = inp_path + "_muted.mp4"
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            "ffmpeg", "-y", "-i", inp_path, "-an", "-c:v", "copy", out_path,
+            stdout=asyncio.subprocess.DEVNULL,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        _, stderr = await proc.communicate()
+        if proc.returncode != 0:
+            logger.error("ffmpeg strip_audio failed: %s", stderr.decode()[:300])
+            return video_bytes
+        with open(out_path, "rb") as f:
+            return f.read()
+    finally:
+        os.unlink(inp_path)
+        if os.path.exists(out_path):
+            os.unlink(out_path)
 
 
 class InsufficientCreditsError(Exception):
@@ -152,6 +183,12 @@ async def generate_video(
         audio=audio,
         character_orientation=character_orientation,
     )
+    if not audio:
+        result = GenerationResult(
+            data=await _strip_audio(result.data),
+            mime_type=result.mime_type,
+            filename=result.filename,
+        )
     await deduct_credits(user_id, get_cost(model_cfg, resolution, duration, has_video_ref=has_video_ref, has_audio=audio), task.value)
     return result
 
@@ -218,5 +255,11 @@ async def edit_video(
         audio_url=audio_url,
         style_reference_urls=style_reference_urls,
     )
+    if not audio:
+        result = GenerationResult(
+            data=await _strip_audio(result.data),
+            mime_type=result.mime_type,
+            filename=result.filename,
+        )
     await deduct_credits(user_id, get_cost(model_cfg, resolution, duration), task.value)
     return result

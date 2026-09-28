@@ -85,7 +85,6 @@ class RouteraiProvider(OpenAICompatProvider):
             "Content-Type": "application/json",
         }
 
-        logger.info("RouteRAI generate_video: payload=%s", payload)
         async with aiohttp.ClientSession(
             headers=headers,
             timeout=aiohttp.ClientTimeout(total=30),
