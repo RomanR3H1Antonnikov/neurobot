@@ -2017,7 +2017,7 @@ async def receive_reference_photo(message: Message, state: FSMContext, album: li
         await message.delete()
         asyncio.create_task(_toast(message, "⚠️ Здесь нужно прислать аудиофайл 🎵, а не фото."))
         return
-    if data.get("media_type") == "video_edit":
+    if data.get("media_type") == "video_edit" and not data.get("adding_style_ref"):
         sent = await message.answer("Для редактирования видео пришли видеофайл, а не фото.", reply_markup=back_to_model_kb())
         await _track_msg(state, sent.message_id)
         return
@@ -2367,7 +2367,7 @@ async def receive_reference_document(message: Message, state: FSMContext) -> Non
         await state.update_data(reference_file_id=message.document.file_id, reference_type="video")
         await _show_confirm_after_reference(message, state)
     elif mime.startswith("image/"):
-        if data.get("media_type") == "video_edit":
+        if data.get("media_type") == "video_edit" and not _expects_photo:
             sent = await message.answer("Для редактирования видео пришли видеофайл, а не фото.", reply_markup=back_to_model_kb())
             await _track_msg(state, sent.message_id)
             return
