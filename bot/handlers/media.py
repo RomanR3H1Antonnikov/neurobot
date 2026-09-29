@@ -3220,6 +3220,18 @@ async def confirm_unknown_input(message: Message, state: FSMContext, album: list
                 else:
                     await _update_confirm_card(message, state)
                 return
+            # Motion Control: фото всегда заменяет начальный кадр (второе фото не превращается в «видео»)
+            if data.get("model_motion_control"):
+                _mc_photos = [msg.photo[-1].file_id for msg in album_msgs if msg.photo]
+                _mc_upd = {"video_first_frame_file_id": _mc_photos[0]}
+                if _caption:
+                    _mc_upd["prompt"] = _caption
+                await state.update_data(**_mc_upd)
+                if data.get("video_frames_mode") == "animate":
+                    await _back_to_frames_menu(message.bot, message.chat.id, state)
+                else:
+                    await _update_confirm_card(message, state)
+                return
             # Конфликт: в конструкторе уже есть файлы — не принимаем фото в общие настройки
             if data.get("video_frames_mode") is None:
                 _has_constructor = bool(data.get("style_reference_file_ids")) or bool(data.get("video_style_reference_file_ids"))
@@ -3307,6 +3319,19 @@ async def confirm_unknown_input(message: Message, state: FSMContext, album: list
         await message.delete()
         await state.update_data(reference_file_id=photo.file_id, reference_type="photo")
         await _update_confirm_card(message, state)
+        return
+    elif (message.video or message.video_note) and media_type == "video" and data.get("model_motion_control"):
+        # Motion Control: видео с движением занимает слот «последний кадр»
+        await message.delete()
+        _dur = (message.video.duration if message.video else message.video_note.duration) or 0
+        if not 3 <= _dur <= 30:
+            asyncio.create_task(_toast(message, "⚠️ Видео для Motion Control должно длиться от 3 до 30 секунд."))
+            return
+        await state.update_data(video_last_frame_file_id=(message.video or message.video_note).file_id)
+        if data.get("video_frames_mode") == "animate":
+            await _back_to_frames_menu(message.bot, message.chat.id, state)
+        else:
+            await _update_confirm_card(message, state)
         return
     elif (message.video or message.video_note) and media_type == "video":
         video_file_id = (message.video or message.video_note).file_id
