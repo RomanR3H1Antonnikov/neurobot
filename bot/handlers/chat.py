@@ -173,10 +173,12 @@ async def chat_message(message: Message, state: FSMContext) -> None:
     except RateLimitError as e:
         await thinking.delete()
         await message.answer(f"⏱ {e}")
-    except ProviderError:
+    except ProviderError as e:
+        logger.error("ProviderError in chat_message (model=%s): %s", model_slug, e)
         await thinking.delete()
         await message.answer("⚠️ Сервис временно недоступен. Попробуй позже.")
     except Exception:
+        logger.exception("Unexpected error in chat_message (model=%s)", model_slug)
         await thinking.delete()
         await message.answer("⚠️ Произошла непредвиденная ошибка. Попробуй позже.")
 
