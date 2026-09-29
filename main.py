@@ -3,7 +3,7 @@ import logging
 import re
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
-from aiogram.client.session.aiohttp import AiohttpSession
+from bot.retry_session import RetryingSession
 from aiogram.enums import ParseMode
 
 from config import config
@@ -45,7 +45,7 @@ async def main() -> None:
     bot = Bot(
         token=config.bot_token,
         default=DefaultBotProperties(parse_mode=ParseMode.HTML),
-        session=AiohttpSession(timeout=600),  # секунды, aiogram оборачивает сам
+        session=RetryingSession(timeout=600),  # секунды, aiogram оборачивает сам
     )
     dp = Dispatcher(storage=SQLiteFSMStorage(config.db_path))
 

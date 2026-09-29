@@ -11,6 +11,7 @@ https://api.telegram.org/file/bot<ТОКЕН>/photos/file_1.jpg — токен �
 Путь специально лежит под /kie/callback/ — этот префикс уже проксируется nginx на порт 8081,
 менять конфиг nginx не нужно. Сам файл бот скачивает у Telegram в момент запроса.
 """
+import asyncio
 import logging
 import mimetypes
 import posixpath
@@ -69,11 +70,15 @@ async def handle_file(request: web.Request) -> web.Response:
     bot = kie_webhook._bot
     if bot is None:
         raise web.HTTPServiceUnavailable()
-    try:
-        buf = await bot.download_file(entry[0])
-        body = buf.read()
-    except Exception as e:  # noqa: BLE001 — токен в текст ошибки попасть не должен
-        logger.warning("tgfile: не удалось скачать файл из Telegram: %s", type(e).__name__)
+    body = None
+    for attempt in range(1, 4):  # обрывы соединения с Telegram бывают — пробуем до 3 раз
+        try:
+            body = (await bot.download_file(entry[0])).read()
+            break
+        except Exception as e:  # noqa: BLE001 — токен в текст ошибки попасть не должен
+            logger.warning("tgfile: не удалось скачать файл из Telegram (%d/3): %s", attempt, type(e).__name__)
+            await asyncio.sleep(1.0 * attempt)
+    if body is None:
         raise web.HTTPBadGateway()
 
     content_type = mimetypes.guess_type(entry[0])[0] or "application/octet-stream"

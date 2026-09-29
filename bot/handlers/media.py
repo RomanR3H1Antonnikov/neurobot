@@ -4,7 +4,7 @@ import logging
 import time
 import uuid
 from aiogram import Router, F
-from aiogram.exceptions import TelegramBadRequest
+from aiogram.exceptions import TelegramBadRequest, TelegramNetworkError
 
 logger = logging.getLogger(__name__)
 from aiogram.types import Message, CallbackQuery, BufferedInputFile, InlineKeyboardMarkup, InlineKeyboardButton
@@ -29,7 +29,7 @@ from bot.keyboards.media import (
     voice_picker_kb, voice_confirm_kb, voice_language_kb,
     style_ref_collecting_kb, style_ref_delete_kb, video_ref_delete_kb, audio_ref_delete_kb, video_extra_frames_delete_kb, after_generation_kb, after_orphaned_photo_kb, gen_waiting_kb, error_kb,
 )
-from providers.base import ProviderError, ProviderContentPolicyError, TaskType
+from providers.base import ProviderError, ProviderUnavailableError, ProviderContentPolicyError, TaskType
 from providers.router import get_models_for_task
 from services import media_service, file_proxy
 from services.media_service import InsufficientCreditsError, RateLimitError
@@ -3896,7 +3896,25 @@ async def show_prompt(callback: CallbackQuery, state: FSMContext) -> None:
 
 async def _tg_file_url(bot, file_id: str | None) -> str | None:
     """Telegram file_id → публичная ссылка для провайдеров (без токена бота, см. services/file_proxy.py)."""
-    return await file_proxy.url_for_file_id(bot, file_id)
+    try:
+        return await file_proxy.url_for_file_id(bot, file_id)
+    except TelegramNetworkError as e:
+        # Сбой связи ДО генерации — кредиты не списаны, показываем «сервис временно недоступен»
+        raise ProviderUnavailableError("Telegram: не удалось получить файл пользователя") from e
+
+
+async def _load_tg_file(bot, file_id: str) -> tuple[str, bytes]:
+    """Скачивает файл пользователя из Telegram (с повторами). Возвращает (file_path, байты)."""
+    last: Exception | None = None
+    for attempt in range(1, 4):
+        try:
+            info = await bot.get_file(file_id)
+            buf = await bot.download_file(info.file_path)
+            return info.file_path, buf.read()
+        except TelegramNetworkError as e:
+            last = e
+            await asyncio.sleep(1.5 * attempt)
+    raise ProviderUnavailableError("Telegram: не удалось скачать файл пользователя") from last
 
 
 async def _run_generation(send_msg: Message, tg_user, state: FSMContext, data: dict) -> None:
@@ -4050,10 +4068,8 @@ async def _run_generation(send_msg: Message, tg_user, state: FSMContext, data: d
         await save_generation(tg_user.id, "audio", sent.audio.file_id, prompt=prompt, model_label=data.get("model_label"))
 
     elif media_type == "photo_edit":
-        file_info = await send_msg.bot.get_file(data["reference_file_id"])
-        image_url = file_proxy.url_for_path(file_info.file_path)
-        file_bytes = await send_msg.bot.download_file(file_info.file_path)
-        media_bytes = file_bytes.read()
+        _ref_path, media_bytes = await _load_tg_file(send_msg.bot, data["reference_file_id"])
+        image_url = file_proxy.url_for_path(_ref_path)
         result = await media_service.edit_image(
             tg_user.id, tg_user.username, media_bytes, prompt, model_slug,
             image_url=image_url, style_reference_urls=style_reference_urls,
@@ -4071,10 +4087,8 @@ async def _run_generation(send_msg: Message, tg_user, state: FSMContext, data: d
         await state.update_data(generated_file_id=new_file_id, reference_file_id=new_file_id)
 
     elif media_type == "video_edit":
-        file_info = await send_msg.bot.get_file(data["reference_file_id"])
-        video_url = file_proxy.url_for_path(file_info.file_path)
-        file_bytes = await send_msg.bot.download_file(file_info.file_path)
-        media_bytes = file_bytes.read()
+        _ref_path, media_bytes = await _load_tg_file(send_msg.bot, data["reference_file_id"])
+        video_url = file_proxy.url_for_path(_ref_path)
         _edit_audio_mode = data.get("video_edit_audio_mode")
         _edit_audio_url = None
         if _edit_audio_mode == "replace" and data.get("video_edit_audio_file_id"):
