@@ -157,6 +157,54 @@ def _kling_omni_request(
     return model, input_data
 
 
+MINIMAX_H3_GEN_ALIAS = "minimax-h3/text-to-video"
+
+
+def _minimax_h3_request(
+    prompt: str,
+    duration: int,
+    aspect_ratio: str | None,
+    resolution: str | None,
+    first_frame_url: str | None,
+    last_frame_url: str | None,
+    style_reference_urls: list[str] | None,
+    video_reference_urls: list[str] | None,
+    audio_reference_urls: list[str] | None,
+) -> tuple[str, dict]:
+    """MiniMax H3 у KIE — три отдельные модели: выбираем по входным данным.
+
+    - видео/фото-референсы    → reference-to-video (reference_*_urls; кадры идут как фото)
+    - первый/последний кадр   → image-to-video (без aspect_ratio)
+    - только текст            → text-to-video (aspect_ratio обязателен)
+    Разрешение у KIE — "768P" / "2K" (заглавная P). Поля audio у MiniMax нет.
+    """
+    res = (resolution or "2K").upper()
+    frames = [u for u in (first_frame_url, last_frame_url) if u]
+    images = (frames + list(style_reference_urls or []))[:9]
+    videos = list(video_reference_urls or [])[:3]
+    input_data: dict = {"prompt": prompt, "duration": int(duration), "resolution": res}
+
+    if videos or (style_reference_urls and images):
+        if images:
+            input_data["reference_image_urls"] = images
+        if videos:
+            input_data["reference_video_urls"] = videos
+        if audio_reference_urls:
+            input_data["reference_audio_urls"] = list(audio_reference_urls)[:3]
+        input_data["aspect_ratio"] = aspect_ratio or "adaptive"
+        return "minimax-h3/reference-to-video", input_data
+
+    if frames:
+        if first_frame_url:
+            input_data["first_frame_url"] = first_frame_url
+        if last_frame_url:
+            input_data["last_frame_url"] = last_frame_url
+        return "minimax-h3/image-to-video", input_data
+
+    input_data["aspect_ratio"] = aspect_ratio or "16:9"
+    return MINIMAX_H3_GEN_ALIAS, input_data
+
+
 def _extract_url(body: dict) -> str | None:
     """Извлекает URL результата из callback-тела KIE."""
     import json as _json
@@ -561,6 +609,13 @@ class KieProvider(OpenAICompatProvider):
             actual_model, input_data = _kling_omni_request(
                 prompt, duration, aspect_ratio, resolution, audio,
                 first_frame_url, last_frame_url, style_reference_urls, video_reference_urls,
+            )
+
+        if actual_model == MINIMAX_H3_GEN_ALIAS:
+            # MiniMax H3 — тоже три модели KIE с разными полями
+            actual_model, input_data = _minimax_h3_request(
+                prompt, duration, aspect_ratio, resolution, first_frame_url, last_frame_url,
+                style_reference_urls, video_reference_urls, audio_reference_urls,
             )
 
         try:
