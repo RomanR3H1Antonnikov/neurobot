@@ -1,4 +1,5 @@
 import asyncio
+import functools
 import logging
 import time
 import uuid
@@ -69,6 +70,25 @@ async def _update_sref_status(bot, chat_id: int, state: FSMContext, text: str, k
             pass
     sent = await bot.send_message(chat_id, text, reply_markup=kb)
     await state.update_data(_sref_msg_id=sent.message_id)
+
+
+_chat_locks: dict[int, asyncio.Lock] = {}
+
+
+def _serialize_per_chat(func):
+    """Обработчики приёма файлов одного чата выполняются строго по очереди.
+
+    Альбомы (и несколько альбомов подряд, когда шлют 30 фото) приходят параллельно, а каждый
+    обработчик читает состояние, дописывает свои файлы и записывает обратно — без очереди
+    последний обработчик затирает результат остальных и часть файлов теряется.
+    Внутри обёрнутой функции повторный вызов делаем через func.__wrapped__ (Lock не реентерабелен).
+    """
+    @functools.wraps(func)
+    async def wrapper(message, *args, **kwargs):
+        lock = _chat_locks.setdefault(message.chat.id, asyncio.Lock())
+        async with lock:
+            return await func(message, *args, **kwargs)
+    return wrapper
 
 
 async def _toast(message: Message, text: str, delay: float = 4.0) -> None:
@@ -2082,6 +2102,7 @@ async def _show_confirm_after_reference(message: Message, state: FSMContext) -> 
 
 
 @router.message(MediaStates.enter_reference, F.photo)
+@_serialize_per_chat
 async def receive_reference_photo(message: Message, state: FSMContext, album: list | None = None) -> None:
     data = await state.get_data()
     # Фильтр типа: ожидается не фото
@@ -3004,6 +3025,7 @@ async def update_prompt_in_confirm(message: Message, state: FSMContext) -> None:
 
 
 @router.message(MediaStates.confirm, ~F.text)
+@_serialize_per_chat
 async def confirm_unknown_input(message: Message, state: FSMContext, album: list | None = None) -> None:
     """Нетекстовый ввод в confirm state."""
     data = await state.get_data()
@@ -3013,6 +3035,18 @@ async def confirm_unknown_input(message: Message, state: FSMContext, album: list
         await message.delete()
         asyncio.create_task(_notify_generating(message.bot, message.chat.id))
         return
+
+    # Смешанный альбом (фото + видео) в генерации видео: раскладываем по типам, а не теряем
+    # тот тип, которого нет в первом сообщении альбома.
+    if album and media_type == "video":
+        _album_photos = [m for m in album if m.photo]
+        _album_videos = [m for m in album if m.video or m.video_note]
+        if _album_photos and _album_videos:
+            _handler = confirm_unknown_input.__wrapped__
+            await _handler(_album_photos[0], state, album=_album_photos)
+            for _vid in _album_videos:
+                await _handler(_vid, state, album=None)
+            return
 
     # Видео для редактирования
     if media_type == "video_edit" and message.video:
