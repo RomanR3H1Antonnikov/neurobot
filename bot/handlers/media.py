@@ -1642,10 +1642,20 @@ def _audio_ref_hint(audio_names: list[str], max_refs: int) -> str:
     return f"🎵 Загружено аудио ({count}/{max_refs}). Отправь ещё или нажми «Назад»:"
 
 
+@router.callback_query(MediaStates.confirm, F.data == "media:audio_ref_disabled")
+async def audio_ref_disabled(callback: CallbackQuery) -> None:
+    """Нажатие на неактивную кнопку 'Аудио ❌' (звуковое сопровождение выключено)."""
+    await callback.answer("Включите звуковое сопровождение, чтобы добавить аудио", show_alert=False)
+
+
 @router.callback_query(MediaStates.confirm, F.data == "media:add_audio_ref")
 async def add_audio_ref(callback: CallbackQuery, state: FSMContext) -> None:
     """Кнопка 'Аудио' на карточке видео-генерации."""
     data = await state.get_data()
+    if data.get("model_has_audio", True) and not data.get("video_audio_enabled", True):
+        # Защита от устаревшей клавиатуры: при выключенном звуке аудио-референс недоступен
+        await callback.answer("Включите звуковое сопровождение, чтобы добавить аудио")
+        return
     audio_names = list(data.get("audio_reference_file_names") or [])
     max_refs = data.get("model_max_audio_refs", 0)
     await state.update_data(adding_audio_ref=True, _sref_msg_id=callback.message.message_id)
@@ -3817,6 +3827,9 @@ async def _run_generation(send_msg: Message, tg_user, state: FSMContext, data: d
         first_frame_url = await _tg_file_url(send_msg.bot, data.get("video_first_frame_file_id"), _cfg.bot_token)
         last_frame_url = await _tg_file_url(send_msg.bot, data.get("video_last_frame_file_id"), _cfg.bot_token)
         _audio_ids = data.get("audio_reference_file_ids") or []
+        if data.get("model_has_audio", True) and not data.get("video_audio_enabled", True):
+            # Звук выключен — ранее загруженные аудио-референсы не отправляем
+            _audio_ids = []
         audio_reference_urls = [
             u for u in [await _tg_file_url(send_msg.bot, fid, _cfg.bot_token) for fid in _audio_ids] if u
         ] or None
