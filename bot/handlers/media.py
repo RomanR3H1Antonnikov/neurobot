@@ -228,6 +228,13 @@ _PROMPT_HINTS = {
 }
 
 
+def _too_many_photos_text(max_refs: int, accepted: int) -> str:
+    return (
+        f"⚠️ Вы отправили слишком много фото. Максимально допустимое количество - {max_refs}. "
+        f"Мы приняли {accepted} фото, а остальные удалили"
+    )
+
+
 def _fmt_seconds(value: float) -> str:
     return str(int(value)) if float(value).is_integer() else str(value)
 
@@ -3059,11 +3066,13 @@ async def confirm_unknown_input(message: Message, state: FSMContext, album: list
                 # Редактируемое уже есть → все фото идут в ориентиры
                 ref_candidates = album_photos
             if max_refs > 0:
-                for fid in ref_candidates:
-                    if len(srefs) >= max_refs:
-                        break
-                    srefs.append(fid)
+                _room = max(max_refs - len(srefs), 0)
+                srefs.extend(ref_candidates[:_room])
                 _upd["style_reference_file_ids"] = srefs
+                if len(ref_candidates) > _room:
+                    asyncio.create_task(_toast(
+                        message, _too_many_photos_text(max_refs, min(_room, len(ref_candidates))), delay=6.0,
+                    ))
             elif ref_candidates:
                 asyncio.create_task(_toast(message, "⚠️ Модель не поддерживает фото-ориентиры"))
             await state.update_data(**_upd)
@@ -3078,17 +3087,30 @@ async def confirm_unknown_input(message: Message, state: FSMContext, album: list
                     await msg.delete()
                 except Exception:
                     pass
-            # Конструктор → все фото альбома идут как фото-референсы конструктора
-            if data.get("video_frames_mode") == "constructor":
-                if max_refs > 0:
+            _in_constructor = data.get("video_frames_mode") == "constructor"
+            _animate_supported = bool(
+                data.get("model_has_first_frame", True) or data.get("model_has_last_frame", True)
+            )
+            # Конструктор (или у модели нет «Оживить фото») → все фото идут как фото конструктора
+            if _in_constructor or not _animate_supported:
+                album_photos = [msg.photo[-1].file_id for msg in album_msgs if msg.photo]
+                if max_refs <= 0:
+                    asyncio.create_task(_toast(message, "⚠️ Эта модель не поддерживает фото-ориентиры."))
+                else:
                     srefs = list(data.get("style_reference_file_ids") or [])
-                    for msg in album_msgs:
-                        if msg.photo and len(srefs) < max_refs:
-                            srefs.append(msg.photo[-1].file_id)
+                    room = max(max_refs - len(srefs), 0)
+                    srefs.extend(album_photos[:room])
                     await state.update_data(style_reference_file_ids=srefs)
+                    if len(album_photos) > room:
+                        asyncio.create_task(_toast(
+                            message, _too_many_photos_text(max_refs, min(room, len(album_photos))), delay=6.0,
+                        ))
                 if _caption:
                     await state.update_data(prompt=_caption)
-                await _back_to_frames_menu(message.bot, message.chat.id, state)
+                if _in_constructor:
+                    await _back_to_frames_menu(message.bot, message.chat.id, state)
+                else:
+                    await _update_confirm_card(message, state)
                 return
             # Конфликт: в конструкторе уже есть файлы — не принимаем фото в общие настройки
             if data.get("video_frames_mode") is None:
@@ -3135,17 +3157,23 @@ async def confirm_unknown_input(message: Message, state: FSMContext, album: list
         if max_refs > 0:
             album_msgs = album or [message]
             srefs = list(data.get("style_reference_file_ids") or [])
+            _sent, _accepted = 0, 0
             for msg in album_msgs:
                 try:
                     await msg.delete()
                 except Exception:
                     pass
-                if msg.photo and len(srefs) < max_refs:
-                    srefs.append(msg.photo[-1].file_id)
+                if msg.photo:
+                    _sent += 1
+                    if len(srefs) < max_refs:
+                        srefs.append(msg.photo[-1].file_id)
+                        _accepted += 1
             _upd = {"style_reference_file_ids": srefs}
             if _caption:
                 _upd["prompt"] = _caption
             await state.update_data(**_upd)
+            if _sent > _accepted:
+                asyncio.create_task(_toast(message, _too_many_photos_text(max_refs, _accepted), delay=6.0))
             await _update_confirm_card(message, state)
             return
 
@@ -3182,11 +3210,27 @@ async def confirm_unknown_input(message: Message, state: FSMContext, album: list
                 vdurs = list(data.get("video_ref_durations") or [])
                 new_dur = (message.video and message.video.duration) or 0
                 max_dur = data.get("model_max_duration") or 999
-                if len(vrefs) < max_video_refs and sum(vdurs) + new_dur <= max_dur:
+                if len(vrefs) >= max_video_refs:
+                    asyncio.create_task(_toast(
+                        message,
+                        f"⚠️ Вы отправили слишком много видео. Максимально допустимое количество - {max_video_refs}.",
+                        delay=6.0,
+                    ))
+                elif sum(vdurs) + new_dur > max_dur:
+                    asyncio.create_task(_toast(
+                        message,
+                        f"⚠️ Суммарная длительность видео не должна превышать {max_dur} сек.",
+                        delay=6.0,
+                    ))
+                else:
                     vrefs.append(video_file_id)
                     vdurs.append(new_dur)
                 await state.update_data(video_style_reference_file_ids=vrefs, video_ref_durations=vdurs)
-            await _back_to_frames_menu(message.bot, message.chat.id, state)
+            # В подменю конструктора — возвращаем подменю, в главной карточке — обновляем карточку
+            if data.get("video_frames_mode") == "constructor":
+                await _back_to_frames_menu(message.bot, message.chat.id, state)
+            else:
+                await _update_confirm_card(message, state)
             return
         await message.delete()
         asyncio.create_task(_toast(message, "⚠️ Эта модель не поддерживает видео-референсы."))
