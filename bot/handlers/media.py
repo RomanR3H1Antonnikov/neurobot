@@ -4207,6 +4207,14 @@ async def start_generation(callback: CallbackQuery, state: FSMContext) -> None:
         await callback.answer(f"Сначала добавь {label} для редактирования 📎", show_alert=True)
         return
 
+    if media_type == "video" and data.get("model_motion_control"):
+        # Motion Control без фото (первый кадр) и видео (движение) не запускаем
+        if not data.get("video_first_frame_file_id") or not data.get("video_last_frame_file_id"):
+            await callback.answer(
+                "Сначала добавь фото и видео для Motion Control 📎", show_alert=True,
+            )
+            return
+
     if media_type == "video_edit":
         # Видео могли загрузить до смены модели — перепроверяем по лимитам текущей
         _limit_err = _ref_video_limit_error(data, data.get("reference_video_duration"))
