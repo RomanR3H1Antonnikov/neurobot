@@ -7,11 +7,10 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 def media_type_kb() -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     builder.row(
-        InlineKeyboardButton(text="🖼 Фото", callback_data="media:type:image"),
-        InlineKeyboardButton(text="🎬 Видео", callback_data="media:type:video"),
+        InlineKeyboardButton(text="🖼 Фото", callback_data="media:section:photo"),
+        InlineKeyboardButton(text="🎬 Видео", callback_data="media:section:video"),
         InlineKeyboardButton(text="🎵 Аудио", callback_data="media:type:audio"),
     )
-    builder.row(InlineKeyboardButton(text="✏️ Редактировать медиа", callback_data="media:edit_menu"))
     builder.row(
         InlineKeyboardButton(text="ℹ️ Инфо", callback_data="media:info"),
         InlineKeyboardButton(text="◀️ Назад", callback_data="media:back:menu"),
@@ -29,12 +28,26 @@ def media_info_kb(expanded: bool = False) -> InlineKeyboardMarkup:
     return builder.as_markup()
 
 
-def media_edit_kb() -> InlineKeyboardMarkup:
+# Подменю раздела: генерация с нуля или редактирование загруженного пользователем файла
+MEDIA_SECTIONS = {
+    "photo": {
+        "title": "🖼 <b>Фото</b>\n\nВыбери действие:",
+        "gen": ("🎨 Генерация фото", "media:type:image"),
+        "edit": ("✏️ Редактирование вашего фото", "media:type:photo_edit"),
+    },
+    "video": {
+        "title": "🎬 <b>Видео</b>\n\nВыбери действие:",
+        "gen": ("🎬 Генерация видео", "media:type:video"),
+        "edit": ("✏️ Редактирование вашего видео", "media:type:video_edit"),
+    },
+}
+
+
+def media_section_kb(section: str) -> InlineKeyboardMarkup:
+    cfg = MEDIA_SECTIONS[section]
     builder = InlineKeyboardBuilder()
-    builder.row(
-        InlineKeyboardButton(text="🖼 Изменить фото", callback_data="media:type:photo_edit"),
-        InlineKeyboardButton(text="🎬 Изменить видео", callback_data="media:type:video_edit"),
-    )
+    builder.row(InlineKeyboardButton(text=cfg["gen"][0], callback_data=cfg["gen"][1]))
+    builder.row(InlineKeyboardButton(text=cfg["edit"][0], callback_data=cfg["edit"][1]))
     builder.row(InlineKeyboardButton(text="◀️ Назад", callback_data="media:back:type"))
     return builder.as_markup()
 
