@@ -101,6 +101,35 @@ async def _toast(message: Message, text: str, delay: float = 4.0) -> None:
         pass
 
 
+def _motion_size_error(width: int | None, height: int | None, kind: str) -> str | None:
+    """Ограничения KIE Kling Motion Control на кадр: стороны > 340 px, соотношение от 2:5 до 5:2."""
+    if not width or not height:
+        return None
+    if min(width, height) <= 340:
+        return f"⚠️ {kind} слишком маленькое: размер должен быть больше 340 px по каждой стороне (сейчас {width}×{height})."
+    ratio = width / height
+    if not 0.4 <= ratio <= 2.5:
+        return f"⚠️ {kind} не подходит: соотношение сторон должно быть от 2:5 до 5:2 (сейчас {width}×{height})."
+    return None
+
+
+def _motion_photo_error(photo) -> str | None:
+    """Проверка фото для Motion Control: до 10 МБ + размеры/пропорции."""
+    if photo.file_size and photo.file_size > 10 * 1024 * 1024:
+        return "⚠️ Фото слишком большое: максимум 10 МБ."
+    return _motion_size_error(photo.width, photo.height, "Фото")
+
+
+def _motion_video_error(video) -> str | None:
+    """Проверка видео для Motion Control: 3–30 сек, до 100 МБ + размеры/пропорции."""
+    dur = getattr(video, "duration", None) or 0
+    if not 3 <= dur <= 30:
+        return "⚠️ Видео для Motion Control должно длиться от 3 до 30 секунд."
+    if video.file_size and video.file_size > 100 * 1024 * 1024:
+        return "⚠️ Видео слишком большое: максимум 100 МБ."
+    return _motion_size_error(getattr(video, "width", None), getattr(video, "height", None), "Видео")
+
+
 async def _back_to_frames_menu(bot, chat_id: int, state: FSMContext) -> None:
     """После добавления кадра редактирует hint-сообщение обратно в меню кадров."""
     await state.set_state(MediaStates.confirm)
@@ -2284,6 +2313,12 @@ async def receive_reference_photo(message: Message, state: FSMContext, album: li
     if data.get("media_type") == "video":
         # Кадр для image-to-video: first или last в зависимости от нажатой кнопки
         frame_slot = data.get("adding_video_frame", "first")
+        if data.get("model_motion_control"):
+            _mc_err = _motion_photo_error(photo)
+            if _mc_err:
+                await message.delete()
+                asyncio.create_task(_toast(message, _mc_err, delay=6.0))
+                return
         key = "video_first_frame_file_id" if frame_slot == "first" else "video_last_frame_file_id"
         await state.update_data(**{key: photo.file_id, "adding_video_frame": None, "adding_frame_from_confirm": None})
         await message.delete()
@@ -2396,6 +2431,10 @@ async def receive_reference_video(message: Message, state: FSMContext, album: li
             and data.get("adding_video_frame") == "last"
             and data.get("model_motion_control")):
         await message.delete()
+        _mc_err = _motion_video_error(message.video)
+        if _mc_err:
+            asyncio.create_task(_toast(message, _mc_err, delay=6.0))
+            return
         await state.update_data(video_last_frame_file_id=message.video.file_id, adding_video_frame=None, adding_frame_from_confirm=None)
         if data.get("adding_frame_from_confirm"):
             await _update_confirm_card(message, state)
@@ -3222,7 +3261,12 @@ async def confirm_unknown_input(message: Message, state: FSMContext, album: list
                 return
             # Motion Control: фото всегда заменяет начальный кадр (второе фото не превращается в «видео»)
             if data.get("model_motion_control"):
-                _mc_photos = [msg.photo[-1].file_id for msg in album_msgs if msg.photo]
+                _mc_sizes = [msg.photo[-1] for msg in album_msgs if msg.photo]
+                _mc_err = _motion_photo_error(_mc_sizes[0])
+                if _mc_err:
+                    asyncio.create_task(_toast(message, _mc_err, delay=6.0))
+                    return
+                _mc_photos = [p_.file_id for p_ in _mc_sizes]
                 _mc_upd = {"video_first_frame_file_id": _mc_photos[0]}
                 if _caption:
                     _mc_upd["prompt"] = _caption
@@ -3323,9 +3367,9 @@ async def confirm_unknown_input(message: Message, state: FSMContext, album: list
     elif (message.video or message.video_note) and media_type == "video" and data.get("model_motion_control"):
         # Motion Control: видео с движением занимает слот «последний кадр»
         await message.delete()
-        _dur = (message.video.duration if message.video else message.video_note.duration) or 0
-        if not 3 <= _dur <= 30:
-            asyncio.create_task(_toast(message, "⚠️ Видео для Motion Control должно длиться от 3 до 30 секунд."))
+        _mc_err = _motion_video_error(message.video or message.video_note)
+        if _mc_err:
+            asyncio.create_task(_toast(message, _mc_err, delay=6.0))
             return
         await state.update_data(video_last_frame_file_id=(message.video or message.video_note).file_id)
         if data.get("video_frames_mode") == "animate":
