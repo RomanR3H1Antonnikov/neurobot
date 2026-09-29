@@ -366,12 +366,14 @@ def video_confirm_kb(
             has_constructor_files = has_extra_refs or video_ref_count > 0
         row_btns = []
         if show_first_frame_btn:
+            # У Kling Motion Control (motion_orientation задан) кнопка называется «Анимировать фото»
+            _animate_name = "Анимировать фото" if motion_orientation else "Оживить фото"
             if has_animate_files:
-                animate_text = "🖼 Оживить фото ✅"
+                animate_text = f"🖼 {_animate_name} ✅"
             elif has_constructor_files:
-                animate_text = "🖼 Оживить фото ❌"
+                animate_text = f"🖼 {_animate_name} ❌"
             else:
-                animate_text = "🖼 Оживить фото"
+                animate_text = f"🖼 {_animate_name}"
             row_btns.append(InlineKeyboardButton(text=animate_text, callback_data="media:animate_photo"))
         if show_constructor_btn:
             if has_constructor_files:
