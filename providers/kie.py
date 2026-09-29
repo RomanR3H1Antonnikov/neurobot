@@ -157,6 +157,34 @@ def _kling_omni_request(
     return model, input_data
 
 
+WAN27_EDIT_ALIAS = "wan/2-7-video-to-video"
+
+
+def _wan27_videoedit_request(
+    prompt: str,
+    duration: int,
+    aspect_ratio: str | None,
+    resolution: str | None,
+    audio: bool,
+    video_url: str,
+    style_reference_urls: list[str] | None,
+) -> tuple[str, dict]:
+    """Wan 2.7 Video Edit у KIE: модель wan/2-7-videoedit, видео — строкой video_url,
+    референс — один reference_image (не списком). audio_setting: auto | origin."""
+    input_data: dict = {
+        "prompt": prompt,
+        "video_url": video_url,
+        "resolution": (resolution or "720p").lower(),
+        "duration": int(duration),
+        "audio_setting": "auto" if audio else "origin",
+    }
+    if aspect_ratio:
+        input_data["aspect_ratio"] = aspect_ratio
+    if style_reference_urls:
+        input_data["reference_image"] = style_reference_urls[0]
+    return "wan/2-7-videoedit", input_data
+
+
 MINIMAX_H3_GEN_ALIAS = "minimax-h3/text-to-video"
 
 
@@ -609,6 +637,13 @@ class KieProvider(OpenAICompatProvider):
             actual_model, input_data = _kling_omni_request(
                 prompt, duration, aspect_ratio, resolution, audio,
                 first_frame_url, last_frame_url, style_reference_urls, video_reference_urls,
+            )
+
+        if actual_model == WAN27_EDIT_ALIAS and video_reference_urls:
+            # Wan 2.7 Video Edit — отдельная модель KIE с другими именами полей
+            actual_model, input_data = _wan27_videoedit_request(
+                prompt, duration, aspect_ratio, resolution, audio,
+                video_reference_urls[0], style_reference_urls,
             )
 
         if actual_model == MINIMAX_H3_GEN_ALIAS:
