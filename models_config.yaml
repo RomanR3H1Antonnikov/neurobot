@@ -218,7 +218,7 @@ tasks:
         cost_credits: 5
         cost_by_resolution: {"1K": 5, "2K": 7, "4K": 10}
         cost_usd: 0.04
-        enabled: true
+        enabled: false  # скрыто по просьбе клиента: цены те же, 2.5 качественнее
 
       - id: gpt-image-2-5-flare
         label: "Flare"
@@ -951,7 +951,7 @@ tasks:
         cost_credits: 5
         cost_by_resolution: {"1K": 5, "2K": 7, "4K": 10}
         cost_usd: 0.04
-        enabled: true
+        enabled: false  # скрыто по просьбе клиента: цены те же, 2.5 качественнее
 
       - id: gpt-image-2-5-flare-edit
         label: "Flare"
