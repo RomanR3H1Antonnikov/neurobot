@@ -9,7 +9,7 @@ import uuid
 import aiohttp
 from contextvars import ContextVar
 from providers.openai_compat import OpenAICompatProvider
-from providers.base import GenerationResult, ProviderUnavailableError, ProviderContentPolicyError
+from providers.base import GenerationResult, ChatResult, ProviderUnavailableError, ProviderContentPolicyError
 from services.kie_webhook import register_pending, unregister_pending
 
 # Устанавливается в _run_generation перед вызовом generate_*; читается в _create_job
@@ -456,6 +456,35 @@ class KieProvider(OpenAICompatProvider):
             except Exception as _e:
                 logger.warning("KIE: не удалось сохранить контекст job %s: %s", corr_id, _e)
         return task_id
+
+    async def chat(self, messages: list[dict], system: str = "", model: str | None = None) -> ChatResult:
+        """GPT-5.5 у KIE — Responses API (/codex/v1/responses), а не chat/completions."""
+        actual_model = model or "gpt-5-5"
+        payload_input: list[dict] = []
+        if system:
+            payload_input.append({"role": "system", "content": system})
+        payload_input.extend(messages)
+        async with self._session(timeout=180) as session:
+            async with session.post(
+                "https://api.kie.ai/codex/v1/responses",
+                json={"model": actual_model, "input": payload_input, "stream": False},
+            ) as resp:
+                data = await self._handle_response(resp)
+        # Ошибки KIE приходят телом {"code": 4xx, "msg": ...} даже при HTTP 200
+        if isinstance(data.get("code"), int) and data["code"] >= 400:
+            logger.error("KIE chat failed: model=%s code=%s msg=%s", actual_model, data["code"], data.get("msg"))
+            raise ProviderUnavailableError(f"KIE: {data.get('msg', 'ошибка')}")
+        parts: list[str] = []
+        for item in data.get("output") or []:
+            if item.get("type") == "message":
+                for c in item.get("content") or []:
+                    if c.get("type") == "output_text" and c.get("text"):
+                        parts.append(c["text"])
+        text = "".join(parts).strip()
+        if not text:
+            logger.error("KIE chat: пустой ответ, model=%s keys=%s", actual_model, list(data.keys()))
+            raise ProviderUnavailableError("KIE: пустой ответ модели")
+        return ChatResult(text=text)
 
     async def fetch_task(self, task_id: str) -> dict | None:
         """Статус/результат задачи KIE (jobs API) — тело совместимо с callback'ом. None при ошибке."""
