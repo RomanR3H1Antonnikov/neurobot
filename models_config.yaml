@@ -612,7 +612,7 @@ tasks:
         duration_options: [8]
         min_duration: 8
         max_duration: 8
-        first_frame: false
+        first_frame: true
         last_frame: false
         max_style_refs: 3
         resolutions: ["720p", "1080p", "4K"]
@@ -638,7 +638,7 @@ tasks:
         duration_options: [4, 8]
         min_duration: 4
         max_duration: 8
-        first_frame: false
+        first_frame: true
         last_frame: false
         max_style_refs: 0
         resolutions: ["720p", "1080p", "4K"]
