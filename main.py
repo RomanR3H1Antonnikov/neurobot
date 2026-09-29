@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import re
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
 from aiogram.client.session.aiohttp import AiohttpSession
@@ -18,6 +19,24 @@ logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
 )
+
+
+class _RedactBotToken(logging.Filter):
+    """Страховка: вырезает токен бота (bot<id>:<секрет>) из любых строк журнала."""
+
+    _RE = re.compile(r"bot\d{6,}:[A-Za-z0-9_-]{20,}")
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        try:
+            record.msg = self._RE.sub("bot<TOKEN>", record.getMessage())
+            record.args = ()
+        except Exception:
+            pass
+        return True
+
+
+for _handler in logging.getLogger().handlers:
+    _handler.addFilter(_RedactBotToken())
 logger = logging.getLogger(__name__)
 
 
