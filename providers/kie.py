@@ -157,6 +157,70 @@ def _kling_omni_request(
     return model, input_data
 
 
+SEEDANCE2_PREFIX = "bytedance/seedance-2"
+
+
+def _seedance2_request(
+    model: str,
+    prompt: str,
+    duration: int,
+    aspect_ratio: str | None,
+    resolution: str | None,
+    audio: bool,
+    output_format: str | None,
+    first_frame_url: str | None,
+    last_frame_url: str | None,
+    style_reference_urls: list[str] | None,
+    video_reference_urls: list[str] | None,
+    audio_reference_urls: list[str] | None,
+) -> dict:
+    """Seedance 2.x (2, 2-fast, 2-mini, 2.5) у KIE. Названия полей по документации KIE:
+    reference_image_urls / reference_video_urls / reference_audio_urls и generate_audio.
+    Поля style_reference_urls, audio, video_urls, audio_urls у этих моделей НЕТ — KIE молча
+    игнорирует неизвестные поля, поэтому раньше фото и видео-референсы в генерацию не попадали.
+
+    Три взаимоисключающих сценария: первый/последний кадр — ИЛИ мультимодальные референсы.
+    Если пользователь задал и кадры, и референсы, кадры уходят как обычные фото-референсы.
+    """
+    is_25 = model == "bytedance/seedance-2-5"
+    max_img, max_vid, max_aud = (30, 10, 10) if is_25 else (9, 3, 3)
+    images = list(style_reference_urls or [])
+    videos = list(video_reference_urls or [])
+    audios = list(audio_reference_urls or [])
+    frames = [u for u in (first_frame_url, last_frame_url) if u]
+
+    input_data: dict = {
+        "prompt": prompt,
+        "duration": int(duration),
+        "resolution": (resolution or "720p").lower(),
+        "generate_audio": bool(audio),
+    }
+    if is_25 and output_format:
+        input_data["output_format"] = output_format
+
+    if images or videos or audios:
+        input_data["aspect_ratio"] = aspect_ratio or "adaptive"
+        all_images = (frames + images)[:max_img]
+        if all_images:
+            input_data["reference_image_urls"] = all_images
+        if videos:
+            input_data["reference_video_urls"] = videos[:max_vid]
+        if audios:
+            input_data["reference_audio_urls"] = audios[:max_aud]
+    elif frames:
+        # Только «Оживить фото»: last_frame_url допустим лишь вместе с first_frame_url
+        input_data["aspect_ratio"] = "adaptive"
+        if first_frame_url:
+            input_data["first_frame_url"] = first_frame_url
+            if last_frame_url:
+                input_data["last_frame_url"] = last_frame_url
+        else:
+            input_data["reference_image_urls"] = [last_frame_url]
+    else:
+        input_data["aspect_ratio"] = aspect_ratio or "16:9"
+    return input_data
+
+
 WAN27_EDIT_ALIAS = "wan/2-7-video-to-video"
 
 
@@ -637,6 +701,13 @@ class KieProvider(OpenAICompatProvider):
             actual_model, input_data = _kling_omni_request(
                 prompt, duration, aspect_ratio, resolution, audio,
                 first_frame_url, last_frame_url, style_reference_urls, video_reference_urls,
+            )
+
+        if actual_model.startswith(SEEDANCE2_PREFIX):
+            input_data = _seedance2_request(
+                actual_model, prompt, duration, aspect_ratio, resolution, audio, output_format,
+                first_frame_url, last_frame_url, style_reference_urls, video_reference_urls,
+                audio_reference_urls,
             )
 
         if actual_model == WAN27_EDIT_ALIAS and video_reference_urls:
