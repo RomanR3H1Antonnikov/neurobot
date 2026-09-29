@@ -13,6 +13,7 @@ import aiohttp
 from aiohttp import web
 from aiogram.types import BufferedInputFile
 from bot.keyboards.media import after_orphaned_photo_kb
+from services import file_proxy
 
 logger = logging.getLogger(__name__)
 
@@ -242,6 +243,8 @@ def create_app() -> web.Application:
     app = web.Application()
     app.router.add_post("/kie/callback/{corr_id}", _handle_callback)
     app.router.add_post("/genapi/callback/{corr_id}", _handle_genapi_callback)
+    # Файлы пользователя для нейросетей — ссылки без токена бота (см. services/file_proxy.py)
+    app.router.add_get(file_proxy.ROUTE_PREFIX + "/{secret}/{name}", file_proxy.handle_file)
 
     async def _healthz(request: web.Request) -> web.Response:
         return web.json_response({"status": "ok"})

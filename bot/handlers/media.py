@@ -31,7 +31,7 @@ from bot.keyboards.media import (
 )
 from providers.base import ProviderError, ProviderContentPolicyError, TaskType
 from providers.router import get_models_for_task
-from services import media_service
+from services import media_service, file_proxy
 from services.media_service import InsufficientCreditsError, RateLimitError
 from db.queries import save_generation
 
@@ -3891,12 +3891,9 @@ async def show_prompt(callback: CallbackQuery, state: FSMContext) -> None:
 
 # ─── Запуск генерации ─────────────────────────────────────────────────────────
 
-async def _tg_file_url(bot, file_id: str | None, bot_token: str) -> str | None:
-    """Конвертирует Telegram file_id в прямой URL для передачи в провайдеры."""
-    if not file_id:
-        return None
-    fi = await bot.get_file(file_id)
-    return f"https://api.telegram.org/file/bot{bot_token}/{fi.file_path}"
+async def _tg_file_url(bot, file_id: str | None) -> str | None:
+    """Telegram file_id → публичная ссылка для провайдеров (без токена бота, см. services/file_proxy.py)."""
+    return await file_proxy.url_for_file_id(bot, file_id)
 
 
 async def _run_generation(send_msg: Message, tg_user, state: FSMContext, data: dict) -> None:
@@ -3923,7 +3920,7 @@ async def _run_generation(send_msg: Message, tg_user, state: FSMContext, data: d
 
     _sref_ids = data.get("style_reference_file_ids") or []
     style_reference_urls = [
-        u for u in [await _tg_file_url(send_msg.bot, fid, _cfg.bot_token) for fid in _sref_ids] if u
+        u for u in [await _tg_file_url(send_msg.bot, fid) for fid in _sref_ids] if u
     ] or None
 
     if media_type == "image":
@@ -3964,18 +3961,18 @@ async def _run_generation(send_msg: Message, tg_user, state: FSMContext, data: d
                                         kie_gen_task_id=result.provider_image_url)
 
     elif media_type == "video":
-        first_frame_url = await _tg_file_url(send_msg.bot, data.get("video_first_frame_file_id"), _cfg.bot_token)
-        last_frame_url = await _tg_file_url(send_msg.bot, data.get("video_last_frame_file_id"), _cfg.bot_token)
+        first_frame_url = await _tg_file_url(send_msg.bot, data.get("video_first_frame_file_id"))
+        last_frame_url = await _tg_file_url(send_msg.bot, data.get("video_last_frame_file_id"))
         _audio_ids = data.get("audio_reference_file_ids") or []
         if data.get("model_has_audio", True) and not data.get("video_audio_enabled", True):
             # Звук выключен — ранее загруженные аудио-референсы не отправляем
             _audio_ids = []
         audio_reference_urls = [
-            u for u in [await _tg_file_url(send_msg.bot, fid, _cfg.bot_token) for fid in _audio_ids] if u
+            u for u in [await _tg_file_url(send_msg.bot, fid) for fid in _audio_ids] if u
         ] or None
         _video_ref_ids = data.get("video_style_reference_file_ids") or []
         video_reference_urls = [
-            u for u in [await _tg_file_url(send_msg.bot, fid, _cfg.bot_token) for fid in _video_ref_ids] if u
+            u for u in [await _tg_file_url(send_msg.bot, fid) for fid in _video_ref_ids] if u
         ] or None
         result = await media_service.generate_video(
             tg_user.id, tg_user.username, prompt, data.get("duration", 5), model_slug,
@@ -4051,7 +4048,7 @@ async def _run_generation(send_msg: Message, tg_user, state: FSMContext, data: d
 
     elif media_type == "photo_edit":
         file_info = await send_msg.bot.get_file(data["reference_file_id"])
-        image_url = f"https://api.telegram.org/file/bot{_cfg.bot_token}/{file_info.file_path}"
+        image_url = file_proxy.url_for_path(file_info.file_path)
         file_bytes = await send_msg.bot.download_file(file_info.file_path)
         media_bytes = file_bytes.read()
         result = await media_service.edit_image(
@@ -4072,14 +4069,14 @@ async def _run_generation(send_msg: Message, tg_user, state: FSMContext, data: d
 
     elif media_type == "video_edit":
         file_info = await send_msg.bot.get_file(data["reference_file_id"])
-        video_url = f"https://api.telegram.org/file/bot{_cfg.bot_token}/{file_info.file_path}"
+        video_url = file_proxy.url_for_path(file_info.file_path)
         file_bytes = await send_msg.bot.download_file(file_info.file_path)
         media_bytes = file_bytes.read()
         _edit_audio_mode = data.get("video_edit_audio_mode")
         _edit_audio_url = None
         if _edit_audio_mode == "replace" and data.get("video_edit_audio_file_id"):
             _audio_info = await send_msg.bot.get_file(data["video_edit_audio_file_id"])
-            _edit_audio_url = f"https://api.telegram.org/file/bot{_cfg.bot_token}/{_audio_info.file_path}"
+            _edit_audio_url = file_proxy.url_for_path(_audio_info.file_path)
         # WAN: audio=False → audio_setting "origin" (звук не пересоздаётся);
         # «Выключить звук» у Wan = origin + вырезание дорожки после генерации (mute).
         # Kling: audio=False → mute
