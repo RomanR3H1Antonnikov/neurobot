@@ -160,6 +160,50 @@ def _kling_omni_request(
     return model, input_data
 
 
+KLING3_ALIAS = "kling-3.0/video"
+KLING3_MOTION_ALIAS = "kling-3.0/motion-control"
+_KLING3_MODE = {"720p": "std", "1080p": "pro", "4K": "4K", "4k": "4K"}
+
+
+def _kling3_request(
+    prompt: str, duration: int, aspect_ratio: str | None, resolution: str | None, audio: bool,
+    first_frame_url: str | None, last_frame_url: str | None,
+) -> dict:
+    """Kling 3.0 (kling-3.0/video) по документации KIE: mode вместо resolution (std=720p, pro=1080p),
+    sound вместо audio, обязательное multi_shots; aspect_ratio — только 16:9 / 9:16 / 1:1."""
+    ratio = aspect_ratio if aspect_ratio in ("16:9", "9:16", "1:1") else "16:9"
+    input_data: dict = {
+        "prompt": prompt,
+        "duration": str(duration),
+        "aspect_ratio": ratio,
+        "mode": _KLING3_MODE.get(resolution or "720p", "std"),
+        "sound": bool(audio),
+        "multi_shots": False,
+    }
+    frames = [u for u in (first_frame_url, last_frame_url) if u]
+    if frames:
+        input_data["image_urls"] = frames
+    return input_data
+
+
+def _kling3_motion_request(
+    prompt: str, resolution: str | None, image_url: str | None, video_url: str | None,
+    character_orientation: str | None,
+) -> dict:
+    """Kling 3.0 Motion Control: одно фото (input_urls) + одно видео с движением (video_urls).
+    Длительность берётся из видео; duration/aspect_ratio/audio модель не принимает."""
+    if not image_url or not video_url:
+        raise ProviderUnavailableError("Kling Motion Control: нужны и фото, и видео")
+    return {
+        "prompt": prompt,
+        "input_urls": [image_url],
+        "video_urls": [video_url],
+        "mode": "pro" if resolution == "1080p" else "std",
+        "character_orientation": character_orientation or "video",
+        "background_source": "input_video" if (character_orientation or "video") == "video" else "input_image",
+    }
+
+
 SEEDANCE2_PREFIX = "bytedance/seedance-2"
 
 
@@ -717,6 +761,17 @@ class KieProvider(OpenAICompatProvider):
             actual_model, input_data = _kling_omni_request(
                 prompt, duration, aspect_ratio, resolution, audio,
                 first_frame_url, last_frame_url, style_reference_urls, video_reference_urls,
+            )
+
+        if actual_model == KLING3_ALIAS:
+            input_data = _kling3_request(
+                prompt, duration, aspect_ratio, resolution, audio, first_frame_url, last_frame_url,
+            )
+
+        if actual_model == KLING3_MOTION_ALIAS:
+            # В Motion Control фото лежит в слоте «первый кадр», видео движения — в слоте «последний кадр»
+            input_data = _kling3_motion_request(
+                prompt, resolution, first_frame_url, last_frame_url, character_orientation,
             )
 
         if actual_model.startswith(SEEDANCE2_PREFIX):
