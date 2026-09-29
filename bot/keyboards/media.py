@@ -33,12 +33,12 @@ MEDIA_SECTIONS = {
     "photo": {
         "title": "🖼 <b>Фото</b>\n\nВыбери действие:",
         "gen": ("🎨 Генерация фото", "media:type:image"),
-        "edit": ("✏️ Редактирование вашего фото", "media:type:photo_edit"),
+        "edit": ("✏️ Редактировать ваше фото", "media:type:photo_edit"),
     },
     "video": {
         "title": "🎬 <b>Видео</b>\n\nВыбери действие:",
         "gen": ("🎬 Генерация видео", "media:type:video"),
-        "edit": ("✏️ Редактирование вашего видео", "media:type:video_edit"),
+        "edit": ("✏️ Редактировать ваше видео", "media:type:video_edit"),
     },
 }
 
