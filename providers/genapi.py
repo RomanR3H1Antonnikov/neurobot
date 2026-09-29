@@ -138,6 +138,8 @@ class GenApiProvider(AbstractProvider):
         # Midjourney принимает URL ориентиров в начале промпта (пробел-разделитель)
         _refs_prefix = " ".join(style_reference_urls) + " " if style_reference_urls else ""
         effective_prompt = f"{_refs_prefix}{prompt}"
+        if aspect_ratio:
+            effective_prompt += f" --ar {aspect_ratio}"  # Midjourney: соотношение сторон параметром промпта
         data = await self._run(network, effective_prompt, extra=extra)
 
         result = data.get("result")
