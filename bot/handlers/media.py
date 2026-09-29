@@ -228,6 +228,34 @@ _PROMPT_HINTS = {
 }
 
 
+def _fmt_seconds(value: float) -> str:
+    return str(int(value)) if float(value).is_integer() else str(value)
+
+
+def _ref_video_limit_error(data: dict, duration: int | float | None) -> str | None:
+    """Проверка длительности исходного видео по лимитам выбранной модели (models_config.yaml).
+
+    Возвращает текст ошибки или None. Если длительность неизвестна (например, видео прислали
+    файлом-документом) или у модели нет лимитов — проверку пропускаем.
+    """
+    if duration is None:
+        return None
+    lo = data.get("model_input_video_min")
+    hi = data.get("model_input_video_max")
+    if not lo and not hi:
+        return None
+    if (hi and duration > hi) or (lo and duration < lo):
+        label = data.get("model_label", "выбранной модели")
+        if lo and hi:
+            need = f"от {_fmt_seconds(lo)} до {_fmt_seconds(hi)} сек"
+        elif hi:
+            need = f"не длиннее {_fmt_seconds(hi)} сек"
+        else:
+            need = f"не короче {_fmt_seconds(lo)} сек"
+        return f"⚠️ Ваше видео {duration} сек. Для «{label}» нужно видео {need}."
+    return None
+
+
 def _confirm_card_text(data: dict) -> str:
     media_type = data.get("media_type", "")
     prompt = data.get("prompt") or "не задано"
@@ -651,6 +679,8 @@ async def select_model(callback: CallbackQuery, state: FSMContext) -> None:
         "model_output_formats": model_cfg.get("output_formats"),
         "model_constructor_video": model_cfg.get("constructor_includes_video", False),
         "model_wan_audio": model_cfg.get("wan_audio_setting", False),
+        "model_input_video_min": model_cfg.get("min_input_video_seconds"),
+        "model_input_video_max": model_cfg.get("max_input_video_seconds"),
         "model_duration_custom": model_cfg.get("duration_custom", True),
         "model_has_audio": model_cfg.get("audio", True),
         "video_audio_enabled": model_cfg.get("audio", True),
@@ -1271,7 +1301,7 @@ async def delete_reference(callback: CallbackQuery, state: FSMContext) -> None:
     """Кнопка 🗑 — сбрасывает загруженное редактируемое фото или видео."""
     data = await state.get_data()
     removed = "Видео" if data.get("reference_type") == "video" else "Фото"
-    await state.update_data(reference_file_id=None, reference_type=None)
+    await state.update_data(reference_file_id=None, reference_type=None, reference_video_duration=None)
     await _update_confirm_card(callback.message, state)
     await callback.answer(f"{removed} удалено")
 
@@ -2276,7 +2306,14 @@ async def receive_reference_video(message: Message, state: FSMContext) -> None:
             await _back_to_frames_menu(message.bot, message.chat.id, state)
         return
     await message.delete()
-    await state.update_data(reference_file_id=message.video.file_id, reference_type="video")
+    _limit_err = _ref_video_limit_error(data, message.video.duration)
+    if _limit_err:
+        asyncio.create_task(_toast(message, _limit_err))
+        return
+    await state.update_data(
+        reference_file_id=message.video.file_id, reference_type="video",
+        reference_video_duration=message.video.duration,
+    )
     await _show_confirm_after_reference(message, state)
 
 
@@ -2434,7 +2471,10 @@ async def receive_reference_document(message: Message, state: FSMContext) -> Non
             )
             return
         await message.delete()
-        await state.update_data(reference_file_id=message.document.file_id, reference_type="video")
+        await state.update_data(
+            reference_file_id=message.document.file_id, reference_type="video",
+            reference_video_duration=None,  # у документа длительность неизвестна
+        )
         await _show_confirm_after_reference(message, state)
     elif mime.startswith("image/"):
         if data.get("media_type") == "video_edit" and not _expects_photo:
@@ -2970,7 +3010,14 @@ async def confirm_unknown_input(message: Message, state: FSMContext, album: list
     # Видео для редактирования
     if media_type == "video_edit" and message.video:
         await message.delete()
-        await state.update_data(reference_file_id=message.video.file_id, reference_type="video")
+        _limit_err = _ref_video_limit_error(data, message.video.duration)
+        if _limit_err:
+            asyncio.create_task(_toast(message, _limit_err))
+            return
+        await state.update_data(
+            reference_file_id=message.video.file_id, reference_type="video",
+            reference_video_duration=message.video.duration,
+        )
         await _update_confirm_card(message, state)
         return
     if media_type == "photo_edit" and (message.video or message.video_note):
@@ -3996,6 +4043,13 @@ async def start_generation(callback: CallbackQuery, state: FSMContext) -> None:
         label = "фото" if media_type == "photo_edit" else "видео"
         await callback.answer(f"Сначала добавь {label} для редактирования 📎", show_alert=True)
         return
+
+    if media_type == "video_edit":
+        # Видео могли загрузить до смены модели — перепроверяем по лимитам текущей
+        _limit_err = _ref_video_limit_error(data, data.get("reference_video_duration"))
+        if _limit_err:
+            await callback.answer(_limit_err, show_alert=True)
+            return
 
     await callback.message.edit_text(
         "⏳ Генерирую, подожди немного...",
