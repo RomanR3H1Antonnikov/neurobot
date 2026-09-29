@@ -355,8 +355,12 @@ def video_confirm_kb(
         else:
             builder.row(InlineKeyboardButton(text="📎 Конец видео", callback_data="media:add_last_frame"))
     if max_audio_refs > 0:
-        audio_text = f"🎵 Аудио: {audio_ref_count}/{max_audio_refs} ✅" if audio_ref_count else "🎵 Аудио"
-        builder.row(InlineKeyboardButton(text=audio_text, callback_data="media:add_audio_ref"))
+        if show_audio_toggle and not audio_enabled:
+            # Звук выключен — аудио-референс не имеет смысла: кнопка неактивна (крестик)
+            builder.row(InlineKeyboardButton(text="🎵 Аудио ❌", callback_data="media:audio_ref_disabled"))
+        else:
+            audio_text = f"🎵 Аудио: {audio_ref_count}/{max_audio_refs} ✅" if audio_ref_count else "🎵 Аудио"
+            builder.row(InlineKeyboardButton(text=audio_text, callback_data="media:add_audio_ref"))
     if motion_orientation is not None:
         orient_label = "Фото" if motion_orientation == "image" else "Видео"
         builder.row(InlineKeyboardButton(
