@@ -673,7 +673,8 @@ class KieProvider(OpenAICompatProvider):
         # ── Флаг аудио ───────────────────────────────────────────────────────
         # WAN video-to-video использует audio_setting: "auto"/"origin", а не audio: bool
         # Pixverse video edit использует generate_audio_switch
-        if _wan_video_edit:
+        # Wan 3.0 (в т.ч. Prime) не принимает audio_setting (KIE 422 "unsupported field") — у него обычное audio: bool
+        if _wan_video_edit and not actual_model.startswith("wan/3-"):
             input_data["audio_setting"] = "origin" if not audio else "auto"
         elif _pixverse_video_edit:
             input_data["generate_audio_switch"] = audio
