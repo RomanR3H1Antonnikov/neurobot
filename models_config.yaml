@@ -1011,6 +1011,7 @@ tasks:
           Flux 2 Pro — высокая детализация и реалистичность при редактировании изображений.
           Точно следует инструкции, хорошо работает с текстурами, освещением и сложными
           композициями.
+        aspect_ratios: ["1:1", "9:16", "16:9", "3:4", "4:3"]
         model_id: flux-2/pro-image-to-image
         provider: kie
         max_style_refs: 3
@@ -1032,6 +1033,7 @@ tasks:
           Флагманская версия для сложных, насыщенных композиций — точность, структура
           и контроль. Подходит дизайнерам, маркетологам, продюсерам и для коммерческих
           макетов.
+        aspect_ratios: ["1:1", "4:3", "3:4", "16:9", "9:16", "3:2", "2:3", "21:9"]
         model_id: seedream/5-pro-image-to-image
         provider: kie
         max_style_refs: 10
@@ -1049,6 +1051,7 @@ tasks:
         variant_description: >-
           Универсальная версия — идеальна для старта, поиска концепций и простых
           визуалов.
+        aspect_ratios: ["1:1", "4:3", "3:4", "16:9", "9:16", "3:2", "2:3", "21:9"]
         model_id: seedream/5-lite-image-to-image
         provider: kie
         max_style_refs: 10
@@ -1067,6 +1070,7 @@ tasks:
           текстовые описания, включая сложные стили и атмосферные эффекты. Популярна среди
           художников и дизайнеров благодаря уникальному визуальному стилю и гибкости настроек.
         variant_description: ""
+        aspect_ratios: ["1:1", "5:4", "3:2", "7:4", "16:9", "2:1", "9:16", "1:2", "2:3"]
         model_id: midjourney/7.0
         provider: genapi
         max_style_refs: 4
@@ -1080,6 +1084,7 @@ tasks:
         group_label: "Midjourney"
         description: ""
         variant_description: ""
+        aspect_ratios: ["1:1", "5:4", "3:2", "7:4", "16:9", "2:1", "9:16", "1:2", "2:3"]
         model_id: midjourney/8.1
         provider: genapi
         max_style_refs: 4
