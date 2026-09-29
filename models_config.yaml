@@ -1110,6 +1110,7 @@ tasks:
         description: >-
           Kling 3.0 Omni трансформирует загруженное видео по текстовому описанию,
           сохраняя движения персонажей и структуру сцены из оригинала.
+          Длительность исходного видео — от 3 до 15 секунд.
         duration_options: [5, 10, 15]
         min_duration: 3
         max_duration: 15
@@ -1118,6 +1119,9 @@ tasks:
         model_id: kling-3.0-omni/transformation
         provider: kie
         max_style_refs: 4
+        # Ограничения KIE на исходное видео (сек) — проверяется при загрузке и запуске
+        min_input_video_seconds: 3
+        max_input_video_seconds: 15.5
         cost_credits: 12
         cost_per_second_by_resolution: {"720p": 12.0, "1080p": 16.0, "4K": 36.0}
         cost_usd: 0.10
@@ -1145,12 +1149,16 @@ tasks:
         description: >-
           Wan 2.7 от Alibaba редактирует загруженное видео по текстовому описанию.
           Поддерживает фото-ориентиры для задания стиля редактирования.
+          Длительность исходного видео — от 2 до 10 секунд.
         duration_options: [5, 9, 10]
         min_duration: 2
         max_duration: 10
         aspect_ratios: ["16:9", "9:16", "1:1", "4:3", "3:4"]
         resolutions: ["720p", "1080p"]
         max_style_refs: 1
+        # Ограничения KIE на исходное видео (сек) — проверяется при загрузке и запуске
+        min_input_video_seconds: 2
+        max_input_video_seconds: 10
         wan_audio_setting: true
         model_id: wan/2-7-video-to-video
         provider: kie
