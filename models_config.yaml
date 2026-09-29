@@ -747,7 +747,7 @@ tasks:
         duration_options: [5, 10, 15]
         min_duration: 3
         max_duration: 15
-        aspect_ratios: ["16:9", "9:16", "1:1", "21:9"]
+        aspect_ratios: ["16:9", "9:16", "1:1"]
         resolutions: ["720p", "1080p", "4K"]
         model_id: kling-3.0-omni/video
         provider: kie

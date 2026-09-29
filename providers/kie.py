@@ -104,6 +104,59 @@ def _image_input(
     return result
 
 
+KLING_OMNI_GEN_ALIAS = "kling-3.0-omni/video"
+
+
+def _kling_omni_request(
+    prompt: str,
+    duration: int,
+    aspect_ratio: str | None,
+    resolution: str | None,
+    audio: bool,
+    first_frame_url: str | None,
+    last_frame_url: str | None,
+    style_reference_urls: list[str] | None,
+    video_reference_urls: list[str] | None,
+) -> tuple[str, dict]:
+    """Kling 3.0 Omni у KIE — три отдельные модели, а не одна: выбираем по входным данным.
+
+    - видео-референс           → reference-to-video (видео + до 4 фото)
+    - фото-референсы           → reference-to-video (до 7 фото)
+    - первый/последний кадр    → image-to-video (image_urls: [первый, последний])
+    - только текст             → text-to-video
+    Поле resolution у Omni — в нижнем регистре ("4k"); поля mode у него нет.
+    """
+    frames = [u for u in (first_frame_url, last_frame_url) if u]
+    refs = list(style_reference_urls or [])
+    res = (resolution or "720p").lower()
+    ratio = aspect_ratio or "16:9"
+    input_data: dict = {"prompt": prompt, "resolution": res}
+
+    if video_reference_urls:
+        model = "kling-3.0-omni/reference-to-video"
+        input_data["video_urls"] = list(video_reference_urls)[:1]
+        images = (frames + refs)[:4]
+        if images:
+            input_data.update(image_urls=images, duration=duration, aspect_ratio=ratio)
+        else:
+            # Только видео: KIE требует aspect_ratio="auto", длительность берётся из видео
+            input_data["aspect_ratio"] = "auto"
+        # С видео-входом звук у Omni всегда выключен
+        input_data["audio"] = False
+        return model, input_data
+
+    input_data.update(duration=duration, aspect_ratio=ratio, audio=bool(audio))
+    if refs:
+        model = "kling-3.0-omni/reference-to-video"
+        input_data["image_urls"] = (frames + refs)[:7]
+    elif frames:
+        model = "kling-3.0-omni/image-to-video"
+        input_data["image_urls"] = frames
+    else:
+        model = "kling-3.0-omni/text-to-video"
+    return model, input_data
+
+
 def _extract_url(body: dict) -> str | None:
     """Извлекает URL результата из callback-тела KIE."""
     import json as _json
@@ -502,6 +555,13 @@ class KieProvider(OpenAICompatProvider):
                 ]
             else:
                 input_data["video_urls"] = list(video_reference_urls)
+
+        if actual_model == KLING_OMNI_GEN_ALIAS:
+            # Omni собирается отдельно: три модели KIE с разными наборами полей
+            actual_model, input_data = _kling_omni_request(
+                prompt, duration, aspect_ratio, resolution, audio,
+                first_frame_url, last_frame_url, style_reference_urls, video_reference_urls,
+            )
 
         try:
             if is_veo:
