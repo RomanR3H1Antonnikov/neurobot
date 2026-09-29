@@ -14,7 +14,7 @@ import asyncio
 import logging
 
 from aiogram.client.session.aiohttp import AiohttpSession
-from aiogram.exceptions import TelegramNetworkError
+from aiogram.exceptions import TelegramBadRequest, TelegramNetworkError
 
 logger = logging.getLogger(__name__)
 
@@ -28,8 +28,28 @@ _ATTEMPTS = 3
 
 
 class RetryingSession(AiohttpSession):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Неактивное соединение с Telegram закрываем через 5 сек (по умолчанию 15): иначе запрос
+        # уходит в уже «мёртвое» соединение, висит десятки секунд и заканчивается Connection reset.
+        self._connector_init["keepalive_timeout"] = 5
+
     async def make_request(self, bot, method, timeout=None):
         name = type(method).__name__
+        if name == "AnswerCallbackQuery":
+            # Ответ на нажатие кнопки живёт у Telegram считанные секунды. Если он «протух» (бот
+            # успел повисеть на сетевом сбое), это не ошибка обработки: раньше исключение
+            # обрывало весь обработчик — например, генерация не запускалась вовсе.
+            try:
+                return await self._request_with_retry(name, bot, method, timeout)
+            except TelegramBadRequest as e:
+                if "query is too old" in str(e) or "query ID is invalid" in str(e):
+                    logger.info("Нажатие кнопки устарело — ответ на него пропускаем")
+                    return True
+                raise
+        return await self._request_with_retry(name, bot, method, timeout)
+
+    async def _request_with_retry(self, name, bot, method, timeout):
         if name not in _RETRY_METHODS:
             return await super().make_request(bot, method, timeout)
         for attempt in range(1, _ATTEMPTS + 1):
