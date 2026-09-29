@@ -736,7 +736,9 @@ class KieProvider(OpenAICompatProvider):
                     "prompt": prompt,
                     "duration": duration,
                     "resolution": _veo_res,
-                    "aspect_ratio": aspect_ratio or "16:9",
+                    # Veo принимает только 16:9 и 9:16; у модели нет выбора масштаба, и в aspect_ratio
+                    # может остаться значение от другой модели (1:1, 4:3…) → KIE 422 "Ratio error"
+                    "aspect_ratio": aspect_ratio if aspect_ratio in ("16:9", "9:16") else "16:9",
                 }
                 if video_reference_urls:
                     veo_input["generationType"] = "REFERENCE_2_VIDEO"
