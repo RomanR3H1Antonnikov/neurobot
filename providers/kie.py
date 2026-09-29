@@ -152,6 +152,9 @@ def _kling_omni_request(
     elif frames:
         model = "kling-3.0-omni/image-to-video"
         input_data["image_urls"] = frames
+        # KIE на деле принимает здесь только "auto" (формат берётся из кадра): при 16:9/9:16/1:1
+        # ответ 422 «aspect_ratio must be auto for image-to-video without custom multi-shot»
+        input_data["aspect_ratio"] = "auto"
     else:
         model = "kling-3.0-omni/text-to-video"
     return model, input_data
