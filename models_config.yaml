@@ -1150,7 +1150,7 @@ tasks:
         max_duration: 10
         aspect_ratios: ["16:9", "9:16", "1:1", "4:3", "3:4"]
         resolutions: ["720p", "1080p"]
-        max_style_refs: 4
+        max_style_refs: 1
         wan_audio_setting: true
         model_id: wan/2-7-video-to-video
         provider: kie
