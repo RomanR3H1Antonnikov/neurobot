@@ -134,6 +134,31 @@ async def _deliver_orphaned(corr_id: str, body: dict) -> None:
         logger.error("KIE orphaned: ошибка отправки пользователю telegram_id=%s: %s", telegram_id, e)
 
 
+async def recover_orphaned_jobs() -> None:
+    """После перезапуска бота забирает результаты KIE-задач, чей callback пришёл, пока бот был выключен.
+
+    Callback KIE не повторяет, поэтому смотрим статус по taskId: готово → доставляем пользователю,
+    ошибка → чистим запись, ещё идёт → оставляем (callback придёт сам).
+    """
+    from db.queries import list_pending_jobs_with_task, delete_pending_job
+    from providers.router import _registry
+    try:
+        jobs = await list_pending_jobs_with_task()
+        provider = _registry["kie"]
+    except Exception as e:
+        logger.warning("KIE recover: не удалось получить задачи: %s", e)
+        return
+    for job in jobs:
+        body = await provider.fetch_task(job["task_id"])
+        data = (body or {}).get("data") or {}
+        state = (data.get("state") or "").lower()
+        if state == "success":
+            await _deliver_orphaned(job["corr_id"], body)
+        elif state in ("fail", "failed", "error"):
+            await delete_pending_job(job["corr_id"])
+        logger.info("KIE recover: task=%s state=%s", job["task_id"], state or "unknown")
+
+
 async def _handle_callback(request: web.Request) -> web.Response:
     corr_id = request.match_info["corr_id"]
     try:

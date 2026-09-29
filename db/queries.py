@@ -173,13 +173,14 @@ async def get_generation_counts(telegram_id: int) -> dict[str, int]:
 async def save_pending_job(
     corr_id: str, telegram_id: int, chat_id: int,
     model_label: str, media_type: str, prompt: str | None,
+    task_id: str | None = None,
 ) -> None:
     db = await get_db()
     await db.execute(
         """INSERT OR REPLACE INTO pending_jobs
-           (corr_id, telegram_id, chat_id, model_label, media_type, prompt)
-           VALUES (?, ?, ?, ?, ?, ?)""",
-        (corr_id, telegram_id, chat_id, model_label, media_type, prompt),
+           (corr_id, telegram_id, chat_id, model_label, media_type, prompt, task_id)
+           VALUES (?, ?, ?, ?, ?, ?, ?)""",
+        (corr_id, telegram_id, chat_id, model_label, media_type, prompt, task_id),
     )
     # Попутно удаляем устаревшие записи (>24 ч)
     await db.execute(
@@ -187,6 +188,15 @@ async def save_pending_job(
         (int(time.time()) - 86400,),
     )
     await db.commit()
+
+
+async def list_pending_jobs_with_task():
+    """Незавершённые KIE-задачи (есть taskId) — для восстановления после перезапуска бота."""
+    db = await get_db()
+    async with db.execute(
+        "SELECT * FROM pending_jobs WHERE task_id IS NOT NULL AND task_id != ''"
+    ) as cur:
+        return await cur.fetchall()
 
 
 async def get_pending_job(corr_id: str):
