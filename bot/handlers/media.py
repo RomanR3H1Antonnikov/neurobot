@@ -2104,10 +2104,70 @@ async def _show_confirm_after_reference(message: Message, state: FSMContext) -> 
     await state.update_data(confirm_msg_id=sent.message_id)
 
 
+async def _handle_video_edit_mixed_album(
+    message: Message, state: FSMContext, data: dict, album: list | None,
+) -> bool:
+    """Альбом «видео + фото» в редактировании видео: видео — редактируемое, фото — ориентиры.
+
+    Возвращает True, если альбом смешанный и обработан (вызывающий хэндлер должен выйти).
+    """
+    if not album:
+        return False
+    photos = [m for m in album if m.photo]
+    videos = [m for m in album if m.video]
+    if not photos or not videos:
+        return False
+
+    for msg in album:
+        try:
+            await msg.delete()
+        except Exception:
+            pass
+
+    upd: dict = {}
+    caption = next(((m.caption or "").strip() for m in album if (m.caption or "").strip()), "")
+    if caption:
+        upd["prompt"] = caption
+
+    video = videos[0].video
+    limit_err = _ref_video_limit_error(data, video.duration)
+    if limit_err:
+        asyncio.create_task(_toast(message, limit_err))
+    else:
+        upd.update(
+            reference_file_id=video.file_id, reference_type="video",
+            reference_video_duration=video.duration,
+        )
+
+    max_refs = data.get("model_max_style_refs", 0)
+    if max_refs > 0:
+        srefs = list(data.get("style_reference_file_ids") or [])
+        room = max(max_refs - len(srefs), 0)
+        ids = [m.photo[-1].file_id for m in photos]
+        srefs.extend(ids[:room])
+        upd["style_reference_file_ids"] = srefs
+        if len(ids) > room:
+            asyncio.create_task(_toast(
+                message, _too_many_photos_text(max_refs, min(room, len(ids))), delay=6.0,
+            ))
+    else:
+        asyncio.create_task(_toast(message, "⚠️ Модель не поддерживает фото-ориентиры"))
+
+    await state.update_data(**upd)
+    if await state.get_state() == MediaStates.confirm.state:
+        await _update_confirm_card(message, state)
+    else:
+        await _show_confirm_after_reference(message, state)
+    return True
+
+
 @router.message(MediaStates.enter_reference, F.photo)
 @_serialize_per_chat
 async def receive_reference_photo(message: Message, state: FSMContext, album: list | None = None) -> None:
     data = await state.get_data()
+    if data.get("media_type") == "video_edit" and not data.get("adding_style_ref"):
+        if await _handle_video_edit_mixed_album(message, state, data, album):
+            return
     # Фильтр типа: ожидается не фото
     if data.get("adding_video_ref"):
         await message.delete()
@@ -2241,8 +2301,14 @@ async def receive_reference_photo(message: Message, state: FSMContext, album: li
 
 
 @router.message(MediaStates.enter_reference, F.video)
-async def receive_reference_video(message: Message, state: FSMContext) -> None:
+async def receive_reference_video(message: Message, state: FSMContext, album: list | None = None) -> None:
     data = await state.get_data()
+    if data.get("media_type") == "video_edit" and not (
+        data.get("adding_video_ref") or data.get("adding_style_ref") or data.get("adding_video_extra_frame")
+        or data.get("adding_video_frame") or data.get("adding_audio_ref") or data.get("receiving_edit_audio")
+    ):
+        if await _handle_video_edit_mixed_album(message, state, data, album):
+            return
     if data.get("media_type") == "photo_edit":
         sent = await message.answer("Для редактирования фото пришли изображение, а не видео.", reply_markup=back_to_model_kb())
         await _track_msg(state, sent.message_id)
@@ -3049,6 +3115,11 @@ async def confirm_unknown_input(message: Message, state: FSMContext, album: list
             await _handler(_album_photos[0], state, album=_album_photos)
             for _vid in _album_videos:
                 await _handler(_vid, state, album=None)
+            return
+
+    # Альбом «видео + фото» в редактировании видео: фото → ориентиры
+    if media_type == "video_edit" and album:
+        if await _handle_video_edit_mixed_album(message, state, data, album):
             return
 
     # Видео для редактирования
