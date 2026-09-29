@@ -96,4 +96,9 @@ async def _create_tables(db: aiosqlite.Connection) -> None:
             PRIMARY KEY (chat_id, user_id, destiny)
         );
     """)
+    # Миграция: taskId KIE нужен, чтобы после перезапуска бота забрать готовый результат
+    try:
+        await db.execute("ALTER TABLE pending_jobs ADD COLUMN task_id TEXT")
+    except Exception:
+        pass  # колонка уже есть
     await db.commit()

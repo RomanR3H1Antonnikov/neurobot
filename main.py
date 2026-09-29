@@ -13,7 +13,7 @@ from bot.middlewares.user_middleware import UserMiddleware
 from bot.middlewares.cleanup import CallbackCleanupMiddleware
 from bot.middlewares.album import AlbumMiddleware
 from bot.handlers import start, media, chat, documents, billing, mygenerations, fallback
-from services.kie_webhook import start_webhook_server, set_bot
+from services.kie_webhook import start_webhook_server, set_bot, recover_orphaned_jobs
 
 logging.basicConfig(
     level=logging.INFO,
@@ -66,6 +66,7 @@ async def main() -> None:
 
     webhook_runner = await start_webhook_server(host="0.0.0.0", port=8081)
     logger.info("Бот запущен")
+    asyncio.create_task(recover_orphaned_jobs())  # забрать результаты, пришедшие пока бот был выключен
 
     try:
         await dp.start_polling(bot, allowed_updates=dp.resolve_used_update_types())

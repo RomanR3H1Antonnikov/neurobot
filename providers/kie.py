@@ -408,10 +408,22 @@ class KieProvider(OpenAICompatProvider):
         if ctx:
             try:
                 from db.queries import save_pending_job
-                await save_pending_job(corr_id, **ctx)
+                await save_pending_job(corr_id, task_id=task_id, **ctx)
             except Exception as _e:
                 logger.warning("KIE: не удалось сохранить контекст job %s: %s", corr_id, _e)
         return task_id
+
+    async def fetch_task(self, task_id: str) -> dict | None:
+        """Статус/результат задачи KIE (jobs API) — тело совместимо с callback'ом. None при ошибке."""
+        try:
+            async with self._session(timeout=30) as session:
+                async with session.get(f"{_KIE_API_BASE}/jobs/recordInfo", params={"taskId": task_id}) as resp:
+                    if resp.status >= 400:
+                        return None
+                    return await resp.json()
+        except Exception as e:
+            logger.warning("KIE recordInfo %s: %s", task_id, e)
+            return None
 
     async def _await_job(self, corr_id: str) -> dict:
         """Ждёт callback от KIE с таймаутом."""
