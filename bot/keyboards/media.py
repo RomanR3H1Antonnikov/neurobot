@@ -972,10 +972,17 @@ def after_orphaned_photo_kb() -> InlineKeyboardMarkup:
     ])
 
 
-def after_generation_kb(is_image: bool = False) -> InlineKeyboardMarkup:
+def after_generation_kb(is_image: bool = False, edit: bool = False) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     if is_image:
         builder.row(InlineKeyboardButton(text="✏️ Редактировать", callback_data="media:edit_generated"))
+    if edit:
+        # После редактирования: вместо «Главное меню» — «К моделям». «Назад» не нужен: ведёт туда же.
+        builder.row(
+            InlineKeyboardButton(text="🔄 Сгенерировать ещё", callback_data="media:again"),
+            InlineKeyboardButton(text="📋 К моделям", callback_data="media:back:model"),
+        )
+        return builder.as_markup()
     builder.row(
         InlineKeyboardButton(text="🔄 Сгенерировать ещё", callback_data="media:again"),
         InlineKeyboardButton(text="🏠 Главное меню", callback_data="media:back:menu"),

@@ -4079,7 +4079,7 @@ async def _run_generation(send_msg: Message, tg_user, state: FSMContext, data: d
             aspect_ratio=data.get("aspect_ratio"),
         )
         file = BufferedInputFile(result.data, filename=result.filename)
-        sent = await send_msg.answer_photo(file, reply_markup=after_generation_kb(is_image=True))
+        sent = await send_msg.answer_photo(file, reply_markup=after_generation_kb(is_image=True, edit=True))
         await _track_msg(state, sent.message_id)
         new_file_id = sent.photo[-1].file_id
         await save_generation(tg_user.id, "photo", new_file_id, prompt=prompt, model_label=data.get("model_label"))
@@ -4115,7 +4115,7 @@ async def _run_generation(send_msg: Message, tg_user, state: FSMContext, data: d
             mute=_mute,
         )
         file = BufferedInputFile(result.data, filename=result.filename)
-        sent = await send_msg.answer_video(file, reply_markup=after_generation_kb())
+        sent = await send_msg.answer_video(file, reply_markup=after_generation_kb(edit=True))
         await _track_msg(state, sent.message_id)
         await save_generation(tg_user.id, "video", sent.video.file_id, prompt=prompt, model_label=data.get("model_label"))
 
