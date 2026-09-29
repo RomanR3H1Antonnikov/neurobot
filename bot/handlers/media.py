@@ -20,7 +20,7 @@ from config import config as _billing_cfg
 def _has_yookassa() -> bool:
     return bool(_billing_cfg.yookassa_provider_token)
 from bot.keyboards.media import (
-    media_type_kb, media_edit_kb, media_info_kb, model_top_kb, model_variant_kb,
+    media_type_kb, media_section_kb, MEDIA_SECTIONS, media_info_kb, model_top_kb, model_variant_kb,
     model_select_text, model_variant_text, back_to_model_kb, back_to_confirm_kb, back_to_frames_kb,
     image_confirm_kb, image_ratio_kb, image_resolution_kb, image_quality_kb,
     video_confirm_kb, video_format_kb, video_frames_menu_kb, video_duration_picker_kb, audio_confirm_kb, edit_confirm_kb, edit_sound_kb,
@@ -557,9 +557,9 @@ def _confirm_kb(data: dict):
 # ─── Вход в раздел ───────────────────────────────────────────────────────────
 
 MEDIA_MENU_TEXT = (
-    "✨ <b>Генерация</b> — создать новый контент с нуля\n"
-    "✏️ <b>Редактирование</b> — улучшение качества, замена лиц и т.д.\n\n"
-    "Выбери действие:"
+    "🖼 <b>Фото</b> и 🎬 <b>Видео</b> — создать с нуля или отредактировать своё\n"
+    "🎵 <b>Аудио</b> — озвучка и музыка\n\n"
+    "Выбери тип:"
 )
 
 _INFO_COLLAPSED = (
@@ -606,12 +606,13 @@ async def media_menu(message: Message, state: FSMContext) -> None:
 
 # ─── Выбор типа ──────────────────────────────────────────────────────────────
 
-@router.callback_query(MediaStates.select_type, F.data == "media:edit_menu")
-async def edit_menu(callback: CallbackQuery, state: FSMContext) -> None:
+@router.callback_query(MediaStates.select_type, F.data.in_({"media:section:photo", "media:section:video"}))
+async def open_section(callback: CallbackQuery, state: FSMContext) -> None:
+    """Подменю раздела «Фото» / «Видео»: генерация с нуля или редактирование своего файла."""
+    section = callback.data.split(":")[2]
     await _delete_msgs_below(callback.bot, callback.message.chat.id, state, callback.message.message_id)
     await callback.message.edit_text(
-        "Выбери, что нужно изменить:",
-        reply_markup=media_edit_kb(),
+        MEDIA_SECTIONS[section]["title"], parse_mode="HTML", reply_markup=media_section_kb(section),
     )
     await callback.answer()
 
@@ -848,14 +849,16 @@ async def back_to_type(callback: CallbackQuery, state: FSMContext) -> None:
     data = await state.get_data()
     current_state = await state.get_state()
     await state.set_state(MediaStates.select_type)
-    # Если возвращаемся из списка моделей edit-типа — показываем подменю редактирования.
+    # Из списка моделей фото/видео (генерация или редактирование) возвращаемся в подменю раздела.
     # Проверяем именно состояние select_model чтобы не срабатывало при навигации с главного меню.
-    if (
-        current_state == MediaStates.select_model
-        and data.get("media_type") in ("photo_edit", "video_edit")
-    ):
+    _section = {"image": "photo", "photo_edit": "photo", "video": "video", "video_edit": "video"}.get(
+        data.get("media_type")
+    )
+    if current_state == MediaStates.select_model and _section:
         await state.update_data(media_type=None)
-        await callback.message.edit_text("Выбери, что нужно изменить:", reply_markup=media_edit_kb())
+        await callback.message.edit_text(
+            MEDIA_SECTIONS[_section]["title"], parse_mode="HTML", reply_markup=media_section_kb(_section),
+        )
     else:
         await callback.message.edit_text(MEDIA_MENU_TEXT, parse_mode="HTML", reply_markup=media_type_kb())
     await callback.answer()
