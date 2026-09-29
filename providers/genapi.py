@@ -255,6 +255,8 @@ class GenApiProvider(AbstractProvider):
         # Основное фото + ориентиры + промпт
         _all_urls = [image_url] + (list(style_reference_urls) if style_reference_urls else [])
         full_prompt = " ".join(_all_urls) + " " + prompt
+        if aspect_ratio:
+            full_prompt += f" --ar {aspect_ratio}"  # Midjourney: соотношение сторон параметром промпта
         data = await self._run(network, full_prompt, extra=extra)
 
         result = data.get("result")
