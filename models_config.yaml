@@ -588,6 +588,7 @@ tasks:
         duration_options: [8]
         min_duration: 8
         max_duration: 8
+        duration_custom: false
         first_frame: true
         last_frame: false
         max_style_refs: 3
@@ -612,6 +613,7 @@ tasks:
         duration_options: [8]
         min_duration: 8
         max_duration: 8
+        duration_custom: false
         first_frame: true
         last_frame: false
         max_style_refs: 3
