@@ -837,6 +837,8 @@ def edit_confirm_kb(
             sound_text = "🔊 Звук: заменить ✅"
         elif video_edit_audio_mode == "origin":
             sound_text = "🎵 Звук: оригинальный ✅"
+        elif video_edit_audio_mode == "mute":
+            sound_text = "🔇 Звук: выключен ✅"
         else:
             sound_text = "🔊 Звук"
         builder.row(InlineKeyboardButton(text=sound_text, callback_data="media:edit_sound"))
@@ -854,10 +856,12 @@ def edit_sound_kb(audio_mode: str | None, audio_file_name: str | None = None, wa
     """Клавиатура выбора режима звука при редактировании видео."""
     builder = InlineKeyboardBuilder()
     if wan:
-        auto_text = "✅ Авто" if audio_mode != "origin" else "🔊 Авто"
+        auto_text = "✅ Авто" if audio_mode not in ("origin", "mute") else "🔊 Авто"
         origin_text = "✅ Оригинальный звук" if audio_mode == "origin" else "🎵 Оригинальный звук"
+        mute_text = "✅ Выключить звук" if audio_mode == "mute" else "🔇 Выключить звук"
         builder.row(InlineKeyboardButton(text=auto_text, callback_data="media:edit_sound:auto"))
         builder.row(InlineKeyboardButton(text=origin_text, callback_data="media:edit_sound:origin"))
+        builder.row(InlineKeyboardButton(text=mute_text, callback_data="media:edit_sound:mute"))
     else:
         if audio_mode == "remove":
             remove_text = "✅ Убрать звук"

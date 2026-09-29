@@ -377,6 +377,8 @@ def _confirm_card_text(data: dict) -> str:
             if data.get("model_wan_audio"):
                 if _edit_audio_mode == "origin":
                     lines.append("<b>Звук:</b> оригинальный ✅")
+                elif _edit_audio_mode == "mute":
+                    lines.append("<b>Звук:</b> выключен ✅")
             elif _edit_audio_mode == "remove":
                 lines.append("<b>Звук:</b> убрать ✅")
             elif _edit_audio_mode == "replace":
@@ -1286,8 +1288,9 @@ async def edit_sound_menu(callback: CallbackQuery, state: FSMContext) -> None:
     if wan:
         await callback.message.edit_text(
             "🔊 <b>Звук в видео</b>\n\n"
-            "• <b>Авто</b> — модель сама определит, нужно ли пересоздать звук по промпту\n"
-            "• <b>Оригинальный звук</b> — принудительно сохранит аудиодорожку из исходного видео",
+            "• <b>Авто</b> — модель сама определит, нужно ли пересоздать звук по описанию\n"
+            "• <b>Оригинальный звук</b> — принудительно сохранит аудиодорожку из исходного видео\n"
+            "• <b>Выключить звук</b> — уберёт звуковую дорожку из результата",
             parse_mode="HTML",
             reply_markup=edit_sound_kb(audio_mode, wan=True),
         )
@@ -1315,6 +1318,16 @@ async def edit_sound_origin(callback: CallbackQuery, state: FSMContext) -> None:
     await state.update_data(video_edit_audio_mode="origin")
     await callback.answer()
     await callback.message.edit_reply_markup(reply_markup=edit_sound_kb("origin", wan=True))
+
+
+@router.callback_query(MediaStates.confirm, F.data == "media:edit_sound:mute")
+async def edit_sound_mute(callback: CallbackQuery, state: FSMContext) -> None:
+    """WAN: «Выключить звук» (повторное нажатие возвращает авто)."""
+    data = await state.get_data()
+    new_mode = None if data.get("video_edit_audio_mode") == "mute" else "mute"
+    await state.update_data(video_edit_audio_mode=new_mode)
+    await callback.answer()
+    await callback.message.edit_reply_markup(reply_markup=edit_sound_kb(new_mode, wan=True))
 
 
 @router.callback_query(MediaStates.confirm, F.data == "media:edit_sound:remove")
@@ -3942,11 +3955,15 @@ async def _run_generation(send_msg: Message, tg_user, state: FSMContext, data: d
         if _edit_audio_mode == "replace" and data.get("video_edit_audio_file_id"):
             _audio_info = await send_msg.bot.get_file(data["video_edit_audio_file_id"])
             _edit_audio_url = f"https://api.telegram.org/file/bot{_cfg.bot_token}/{_audio_info.file_path}"
-        # WAN: audio=False → audio_setting "origin"; Kling: audio=False → mute
+        # WAN: audio=False → audio_setting "origin" (звук не пересоздаётся);
+        # «Выключить звук» у Wan = origin + вырезание дорожки после генерации (mute).
+        # Kling: audio=False → mute
         if data.get("model_wan_audio"):
-            _audio_bool = (_edit_audio_mode != "origin")
+            _audio_bool = (_edit_audio_mode not in ("origin", "mute"))
+            _mute = (_edit_audio_mode == "mute")
         else:
             _audio_bool = (_edit_audio_mode != "remove")
+            _mute = (_edit_audio_mode == "remove")
         result = await media_service.edit_video(
             tg_user.id, tg_user.username, media_bytes, prompt, model_slug,
             video_url=video_url,
@@ -3956,6 +3973,7 @@ async def _run_generation(send_msg: Message, tg_user, state: FSMContext, data: d
             audio=_audio_bool,
             audio_url=_edit_audio_url,
             style_reference_urls=style_reference_urls,
+            mute=_mute,
         )
         file = BufferedInputFile(result.data, filename=result.filename)
         sent = await send_msg.answer_video(file, reply_markup=after_generation_kb())
