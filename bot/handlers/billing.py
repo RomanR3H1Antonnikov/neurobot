@@ -247,12 +247,14 @@ async def topup_selected(callback: CallbackQuery) -> None:
 
 @router.pre_checkout_query()
 async def pre_checkout(query: PreCheckoutQuery) -> None:
+    logger.info("pre_checkout: user=%s currency=%s total=%s payload=%s", query.from_user.id, query.currency, query.total_amount, query.invoice_payload)
     await query.answer(ok=True)
 
 
 @router.message(F.successful_payment)
 async def handle_successful_payment(message: Message, state: FSMContext) -> None:
     payload = message.successful_payment.invoice_payload
+    logger.info("successful_payment: user=%s currency=%s total=%s payload=%s", message.from_user.id, message.successful_payment.currency, message.successful_payment.total_amount, payload)
     credits = int(payload.split(":")[1])
     currency = message.successful_payment.currency
 
