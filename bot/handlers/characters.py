@@ -89,16 +89,38 @@ def _menu_kb(data: dict) -> InlineKeyboardMarkup:
     return b.as_markup()
 
 
-def _cancel_kb() -> InlineKeyboardMarkup:
-    return InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="◀️ Отмена", callback_data="char:menu")]])
+def _cancel_kb(back_to: str | None = None) -> InlineKeyboardMarkup:
+    """Отмена + (со 2-го шага) «Шаг назад»; back_to — на какой шаг вернуться: name | desc."""
+    b = InlineKeyboardBuilder()
+    if back_to:
+        b.row(InlineKeyboardButton(text="⬅️ Шаг назад", callback_data=f"char:step:{back_to}"))
+    b.row(InlineKeyboardButton(text="◀️ Отмена", callback_data="char:menu"))
+    return b.as_markup()
 
 
 def _photos_kb(count: int, minimum: int) -> InlineKeyboardMarkup:
     b = InlineKeyboardBuilder()
     if count >= minimum:
         b.row(InlineKeyboardButton(text="✅ Готово", callback_data="char:done"))
+    b.row(InlineKeyboardButton(text="⬅️ Шаг назад", callback_data="char:step:desc"))
     b.row(InlineKeyboardButton(text="◀️ Отмена", callback_data="char:menu"))
     return b.as_markup()
+
+
+def _name_text(kind: str | None) -> str:
+    text = f"👤 <b>Шаг 1/3.</b> Введи имя персонажа (до {_NAME_MAX} символов)."
+    if _is_kling(kind):
+        text += (
+            "\n\nДля ссылки в описании бот автоматически переведёт имя из кириллицы в латиницу "
+            "и сделает тег: например, «Аня» → <code>@anya</code>. Готовый тег покажем после создания."
+        )
+    return text
+
+
+_DESC_TEXT = (
+    "📝 <b>Шаг 2/3.</b> Коротко опиши персонажа: внешность, одежда, характер "
+    "(например: «молодая девушка с короткими серебристыми волосами, в чёрной куртке»)."
+)
 
 
 def _photos_text(kind: str, count: int) -> str:
@@ -188,9 +210,23 @@ async def new_character(callback: CallbackQuery, state: FSMContext) -> None:
     await state.update_data(_sref_msg_id=callback.message.message_id, _char_draft={"file_ids": []})
     await state.set_state(CharacterStates.name)
     await callback.message.edit_text(
-        f"👤 <b>Шаг 1/3.</b> Введи имя персонажа (до {_NAME_MAX} символов):",
-        parse_mode="HTML", reply_markup=_cancel_kb(),
+        _name_text(data.get("model_characters")), parse_mode="HTML", reply_markup=_cancel_kb(),
     )
+    await callback.answer()
+
+
+@router.callback_query(F.data.in_({"char:step:name", "char:step:desc"}))
+async def step_back(callback: CallbackQuery, state: FSMContext) -> None:
+    """«Шаг назад»: введённые ранее данные сохраняются в черновике."""
+    data = await state.get_data()
+    await state.update_data(_sref_msg_id=callback.message.message_id)
+    if callback.data.endswith(":name"):
+        await state.set_state(CharacterStates.name)
+        await _edit(callback.bot, callback.message.chat.id, state,
+                    _name_text(data.get("model_characters")), _cancel_kb())
+    else:
+        await state.set_state(CharacterStates.desc)
+        await _edit(callback.bot, callback.message.chat.id, state, _DESC_TEXT, _cancel_kb("name"))
     await callback.answer()
 
 
@@ -210,12 +246,7 @@ async def enter_name(message: Message, state: FSMContext) -> None:
     draft.update(name=name, tag=_make_tag(name, existing))
     await state.update_data(_char_draft=draft)
     await state.set_state(CharacterStates.desc)
-    await _edit(
-        message.bot, message.chat.id, state,
-        "📝 <b>Шаг 2/3.</b> Коротко опиши персонажа: внешность, одежда, характер "
-        "(например: «молодая девушка с короткими серебристыми волосами, в чёрной куртке»).",
-        _cancel_kb(),
-    )
+    await _edit(message.bot, message.chat.id, state, _DESC_TEXT, _cancel_kb("name"))
 
 
 @router.message(CharacterStates.desc, F.text, ~F.text.in_(MENU_BUTTONS))
