@@ -714,6 +714,11 @@ async def select_model(callback: CallbackQuery, state: FSMContext) -> None:
     model_cfg = next((m for m in models if m["id"] == model_slug), None)
 
     if not model_cfg:
+        logger.warning(
+            "select_model: модель недоступна: slug=%s media_type=%r state_keys=%s models=%s",
+            model_slug, media_type, sorted(k for k in data if not k.startswith("_"))[:12],
+            [m["id"] for m in models][:20],
+        )
         await callback.answer("Модель недоступна", show_alert=True)
         return
 
