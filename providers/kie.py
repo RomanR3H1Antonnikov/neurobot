@@ -214,6 +214,26 @@ def _kling3_motion_request(
     }
 
 
+HAPPYHORSE_EDIT = "happyhorse/video-edit"
+
+
+def _happyhorse_edit_request(
+    prompt: str, resolution: str | None, audio: bool, video_url: str, style_reference_urls: list[str] | None,
+) -> dict:
+    """HappyHorse Video Edit у KIE: video_url — строка, reference_image — до 5 фото (@image1…),
+    audio_setting: auto (звук генерирует модель) / origin (звук исходного видео). Длительности в запросе нет."""
+    input_data: dict = {
+        "prompt": prompt,
+        "video_url": video_url,
+        "resolution": (resolution or "1080p").lower(),
+        "audio_setting": "auto" if audio else "origin",
+    }
+    refs = list(style_reference_urls or [])[:5]
+    if refs:
+        input_data["reference_image"] = refs
+    return input_data
+
+
 KLING_OMNI_TRANSFORM = "kling-3.0-omni/transformation"
 
 
@@ -846,6 +866,11 @@ class KieProvider(OpenAICompatProvider):
                 prompt, duration, aspect_ratio, resolution, audio,
                 first_frame_url, last_frame_url, style_reference_urls, video_reference_urls,
                 characters,
+            )
+
+        if actual_model == HAPPYHORSE_EDIT and video_reference_urls:
+            input_data = _happyhorse_edit_request(
+                prompt, resolution, audio, video_reference_urls[0], style_reference_urls,
             )
 
         if actual_model == KLING_OMNI_TRANSFORM and video_reference_urls:

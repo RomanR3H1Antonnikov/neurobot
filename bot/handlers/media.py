@@ -1,6 +1,7 @@
 import asyncio
 import functools
 import logging
+import math
 import time
 import uuid
 from aiogram import Router, F
@@ -300,6 +301,14 @@ def _fmt_seconds(value: float) -> str:
     return str(int(value)) if float(value).is_integer() else str(value)
 
 
+def _edit_duration(data: dict) -> int:
+    """Длительность для цены/запроса при редактировании видео: у моделей с duration_from_input —
+    длительность загруженного видео (округлённая вверх), иначе выбранная пользователем."""
+    if data.get("model_duration_from_input") and data.get("reference_video_duration"):
+        return max(1, math.ceil(data["reference_video_duration"]))
+    return data.get("duration", 5)
+
+
 def _ref_video_limit_error(data: dict, duration: int | float | None) -> str | None:
     """Проверка длительности исходного видео по лимитам выбранной модели (models_config.yaml).
 
@@ -471,7 +480,7 @@ def _confirm_card_text(data: dict) -> str:
             _ve_srefs = data.get("style_reference_file_ids") or []
             if _ve_srefs:
                 lines.append(f"<b>{'Ориентир' if len(_ve_srefs) == 1 else 'Ориентиры'}:</b> {len(_ve_srefs)} фото ✅")
-            _ve_dur = data.get("duration")
+            _ve_dur = None if data.get("model_duration_from_input") else data.get("duration")
             _ve_ratio = data.get("aspect_ratio")
             _ve_res = data.get("resolution")
             if _ve_dur:
@@ -521,7 +530,8 @@ def _get_generation_cost(data: dict) -> int | None:
         _, model_cfg = get_provider_by_model_id(task_type, model_slug)
         has_video_ref = bool(data.get("video_style_reference_file_ids"))
         has_audio = data.get("video_audio_enabled", True)
-        return media_service.get_cost(model_cfg, data.get("resolution"), data.get("duration"), has_video_ref=has_video_ref, has_audio=has_audio)
+        _dur = _edit_duration(data) if data.get("media_type") == "video_edit" else data.get("duration")
+        return media_service.get_cost(model_cfg, data.get("resolution"), _dur, has_video_ref=has_video_ref, has_audio=has_audio)
     except Exception:
         return None
 
@@ -597,7 +607,7 @@ def _confirm_kb(data: dict):
             max_style_refs=data.get("model_max_style_refs", 0),
             cost_credits=cost,
             video_edit_audio_mode=data.get("video_edit_audio_mode"),
-            duration=data.get("duration"),
+            duration=None if data.get("model_duration_from_input") else data.get("duration"),
             duration_options=data.get("model_duration_options"),
             aspect_ratio=data.get("aspect_ratio"),
             has_aspect_ratios=bool(data.get("model_aspect_ratios")),
@@ -766,6 +776,7 @@ async def select_model(callback: CallbackQuery, state: FSMContext) -> None:
         "model_output_formats": model_cfg.get("output_formats"),
         "model_constructor_video": model_cfg.get("constructor_includes_video", False),
         "model_wan_audio": model_cfg.get("wan_audio_setting", False),
+        "model_duration_from_input": model_cfg.get("duration_from_input", False),
         "model_characters": model_cfg.get("characters"),
         "model_input_video_min": model_cfg.get("min_input_video_seconds"),
         "model_input_video_max": model_cfg.get("max_input_video_seconds"),
@@ -4294,7 +4305,7 @@ async def _run_generation(send_msg: Message, tg_user, state: FSMContext, data: d
         result = await media_service.edit_video(
             tg_user.id, tg_user.username, media_bytes, prompt, model_slug,
             video_url=video_url,
-            duration=data.get("duration", 5),
+            duration=_edit_duration(data),
             aspect_ratio=data.get("aspect_ratio"),
             resolution=data.get("resolution"),
             audio=_audio_bool,
@@ -4338,6 +4349,12 @@ async def start_generation(callback: CallbackQuery, state: FSMContext) -> None:
                 "Сначала добавь фото и видео для Motion Control 📎", show_alert=True,
             )
             return
+
+    if media_type == "video_edit" and data.get("model_duration_from_input") and not data.get("reference_video_duration"):
+        await callback.answer(
+            "Не удалось определить длительность видео. Отправь его как видео, а не как файл.", show_alert=True,
+        )
+        return
 
     if media_type == "video_edit":
         # Видео могли загрузить до смены модели — перепроверяем по лимитам текущей
