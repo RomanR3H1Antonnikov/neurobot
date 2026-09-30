@@ -214,6 +214,32 @@ def _kling3_motion_request(
     }
 
 
+KLING_OMNI_TRANSFORM = "kling-3.0-omni/transformation"
+
+
+def _kling_omni_transformation_request(
+    prompt: str, duration: int, aspect_ratio: str | None, resolution: str | None, audio: bool,
+    style_reference_urls: list[str] | None, video_url: str,
+) -> dict:
+    """Kling 3.0 Omni Transformation (редактирование видео): длительность берётся из исходного видео,
+    поле duration с одним видео KIE отклоняет (422), aspect_ratio — только auto. С фото-ориентирами
+    (до 4) duration и 16:9/9:16/1:1 уже допустимы."""
+    input_data: dict = {
+        "prompt": prompt,
+        "video_urls": [video_url],
+        "resolution": (resolution or "720p").lower(),
+        "audio": bool(audio),
+    }
+    images = list(style_reference_urls or [])[:4]
+    if images:
+        input_data["image_urls"] = images
+        input_data["duration"] = str(duration)
+        input_data["aspect_ratio"] = aspect_ratio if aspect_ratio in ("16:9", "9:16", "1:1") else "16:9"
+    else:
+        input_data["aspect_ratio"] = "auto"
+    return input_data
+
+
 SEEDANCE2_PREFIX = "bytedance/seedance-2"
 
 
@@ -820,6 +846,11 @@ class KieProvider(OpenAICompatProvider):
                 prompt, duration, aspect_ratio, resolution, audio,
                 first_frame_url, last_frame_url, style_reference_urls, video_reference_urls,
                 characters,
+            )
+
+        if actual_model == KLING_OMNI_TRANSFORM and video_reference_urls:
+            input_data = _kling_omni_transformation_request(
+                prompt, duration, aspect_ratio, resolution, audio, style_reference_urls, video_reference_urls[0],
             )
 
         if actual_model == KLING3_ALIAS:
