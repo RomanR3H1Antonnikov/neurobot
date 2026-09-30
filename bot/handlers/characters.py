@@ -24,8 +24,11 @@ logger = logging.getLogger(__name__)
 router = Router()
 
 MAX_CHARACTERS = 3
+# сколько персонажей/референсов можно добавить (PixVerse — до 7 именованных референсов)
+MAX_BY_KIND = {"kling3": 3, "kling_omni": 3, "gemini": 3, "pixverse": 7}
 # тип → (мин., макс. фото на персонажа)
-PHOTO_RULES = {"kling3": (2, 4), "kling_omni": (1, 4), "gemini": (1, 2)}
+PHOTO_RULES = {"kling3": (2, 4), "kling_omni": (1, 4), "gemini": (1, 2), "pixverse": (1, 1)}
+_REF_TYPES = {"subject": "Объект", "background": "Фон"}
 _NAME_MAX = 30
 _DESC_MAX = 300
 
@@ -41,10 +44,22 @@ class CharacterStates(StatesGroup):
     name = State()
     desc = State()
     photos = State()
+    # PixVerse: фото → тип (Subject / Background) → имя
+    ref_photo = State()
+    ref_type = State()
+    ref_name = State()
 
 
 def _is_kling(kind: str | None) -> bool:
     return str(kind or "").startswith("kling")
+
+
+def _is_pixverse(kind: str | None) -> bool:
+    return kind == "pixverse"
+
+
+def _max_items(kind: str | None) -> int:
+    return MAX_BY_KIND.get(kind or "", MAX_CHARACTERS)
 
 
 def _make_tag(name: str, existing: list[str]) -> str:
@@ -62,6 +77,17 @@ def _make_tag(name: str, existing: list[str]) -> str:
 def _menu_text(data: dict) -> str:
     chars = data.get("characters") or []
     kind = data.get("model_characters")
+    if _is_pixverse(kind):
+        lines = ["🖼 <b>Референсы</b>\n"]
+        if chars:
+            for i, c in enumerate(chars, 1):
+                lines.append(f"{i}. <code>@{c['tag']}</code> — {_REF_TYPES.get(c.get('type'), 'Объект')}")
+            lines.append("")
+        else:
+            lines.append(f"Добавь до {_max_items(kind)} референсов: объект (Subject) или фон (Background).\n")
+        lines.append("Чтобы использовать референс, укажи его в описании через @имя, например: "
+                     "«<code>@dog бежит по @room</code>».")
+        return "\n".join(lines)
     lines = ["👤 <b>Персонажи</b>\n"]
     if chars:
         for i, c in enumerate(chars, 1):
@@ -80,11 +106,13 @@ def _menu_text(data: dict) -> str:
 
 def _menu_kb(data: dict) -> InlineKeyboardMarkup:
     chars = data.get("characters") or []
+    kind = data.get("model_characters")
     b = InlineKeyboardBuilder()
     for i, c in enumerate(chars):
         b.row(InlineKeyboardButton(text=f"🗑 {c['name']}", callback_data=f"char:del:{i}"))
-    if len(chars) < MAX_CHARACTERS:
-        b.row(InlineKeyboardButton(text="➕ Создать персонажа", callback_data="char:new"))
+    if len(chars) < _max_items(kind):
+        add_text = "➕ Добавить референс" if _is_pixverse(kind) else "➕ Создать персонажа"
+        b.row(InlineKeyboardButton(text=add_text, callback_data="char:new"))
     b.row(InlineKeyboardButton(text="◀️ Назад", callback_data="char:back"))
     return b.as_markup()
 
@@ -204,10 +232,16 @@ async def delete_character(callback: CallbackQuery, state: FSMContext) -> None:
 @router.callback_query(F.data == "char:new")
 async def new_character(callback: CallbackQuery, state: FSMContext) -> None:
     data = await state.get_data()
-    if len(data.get("characters") or []) >= MAX_CHARACTERS:
-        await callback.answer(f"Максимум {MAX_CHARACTERS} персонажа", show_alert=True)
+    kind = data.get("model_characters")
+    if len(data.get("characters") or []) >= _max_items(kind):
+        await callback.answer(f"Максимум {_max_items(kind)}", show_alert=True)
         return
     await state.update_data(_sref_msg_id=callback.message.message_id, _char_draft={"file_ids": []})
+    if _is_pixverse(kind):
+        await state.set_state(CharacterStates.ref_photo)
+        await callback.message.edit_text(_REF_PHOTO_TEXT, parse_mode="HTML", reply_markup=_cancel_kb())
+        await callback.answer()
+        return
     await state.set_state(CharacterStates.name)
     await callback.message.edit_text(
         _name_text(data.get("model_characters")), parse_mode="HTML", reply_markup=_cancel_kb(),
@@ -357,6 +391,138 @@ async def finish_character(callback: CallbackQuery, state: FSMContext) -> None:
     await _show_menu(callback.bot, callback.message.chat.id, state)
 
 
+# ─── PixVerse: именованные референсы (фото → тип → имя) ───────────────────────
+
+_REF_PHOTO_TEXT = "🖼 <b>Шаг 1/3.</b> Отправь фото референса (JPG, PNG или WebP, до 20 МБ)."
+_REF_TYPE_TEXT = (
+    "🎯 <b>Шаг 2/3.</b> Выбери тип референса:\n\n"
+    "• <b>Объект</b> (Subject) — персонаж, предмет или животное, которые должны быть в видео;\n"
+    "• <b>Фон</b> (Background) — место, где происходит действие."
+)
+
+
+def _ref_name_text() -> str:
+    return (
+        f"✏️ <b>Шаг 3/3.</b> Введи имя референса (до {_NAME_MAX} символов): на него можно будет "
+        "сослаться в описании как @имя. Кириллица автоматически переводится в латиницу, "
+        "например «собака» → <code>@sobaka</code>. Или нажми «Пропустить»."
+    )
+
+
+def _ref_type_kb() -> InlineKeyboardMarkup:
+    b = InlineKeyboardBuilder()
+    b.row(
+        InlineKeyboardButton(text="🧍 Объект", callback_data="char:rtype:subject"),
+        InlineKeyboardButton(text="🏞 Фон", callback_data="char:rtype:background"),
+    )
+    b.row(InlineKeyboardButton(text="⬅️ Шаг назад", callback_data="char:step:rphoto"))
+    b.row(InlineKeyboardButton(text="◀️ Отмена", callback_data="char:menu"))
+    return b.as_markup()
+
+
+def _ref_name_kb() -> InlineKeyboardMarkup:
+    b = InlineKeyboardBuilder()
+    b.row(InlineKeyboardButton(text="⏭ Пропустить", callback_data="char:rname:skip"))
+    b.row(InlineKeyboardButton(text="⬅️ Шаг назад", callback_data="char:step:rtype"))
+    b.row(InlineKeyboardButton(text="◀️ Отмена", callback_data="char:menu"))
+    return b.as_markup()
+
+
+@router.message(CharacterStates.ref_photo, F.photo)
+async def ref_receive_photo(message: Message, state: FSMContext, album: list | None = None) -> None:
+    msgs = album or [message]
+    photos = [m for m in msgs if m.photo]
+    for m in msgs:
+        try:
+            await m.delete()
+        except Exception:
+            pass
+    data = await state.get_data()
+    draft = dict(data.get("_char_draft") or {})
+    draft["file_ids"] = [photos[0].photo[-1].file_id]
+    await state.update_data(_char_draft=draft)
+    if len(photos) > 1:
+        asyncio.create_task(_toast(message, "⚠️ Один референс — одно фото. Взято первое, остальные добавляй по очереди."))
+    await state.set_state(CharacterStates.ref_type)
+    await _edit(message.bot, message.chat.id, state, _REF_TYPE_TEXT, _ref_type_kb())
+
+
+@router.callback_query(CharacterStates.ref_type, F.data.in_({"char:rtype:subject", "char:rtype:background"}))
+async def ref_choose_type(callback: CallbackQuery, state: FSMContext) -> None:
+    data = await state.get_data()
+    draft = dict(data.get("_char_draft") or {})
+    draft["type"] = callback.data.split(":")[2]
+    await state.update_data(_char_draft=draft, _sref_msg_id=callback.message.message_id)
+    await state.set_state(CharacterStates.ref_name)
+    await _edit(callback.bot, callback.message.chat.id, state, _ref_name_text(), _ref_name_kb())
+    await callback.answer()
+
+
+async def _finish_ref(bot, chat_id: int, state: FSMContext, name: str | None) -> None:
+    data = await state.get_data()
+    draft = data.get("_char_draft") or {}
+    chars = list(data.get("characters") or [])
+    if not draft.get("file_ids"):
+        await _show_menu(bot, chat_id, state)
+        return
+    existing = [c["tag"] for c in chars]
+    name = name or f"image{len(chars) + 1}"
+    tag = _make_tag(name, existing)
+    chars.append({
+        "name": name, "tag": tag, "type": draft.get("type", "subject"), "description": "",
+        "file_ids": draft["file_ids"], "character_id": None,
+    })
+    await state.update_data(characters=chars)
+    await _show_menu(bot, chat_id, state)
+
+
+@router.callback_query(CharacterStates.ref_name, F.data == "char:rname:skip")
+async def ref_skip_name(callback: CallbackQuery, state: FSMContext) -> None:
+    await _finish_ref(callback.bot, callback.message.chat.id, state, None)
+    await callback.answer()
+
+
+@router.message(CharacterStates.ref_name, F.text, ~F.text.in_(MENU_BUTTONS))
+async def ref_enter_name(message: Message, state: FSMContext) -> None:
+    name = (message.text or "").strip()
+    try:
+        await message.delete()
+    except Exception:
+        pass
+    if not name or len(name) > _NAME_MAX:
+        asyncio.create_task(_toast(message, f"⚠️ Имя должно быть от 1 до {_NAME_MAX} символов."))
+        return
+    await _finish_ref(message.bot, message.chat.id, state, name)
+
+
+@router.callback_query(F.data.in_({"char:step:rphoto", "char:step:rtype"}))
+async def ref_step_back(callback: CallbackQuery, state: FSMContext) -> None:
+    await state.update_data(_sref_msg_id=callback.message.message_id)
+    if callback.data.endswith(":rphoto"):
+        await state.set_state(CharacterStates.ref_photo)
+        await _edit(callback.bot, callback.message.chat.id, state, _REF_PHOTO_TEXT, _cancel_kb())
+    else:
+        await state.set_state(CharacterStates.ref_type)
+        await _edit(callback.bot, callback.message.chat.id, state, _REF_TYPE_TEXT, _ref_type_kb())
+    await callback.answer()
+
+
+@router.message(CharacterStates.ref_photo, ~F.text.in_(MENU_BUTTONS))
+@router.message(CharacterStates.ref_type, ~F.text.in_(MENU_BUTTONS))
+@router.message(CharacterStates.ref_name, ~F.text.in_(MENU_BUTTONS))
+async def ref_wrong_input(message: Message, state: FSMContext) -> None:
+    try:
+        await message.delete()
+    except Exception:
+        pass
+    cur = await state.get_state()
+    hint = {
+        CharacterStates.ref_photo.state: "⚠️ Здесь нужно прислать фото 📷.",
+        CharacterStates.ref_type.state: "⚠️ Выбери тип кнопкой: Объект или Фон.",
+    }.get(cur, "⚠️ Здесь нужно прислать текст.")
+    asyncio.create_task(_toast(message, hint))
+
+
 # ─── Для генерации ───────────────────────────────────────────────────────────
 
 def characters_start_error(data: dict, prompt: str) -> str | None:
@@ -368,6 +534,10 @@ def characters_start_error(data: dict, prompt: str) -> str | None:
     low = (prompt or "").lower()
     refs = len(data.get("style_reference_file_ids") or [])
     vids = len(data.get("video_style_reference_file_ids") or [])
+    if _is_pixverse(kind):
+        if data.get("video_first_frame_file_id") or data.get("video_last_frame_file_id"):
+            return "Референсы нельзя сочетать с началом/концом видео — убери кадры или референсы."
+        return None
     if _is_kling(kind):
         missing = [c["tag"] for c in chars if f"@{c['tag']}".lower() not in low]
         if missing:
@@ -392,6 +562,13 @@ async def build_character_payload(bot, data: dict) -> list[dict] | None:
     kind = data.get("model_characters")
     if not chars or not kind:
         return None
+    if _is_pixverse(kind):
+        payload = []
+        for c in chars:
+            url = await _tg_file_url(bot, c["file_ids"][0])
+            if url:
+                payload.append({"image_url": url, "type": c.get("type", "subject"), "ref_name": c["tag"]})
+        return payload or None
     if kind == "gemini":
         return [{"character_id": c["character_id"]} for c in chars if c.get("character_id")] or None
     payload = []

@@ -153,6 +153,7 @@ async def _back_to_frames_menu(bot, chat_id: int, state: FSMContext) -> None:
             video_ref_count=len(data.get("video_style_reference_file_ids") or []),
             show_characters=bool(data.get("model_characters")),
             character_count=len(data.get("characters") or []),
+            character_kind=data.get("model_characters"),
         )
     else:
         # В режиме "оживить фото" кнопка доп. кадров не нужна — только первый/последний кадр
@@ -373,9 +374,17 @@ def _confirm_card_text(data: dict) -> str:
             lines.append(f"<b>Доп. кадры:</b> {len(_srefs)} фото ✅")
         _chars = data.get("characters") or []
         if _chars:
-            _kling_chars = str(data.get("model_characters", "")).startswith("kling")
-            _names = ", ".join(f"{c['name']} (@{c['tag']})" if _kling_chars else c["name"] for c in _chars)
-            lines.append(f"<b>Персонажи:</b> {_names}")
+            _kind = str(data.get("model_characters", ""))
+            if _kind == "pixverse":
+                _names = ", ".join(
+                    f"@{c['tag']} ({'фон' if c.get('type') == 'background' else 'объект'})" for c in _chars
+                )
+                lines.append(f"<b>Референсы:</b> {_names}")
+            else:
+                _names = ", ".join(
+                    f"{c['name']} (@{c['tag']})" if _kind.startswith("kling") else c["name"] for c in _chars
+                )
+                lines.append(f"<b>Персонажи:</b> {_names}")
         _audio_refs = data.get("audio_reference_file_ids") or []
         if _audio_refs:
             lines.append(f"<b>Аудио:</b> {len(_audio_refs)} файл(а) ✅")
@@ -1733,6 +1742,7 @@ async def toggle_frames(callback: CallbackQuery, state: FSMContext) -> None:
             video_ref_count=len(data.get("video_style_reference_file_ids") or []),
             show_characters=bool(data.get("model_characters")),
             character_count=len(data.get("characters") or []),
+            character_kind=data.get("model_characters"),
         ),
     )
     await callback.answer()
