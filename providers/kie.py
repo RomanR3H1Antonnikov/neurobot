@@ -117,6 +117,7 @@ def _kling_omni_request(
     last_frame_url: str | None,
     style_reference_urls: list[str] | None,
     video_reference_urls: list[str] | None,
+    characters: list[dict] | None = None,
 ) -> tuple[str, dict]:
     """Kling 3.0 Omni у KIE — три отдельные модели, а не одна: выбираем по входным данным.
 
@@ -143,6 +144,8 @@ def _kling_omni_request(
             input_data["aspect_ratio"] = "auto"
         # С видео-входом звук у Omni всегда выключен
         input_data["audio"] = False
+        if characters:
+            input_data["elements"] = list(characters)
         return model, input_data
 
     input_data.update(duration=duration, aspect_ratio=ratio, audio=bool(audio))
@@ -157,6 +160,9 @@ def _kling_omni_request(
         input_data["aspect_ratio"] = "auto"
     else:
         model = "kling-3.0-omni/text-to-video"
+    if characters:
+        # Персонажи — «элементы» Kling; поддерживаются всеми тремя вариантами Omni
+        input_data["elements"] = list(characters)
     return model, input_data
 
 
@@ -168,6 +174,7 @@ _KLING3_MODE = {"720p": "std", "1080p": "pro", "4K": "4K", "4k": "4K"}
 def _kling3_request(
     prompt: str, duration: int, aspect_ratio: str | None, resolution: str | None, audio: bool,
     first_frame_url: str | None, last_frame_url: str | None,
+    characters: list[dict] | None = None,
 ) -> dict:
     """Kling 3.0 (kling-3.0/video) по документации KIE: mode вместо resolution (std=720p, pro=1080p),
     sound вместо audio, обязательное multi_shots; aspect_ratio — только 16:9 / 9:16 / 1:1."""
@@ -183,6 +190,9 @@ def _kling3_request(
     frames = [u for u in (first_frame_url, last_frame_url) if u]
     if frames:
         input_data["image_urls"] = frames
+    if characters:
+        # Персонажи — «элементы» Kling; в промпте на них ссылаются как @name
+        input_data["kling_elements"] = list(characters)
     return input_data
 
 
@@ -486,6 +496,20 @@ class KieProvider(OpenAICompatProvider):
             raise ProviderUnavailableError("KIE: пустой ответ модели")
         return ChatResult(text=text)
 
+    async def create_omni_character(self, name: str, description: str, image_urls: list[str]) -> str:
+        """Gemini Omni: создаёт персонажа у KIE и возвращает characterId (бесплатно, синхронно).
+        image_urls: [портрет] или [портрет, фото в полный рост]."""
+        async with self._session(timeout=90) as session:
+            async with session.post(
+                "https://api.kie.ai/api/v1/omni/character/create",
+                json={"descriptions": description, "image_urls": image_urls[:2], "character_name": name},
+            ) as resp:
+                data = await resp.json(content_type=None)
+        if data.get("code") != 200 or not (data.get("data") or {}).get("characterId"):
+            logger.error("KIE omni character create failed: code=%s msg=%s", data.get("code"), data.get("msg"))
+            raise ProviderUnavailableError(f"KIE: {data.get('msg', 'не удалось создать персонажа')}")
+        return data["data"]["characterId"]
+
     async def fetch_task(self, task_id: str) -> dict | None:
         """Статус/результат задачи KIE (jobs API) — тело совместимо с callback'ом. None при ошибке."""
         try:
@@ -660,6 +684,7 @@ class KieProvider(OpenAICompatProvider):
         output_format: str | None = None,
         audio: bool = True,
         character_orientation: str | None = None,
+        characters: list[dict] | None = None,
     ) -> GenerationResult:
         actual_model = model or "kling-3.0/video"
         corr_id = uuid.uuid4().hex
@@ -774,6 +799,10 @@ class KieProvider(OpenAICompatProvider):
             else:
                 input_data["audio_urls"] = list(audio_reference_urls)
 
+        # ── Персонажи Gemini Omni (id, созданные через omni/character/create) ─
+        if characters and is_google:
+            input_data["character_ids"] = [c["character_id"] for c in characters if c.get("character_id")]
+
         # ── Видео-референсы ──────────────────────────────────────────────────
         if video_reference_urls:
             if is_google:
@@ -790,11 +819,13 @@ class KieProvider(OpenAICompatProvider):
             actual_model, input_data = _kling_omni_request(
                 prompt, duration, aspect_ratio, resolution, audio,
                 first_frame_url, last_frame_url, style_reference_urls, video_reference_urls,
+                characters,
             )
 
         if actual_model == KLING3_ALIAS:
             input_data = _kling3_request(
                 prompt, duration, aspect_ratio, resolution, audio, first_frame_url, last_frame_url,
+                characters,
             )
 
         if actual_model == KLING3_MOTION_ALIAS:

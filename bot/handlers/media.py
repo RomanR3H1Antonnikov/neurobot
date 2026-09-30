@@ -151,6 +151,8 @@ async def _back_to_frames_menu(bot, chat_id: int, state: FSMContext) -> None:
             show_video_refs=constructor_video,
             max_video_refs=max_video_refs,
             video_ref_count=len(data.get("video_style_reference_file_ids") or []),
+            show_characters=bool(data.get("model_characters")),
+            character_count=len(data.get("characters") or []),
         )
     else:
         # В режиме "оживить фото" кнопка доп. кадров не нужна — только первый/последний кадр
@@ -360,6 +362,11 @@ def _confirm_card_text(data: dict) -> str:
         _srefs = data.get("style_reference_file_ids") or []
         if _srefs:
             lines.append(f"<b>Доп. кадры:</b> {len(_srefs)} фото ✅")
+        _chars = data.get("characters") or []
+        if _chars:
+            _kling_chars = str(data.get("model_characters", "")).startswith("kling")
+            _names = ", ".join(f"{c['name']} (@{c['tag']})" if _kling_chars else c["name"] for c in _chars)
+            lines.append(f"<b>Персонажи:</b> {_names}")
         _audio_refs = data.get("audio_reference_file_ids") or []
         if _audio_refs:
             lines.append(f"<b>Аудио:</b> {len(_audio_refs)} файл(а) ✅")
@@ -521,7 +528,7 @@ def _confirm_kb(data: dict):
         _max_extra = data.get("model_max_style_refs", 0)
         _max_video = data.get("model_max_video_refs", 0)
         _show_animate = bool(_show_first or _show_last)
-        _show_constructor = bool(_max_extra > 0)
+        _show_constructor = bool(_max_extra > 0 or data.get("model_characters"))
         _show_frames = bool(_show_animate or _show_constructor)
         _frames_mode = data.get("video_frames_mode")
         return video_confirm_kb(
@@ -530,7 +537,7 @@ def _confirm_kb(data: dict):
             duration_options=data.get("model_duration_options"),
             has_first_frame=bool(data.get("video_first_frame_file_id")),
             has_last_frame=bool(data.get("video_last_frame_file_id")),
-            has_extra_refs=bool(data.get("style_reference_file_ids")),
+            has_extra_refs=bool(data.get("style_reference_file_ids")) or bool(data.get("characters")),
             aspect_ratio=data.get("aspect_ratio"),
             has_aspect_ratios=bool(data.get("model_aspect_ratios")),
             resolution=data.get("resolution"),
@@ -736,6 +743,7 @@ async def select_model(callback: CallbackQuery, state: FSMContext) -> None:
         "model_output_formats": model_cfg.get("output_formats"),
         "model_constructor_video": model_cfg.get("constructor_includes_video", False),
         "model_wan_audio": model_cfg.get("wan_audio_setting", False),
+        "model_characters": model_cfg.get("characters"),
         "model_input_video_min": model_cfg.get("min_input_video_seconds"),
         "model_input_video_max": model_cfg.get("max_input_video_seconds"),
         "model_duration_custom": model_cfg.get("duration_custom", True),
@@ -744,6 +752,9 @@ async def select_model(callback: CallbackQuery, state: FSMContext) -> None:
         "motion_orientation": "image" if model_cfg.get("motion_control") else None,
         "video_frames_mode": None,
     }
+    # персонажи привязаны к типу модели (элемент Kling бессмысленен для Gemini и наоборот)
+    if data.get("model_characters") != model_cfg.get("characters"):
+        update["characters"] = None
     # если output_format не задан или недоступен у новой модели — сбрасываем
     allowed_formats = model_cfg.get("output_formats")
     if allowed_formats:
@@ -1017,6 +1028,7 @@ async def back_to_model(callback: CallbackQuery, state: FSMContext) -> None:
                     model_duration_options=None, model_min_duration=None,
                     model_max_duration=None, model_max_style_refs=None,
                     model_resolutions=None, model_motion_control=None,
+                    model_characters=None, characters=None,
                     entering_duration=None, confirm_msg_id=None,
                     prompt=None, reference_file_id=None, reference_type=None,
                     generated_file_id=None, style_reference_file_ids=None,
@@ -1056,6 +1068,7 @@ async def back_to_model(callback: CallbackQuery, state: FSMContext) -> None:
         model_has_group=None, model_aspect_ratios=None,
         model_duration_options=None, model_min_duration=None, model_max_duration=None,
         model_max_style_refs=None, model_resolutions=None, model_motion_control=None,
+        model_characters=None, characters=None,
         entering_duration=None, confirm_msg_id=None,
         reference_file_id=None, reference_type=None,
         generated_file_id=None,
@@ -1209,6 +1222,7 @@ async def generate_again(callback: CallbackQuery, state: FSMContext) -> None:
         adding_video_ref=None,
         video_style_reference_file_ids=None,
         video_ref_durations=None,
+        characters=None,
         managing_style_ref=None, managing_style_ref_index=None,
         managing_video_ref=None, managing_video_ref_index=None,
         managing_audio_ref=None,
@@ -1575,7 +1589,10 @@ async def animate_photo(callback: CallbackQuery, state: FSMContext) -> None:
     """Кнопка 'Оживить фото' — первый и/или последний кадр."""
     data = await state.get_data()
 
-    has_constructor_files = bool(data.get("style_reference_file_ids")) or bool(data.get("video_style_reference_file_ids"))
+    has_constructor_files = (
+        bool(data.get("style_reference_file_ids")) or bool(data.get("video_style_reference_file_ids"))
+        or bool(data.get("characters"))
+    )
     if has_constructor_files and data.get("video_frames_mode") != "animate":
         if data.get("confirm_mode_switch") != "animate":
             await state.update_data(confirm_mode_switch="animate")
@@ -1589,6 +1606,7 @@ async def animate_photo(callback: CallbackQuery, state: FSMContext) -> None:
             style_reference_file_ids=None,
             video_style_reference_file_ids=None,
             video_ref_durations=None,
+            characters=None,
             confirm_mode_switch=None,
         )
     else:
@@ -1699,6 +1717,8 @@ async def toggle_frames(callback: CallbackQuery, state: FSMContext) -> None:
             show_video_refs=constructor_video,
             max_video_refs=max_video_refs,
             video_ref_count=len(data.get("video_style_reference_file_ids") or []),
+            show_characters=bool(data.get("model_characters")),
+            character_count=len(data.get("characters") or []),
         ),
     )
     await callback.answer()
@@ -4135,6 +4155,8 @@ async def _run_generation(send_msg: Message, tg_user, state: FSMContext, data: d
         video_reference_urls = [
             u for u in [await _tg_file_url(send_msg.bot, fid) for fid in _video_ref_ids] if u
         ] or None
+        from bot.handlers.characters import build_character_payload
+        _characters = await build_character_payload(send_msg.bot, data)
         result = await media_service.generate_video(
             tg_user.id, tg_user.username, prompt, data.get("duration", 5), model_slug,
             first_frame_url=first_frame_url,
@@ -4147,6 +4169,7 @@ async def _run_generation(send_msg: Message, tg_user, state: FSMContext, data: d
             output_format=data.get("video_output_format"),
             audio=data.get("video_audio_enabled", True),
             character_orientation=data.get("motion_orientation"),
+            characters=_characters,
         )
         file = BufferedInputFile(result.data, filename=result.filename)
         if result.mime_type == "video/quicktime":
@@ -4275,6 +4298,13 @@ async def start_generation(callback: CallbackQuery, state: FSMContext) -> None:
         label = "фото" if media_type == "photo_edit" else "видео"
         await callback.answer(f"Сначала добавь {label} для редактирования 📎", show_alert=True)
         return
+
+    if media_type == "video" and data.get("characters"):
+        from bot.handlers.characters import characters_start_error
+        _char_err = characters_start_error(data, prompt)
+        if _char_err:
+            await callback.answer(_char_err, show_alert=True)
+            return
 
     if media_type == "video" and data.get("model_motion_control"):
         # Motion Control без фото (первый кадр) и видео (движение) не запускаем

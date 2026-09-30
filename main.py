@@ -12,7 +12,7 @@ from db.fsm_storage import SQLiteFSMStorage
 from bot.middlewares.user_middleware import UserMiddleware
 from bot.middlewares.cleanup import CallbackCleanupMiddleware
 from bot.middlewares.album import AlbumMiddleware
-from bot.handlers import start, media, chat, documents, billing, mygenerations, fallback
+from bot.handlers import start, media, characters, chat, documents, billing, mygenerations, fallback
 from services.kie_webhook import start_webhook_server, set_bot, recover_orphaned_jobs
 
 logging.basicConfig(
@@ -56,6 +56,7 @@ async def main() -> None:
     dp.include_router(start.router)
     dp.include_router(billing.router)
     dp.include_router(media.router)
+    dp.include_router(characters.router)
     dp.include_router(chat.router)
     dp.include_router(documents.router)
     dp.include_router(mygenerations.router)

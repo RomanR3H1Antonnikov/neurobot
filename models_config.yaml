@@ -367,6 +367,8 @@ tasks:
         aspect_ratios: ["16:9", "9:16", "1:1"]
         resolutions: ["720p", "1080p", "4K"]
         max_style_refs: 0
+        # Кнопка «Создать персонажа» в Конструкторе видео (kling3)
+        characters: kling3
         model_id: kling-3.0/video
         provider: kie
         cost_credits: 10
@@ -697,6 +699,8 @@ tasks:
         max_style_refs: 5
         max_video_refs: 1
         max_audio_refs: 3
+        # Кнопка «Создать персонажа» в Конструкторе видео (gemini)
+        characters: gemini
         model_id: google/gemini-omni-flash-1-1
         provider: kie
         cost_credits: 34
@@ -751,6 +755,8 @@ tasks:
         max_duration: 15
         aspect_ratios: ["16:9", "9:16", "1:1"]
         resolutions: ["720p", "1080p", "4K"]
+        # Кнопка «Создать персонажа» в Конструкторе видео (kling_omni)
+        characters: kling_omni
         model_id: kling-3.0-omni/video
         provider: kie
         cost_credits: 9

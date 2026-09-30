@@ -162,6 +162,7 @@ async def generate_video(
     output_format: str | None = None,
     audio: bool = True,
     character_orientation: str | None = None,
+    characters: list[dict] | None = None,
 ) -> GenerationResult:
     task = TaskType.VIDEO_GENERATION
     provider, model_cfg = get_provider_by_model_id(task, model_slug)
@@ -182,6 +183,8 @@ async def generate_video(
         output_format=output_format,
         audio=audio,
         character_orientation=character_orientation,
+        # только модели с персонажами (Kling 3.0/Omni, Gemini Omni) принимают этот параметр
+        **({"characters": characters} if characters else {}),
     )
     if not audio:
         result = GenerationResult(
