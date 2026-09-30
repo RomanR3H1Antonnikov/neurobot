@@ -33,6 +33,7 @@ class GenerationResult:
     variants: list[bytes] = None  # доп. варианты (например, 4 картинки Midjourney)
     provider_task_id: str = None  # task ID у провайдера (зарезервировано)
     provider_image_url: str = None  # оригинальный CDN-URL результата (для провайдеров, не принимающих TG-URL)
+    cost: float = None  # сколько списано с баланса за эту генерацию, ₽ (заполняет media_service)
 
 
 @dataclass

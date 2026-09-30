@@ -146,7 +146,9 @@ async def generate_image(
         model=model_cfg["model_id"], style_reference_urls=style_reference_urls,
         quality=quality,
     )
-    await deduct_credits(user_id, get_cost(model_cfg, resolution), task.value)
+    _cost = get_cost(model_cfg, resolution)
+    await deduct_credits(user_id, _cost, task.value)
+    result.cost = _cost
     return result
 
 
@@ -192,7 +194,9 @@ async def generate_video(
             mime_type=result.mime_type,
             filename=result.filename,
         )
-    await deduct_credits(user_id, get_cost(model_cfg, resolution, duration, has_video_ref=has_video_ref, has_audio=audio), task.value)
+    _cost = get_cost(model_cfg, resolution, duration, has_video_ref=has_video_ref, has_audio=audio)
+    await deduct_credits(user_id, _cost, task.value)
+    result.cost = _cost
     return result
 
 
@@ -207,7 +211,9 @@ async def generate_audio(
     result = await provider.generate_audio(
         prompt, audio_type=audio_type, model=model_cfg["model_id"], music_params=music_params,
     )
-    await deduct_credits(user_id, get_cost(model_cfg), task.value)
+    _cost = get_cost(model_cfg)
+    await deduct_credits(user_id, _cost, task.value)
+    result.cost = _cost
     return result
 
 
@@ -229,7 +235,9 @@ async def edit_image(
         quality=quality,
         aspect_ratio=aspect_ratio,
     )
-    await deduct_credits(user_id, get_cost(model_cfg, resolution), task.value)
+    _cost = get_cost(model_cfg, resolution)
+    await deduct_credits(user_id, _cost, task.value)
+    result.cost = _cost
     return result
 
 
@@ -267,5 +275,7 @@ async def edit_video(
             mime_type=result.mime_type,
             filename=result.filename,
         )
-    await deduct_credits(user_id, get_cost(model_cfg, resolution, duration), task.value)
+    _cost = get_cost(model_cfg, resolution, duration)
+    await deduct_credits(user_id, _cost, task.value)
+    result.cost = _cost
     return result
