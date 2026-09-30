@@ -853,6 +853,18 @@ class KieProvider(OpenAICompatProvider):
                 prompt, duration, aspect_ratio, resolution, audio, style_reference_urls, video_reference_urls[0],
             )
 
+        if is_pixverse and characters:
+            # PixVerse Fusion: именованные фото-референсы (Subject / Background), в промпте — @имя
+            actual_model = "pixverse-v6/reference-to-video"
+            input_data = {
+                "prompt": prompt,
+                "image_references": list(characters)[:7],
+                "aspect_ratio": aspect_ratio or "16:9",
+                "quality": resolution or "720p",
+                "duration": int(duration),
+                "generate_audio_switch": bool(audio),
+            }
+
         if actual_model == KLING3_ALIAS:
             input_data = _kling3_request(
                 prompt, duration, aspect_ratio, resolution, audio, first_frame_url, last_frame_url,

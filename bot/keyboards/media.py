@@ -450,6 +450,7 @@ def video_frames_menu_kb(
     video_ref_count: int = 0,
     show_characters: bool = False,
     character_count: int = 0,
+    character_kind: str | None = None,
 ) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     if motion_control:
@@ -497,7 +498,10 @@ def video_frames_menu_kb(
         else:
             builder.row(InlineKeyboardButton(text=video_text, callback_data="media:add_video_ref"))
     if show_characters:
-        char_text = f"👤 Персонажи: {character_count}/3 ✅" if character_count else "👤 Создать персонажа"
+        if character_kind == "pixverse":
+            char_text = f"🖼 Референсы: {character_count}/7 ✅" if character_count else "🖼 Добавить референс"
+        else:
+            char_text = f"👤 Персонажи: {character_count}/3 ✅" if character_count else "👤 Создать персонажа"
         builder.row(InlineKeyboardButton(text=char_text, callback_data="char:menu"))
     builder.row(InlineKeyboardButton(text="◀️ Назад", callback_data="media:back:confirm"))
     return builder.as_markup()
