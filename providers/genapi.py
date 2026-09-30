@@ -116,7 +116,7 @@ class GenApiProvider(AbstractProvider):
         logger.info("GenAPI callback result field: %s", str(result.get("result"))[:500])
 
         if _is_failed(result):
-            logger.error("GenAPI task failed: model=%s status=%s body=%s", model, result.get("status"), str(result)[:300])
+            logger.error("GenAPI task failed: model=%s extra=%s prompt=%r status=%s body=%s", model, extra, prompt[:400], result.get("status"), str(result)[:300])
             raise ProviderUnavailableError("GenAPI: задача завершилась с ошибкой")
 
         return result
