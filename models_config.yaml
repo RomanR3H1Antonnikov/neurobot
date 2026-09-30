@@ -1182,21 +1182,27 @@ tasks:
         enabled: true
 
       - id: happyhorse-1-1-edit
-        label: "HappyHorse 1.1"
+        label: "HappyHorse"
         description: >-
-          HappyHorse 1.1 от Alibaba редактирует видео (до 15 сек, 1080p) по текстовому
-          описанию: стабильная идентичность персонажей, улучшенная динамика движений.
-        duration_options: [5, 10, 15]
+          HappyHorse от Alibaba редактирует загруженное видео (3–60 сек) по текстовому описанию:
+          замена объектов и одежды, смена стиля, локальные правки. Поддерживает до 5 фото-ориентиров
+          (@image1, @image2…). Длительность результата равна длительности исходного видео.
+        # Длительность результата = длительности исходного видео (в запросе её нет): цена считается по ней
+        duration_from_input: true
         min_duration: 3
-        max_duration: 15
-        aspect_ratios: ["16:9", "9:16", "1:1", "4:3", "3:4"]
+        max_duration: 60
+        min_input_video_seconds: 3
+        max_input_video_seconds: 60
         resolutions: ["720p", "1080p"]
-        model_id: alibaba/happyhorse-1.1
-        provider: routerai
+        max_style_refs: 5
+        wan_audio_setting: true
+        model_id: happyhorse/video-edit
+        provider: kie
         cost_credits: 12
+        # ВНИМАНИЕ: цена пока как у генерации HappyHorse — сверить с прайсом KIE для happyhorse/video-edit
         cost_per_second_by_resolution: {"720p": 12, "1080p": 16}
         cost_usd: 0.07
-        enabled: false
+        enabled: true
 
       - id: veo-3-1-lite-edit
         label: "Veo 3.1 Lite"
