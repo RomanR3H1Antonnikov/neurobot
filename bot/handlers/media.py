@@ -530,7 +530,13 @@ def _get_generation_cost(data: dict) -> int | None:
         _, model_cfg = get_provider_by_model_id(task_type, model_slug)
         has_video_ref = bool(data.get("video_style_reference_file_ids"))
         has_audio = data.get("video_audio_enabled", True)
-        _dur = _edit_duration(data) if data.get("media_type") == "video_edit" else data.get("duration")
+        if data.get("media_type") == "video_edit":
+            # Если длительность берётся из видео, но видео ещё не загружено — цену не показываем
+            if data.get("model_duration_from_input") and not data.get("reference_video_duration"):
+                return None
+            _dur = _edit_duration(data)
+        else:
+            _dur = data.get("duration")
         return media_service.get_cost(model_cfg, data.get("resolution"), _dur, has_video_ref=has_video_ref, has_audio=has_audio)
     except Exception:
         return None
