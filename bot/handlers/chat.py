@@ -125,17 +125,35 @@ async def select_chat_model(callback: CallbackQuery, state: FSMContext) -> None:
     await callback.answer()
 
 
-@router.message(ChatStates.active, F.text == BTN_NEW_DIALOG)
+@router.message(F.text == BTN_NEW_DIALOG)
 async def new_chat(message: Message, state: FSMContext) -> None:
+    await cleanup_tracked_messages(message.bot, message.chat.id, state)
     await chat_service.reset_history(message.from_user.id)
     data = await state.get_data()
-    label = data.get("chat_model_label", "ИИ")
-    await message.answer(f"Диалог сброшен. {label} готов к новому разговору!")
+    label = data.get("chat_model_label", "ИИ") or "ИИ"
+    current = await state.get_state()
+    if current == ChatStates.active:
+        # Уже в чате — просто сбрасываем историю
+        await message.answer(f"Диалог сброшен. {label} готов к новому разговору!")
+    else:
+        # В другом разделе — очищаем всё и показываем выбор модели чата
+        await state.clear()
+        await safe_delete(message, "BTN_NEW_DIALOG")
+        models = get_models_for_task(TaskType.CHAT)
+        await state.set_state(ChatStates.select_model)
+        sent = await message.answer(
+            "💬 <b>Выбери модель для чата:</b>",
+            parse_mode="HTML",
+            reply_markup=_chat_model_kb(models),
+        )
+        await state.update_data(_tracked_msg_ids=[sent.message_id])
 
 
-@router.message(ChatStates.active, F.text == BTN_CHAT_PICK_MODEL)
+@router.message(F.text == BTN_CHAT_PICK_MODEL)
 async def back_to_model_select(message: Message, state: FSMContext) -> None:
+    await cleanup_tracked_messages(message.bot, message.chat.id, state)
     await chat_service.reset_history(message.from_user.id)
+    await state.clear()
     models = get_models_for_task(TaskType.CHAT)
     await state.set_state(ChatStates.select_model)
     await message.answer(
