@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 router = Router()
 
 MAX_CHARACTERS = 3
-# сколько персонажей/референсов можно добавить (PixVerse — до 7 именованных референсов)
+# сколько персонажей/ориентиров можно добавить (PixVerse — до 7 именованных ориентиров)
 MAX_BY_KIND = {"kling3": 3, "kling_omni": 3, "gemini": 3, "pixverse": 7}
 # тип → (мин., макс. фото на персонажа)
 PHOTO_RULES = {"kling3": (2, 4), "kling_omni": (1, 4), "gemini": (1, 2), "pixverse": (1, 1)}
@@ -78,14 +78,14 @@ def _menu_text(data: dict) -> str:
     chars = data.get("characters") or []
     kind = data.get("model_characters")
     if _is_pixverse(kind):
-        lines = ["🖼 <b>Референсы</b>\n"]
+        lines = ["🖼 <b>Ориентиры</b>\n"]
         if chars:
             for i, c in enumerate(chars, 1):
                 lines.append(f"{i}. <code>@{c['tag']}</code> — {_REF_TYPES.get(c.get('type'), 'Объект')}")
             lines.append("")
         else:
-            lines.append(f"Добавь до {_max_items(kind)} референсов: объект (Subject) или фон (Background).\n")
-        lines.append("Чтобы использовать референс, укажи его в описании через @имя, например: "
+            lines.append(f"Добавь до {_max_items(kind)} ориентиров: объект (Subject) или фон (Background).\n")
+        lines.append("Чтобы использовать ориентир, укажи его в описании через @имя, например: "
                      "«<code>@dog бежит по @room</code>».")
         return "\n".join(lines)
     lines = ["👤 <b>Персонажи</b>\n"]
@@ -111,7 +111,7 @@ def _menu_kb(data: dict) -> InlineKeyboardMarkup:
     for i, c in enumerate(chars):
         b.row(InlineKeyboardButton(text=f"🗑 {c['name']}", callback_data=f"char:del:{i}"))
     if len(chars) < _max_items(kind):
-        add_text = "➕ Добавить референс" if _is_pixverse(kind) else "➕ Создать персонажа"
+        add_text = "➕ Добавить ориентир" if _is_pixverse(kind) else "➕ Создать персонажа"
         b.row(InlineKeyboardButton(text=add_text, callback_data="char:new"))
     b.row(InlineKeyboardButton(text="◀️ Назад", callback_data="char:back"))
     return b.as_markup()
@@ -391,11 +391,11 @@ async def finish_character(callback: CallbackQuery, state: FSMContext) -> None:
     await _show_menu(callback.bot, callback.message.chat.id, state)
 
 
-# ─── PixVerse: именованные референсы (фото → тип → имя) ───────────────────────
+# ─── PixVerse: именованные ориентиры (фото → тип → имя) ───────────────────────
 
-_REF_PHOTO_TEXT = "🖼 <b>Шаг 1/3.</b> Отправь фото референса (JPG, PNG или WebP, до 20 МБ)."
+_REF_PHOTO_TEXT = "🖼 <b>Шаг 1/3.</b> Отправь фото ориентира (JPG, PNG или WebP, до 20 МБ)."
 _REF_TYPE_TEXT = (
-    "🎯 <b>Шаг 2/3.</b> Выбери тип референса:\n\n"
+    "🎯 <b>Шаг 2/3.</b> Выбери тип ориентира:\n\n"
     "• <b>Объект</b> (Subject) — персонаж, предмет или животное, которые должны быть в видео;\n"
     "• <b>Фон</b> (Background) — место, где происходит действие."
 )
@@ -403,7 +403,7 @@ _REF_TYPE_TEXT = (
 
 def _ref_name_text() -> str:
     return (
-        f"✏️ <b>Шаг 3/3.</b> Введи имя референса (до {_NAME_MAX} символов): на него можно будет "
+        f"✏️ <b>Шаг 3/3.</b> Введи имя ориентира (до {_NAME_MAX} символов): на него можно будет "
         "сослаться в описании как @имя. Кириллица автоматически переводится в латиницу, "
         "например «собака» → <code>@sobaka</code>. Или нажми «Пропустить»."
     )
@@ -442,7 +442,7 @@ async def ref_receive_photo(message: Message, state: FSMContext, album: list | N
     draft["file_ids"] = [photos[0].photo[-1].file_id]
     await state.update_data(_char_draft=draft)
     if len(photos) > 1:
-        asyncio.create_task(_toast(message, "⚠️ Один референс — одно фото. Взято первое, остальные добавляй по очереди."))
+        asyncio.create_task(_toast(message, "⚠️ Один ориентир — одно фото. Взято первое, остальные добавляй по очереди."))
     await state.set_state(CharacterStates.ref_type)
     await _edit(message.bot, message.chat.id, state, _REF_TYPE_TEXT, _ref_type_kb())
 
@@ -536,7 +536,7 @@ def characters_start_error(data: dict, prompt: str) -> str | None:
     vids = len(data.get("video_style_reference_file_ids") or [])
     if _is_pixverse(kind):
         if data.get("video_first_frame_file_id") or data.get("video_last_frame_file_id"):
-            return "Референсы нельзя сочетать с началом/концом видео — убери кадры или референсы."
+            return "Ориентиры нельзя сочетать с началом/концом видео — убери кадры или ориентиры."
         return None
     if _is_kling(kind):
         missing = [c["tag"] for c in chars if f"@{c['tag']}".lower() not in low]
