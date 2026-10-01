@@ -656,6 +656,9 @@ class KieProvider(OpenAICompatProvider):
             unregister_pending(corr_id)
 
         if _is_failed(callback_body):
+            _ad = callback_body.get("data") or callback_body
+            logger.error("KIE audio failed: model=%s code=%s msg=%s failMsg=%s",
+                         actual_model, callback_body.get("code"), callback_body.get("msg"), _ad.get("failMsg"))
             raise ProviderUnavailableError("KIE: генерация аудио завершилась с ошибкой")
 
         url = _extract_url(callback_body)
