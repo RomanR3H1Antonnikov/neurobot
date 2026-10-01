@@ -388,7 +388,7 @@ def _confirm_card_text(data: dict) -> str:
                 _names = ", ".join(
                     f"@{c['tag']} ({'фон' if c.get('type') == 'background' else 'объект'})" for c in _chars
                 )
-                lines.append(f"<b>Референсы:</b> {_names}")
+                lines.append(f"<b>Ориентиры:</b> {_names}")
             else:
                 _names = ", ".join(
                     f"{c['name']} (@{c['tag']})" if _kind.startswith("kling") else c["name"] for c in _chars
@@ -649,7 +649,7 @@ _INFO_FULL = (
     "<b>2. Разбивай сложные сцены</b>\n"
     "Не пытайся сгенерировать всё за раз — разбивай на короткие фрагменты и склеивай "
     "в редакторе, так избежишь артефактов и потери логики между кадрами.\n\n"
-    "<b>3. Используй референсы и негативные указания</b>\n"
+    "<b>3. Используй ориентиры и негативные указания</b>\n"
     "Добавляй фото-ориентиры нужного стиля и исключения в промпт: "
     "«без лишних пальцев», «без текста на заднем плане».\n\n"
     "<b>4. Прописывай движение</b>\n"
@@ -1176,7 +1176,7 @@ async def menu_to_media(callback: CallbackQuery, state: FSMContext) -> None:
 
 @router.callback_query(F.data == "media:again")
 async def generate_again(callback: CallbackQuery, state: FSMContext) -> None:
-    """Возврат к карточке той же модели с очищенным промптом и референсами."""
+    """Возврат к карточке той же модели с очищенным промптом и ориентирами."""
     data = await state.get_data()
 
     if not data.get("model_slug") or not data.get("media_type"):
@@ -1354,7 +1354,7 @@ async def _apply_edit_model_to_state(state: FSMContext, edit_prompt: str | None 
 
 @router.callback_query(F.data == "media:edit_generated")
 async def edit_generated_image(callback: CallbackQuery, state: FSMContext) -> None:
-    """Редактировать только что сгенерированное фото — подставляет его как референс."""
+    """Редактировать только что сгенерированное фото — подставляет его как ориентир."""
     data = await state.get_data()
     if not data.get("generated_file_id"):
         await callback.answer("Изображение не найдено, попробуй снова.", show_alert=True)
@@ -1714,7 +1714,7 @@ async def toggle_motion_orientation(callback: CallbackQuery, state: FSMContext) 
 
 @router.callback_query(MediaStates.confirm, F.data == "media:toggle_frames")
 async def toggle_frames(callback: CallbackQuery, state: FSMContext) -> None:
-    """Кнопка 'Конструктор видео' — референсные фото и/или видео."""
+    """Кнопка 'Конструктор видео' — ориентирные фото и/или видео."""
     data = await state.get_data()
 
     has_animate_files = bool(data.get("video_first_frame_file_id")) or bool(data.get("video_last_frame_file_id"))
@@ -1818,7 +1818,7 @@ async def add_audio_ref(callback: CallbackQuery, state: FSMContext) -> None:
     """Кнопка 'Аудио' на карточке видео-генерации."""
     data = await state.get_data()
     if data.get("model_has_audio", True) and not data.get("video_audio_enabled", True):
-        # Защита от устаревшей клавиатуры: при выключенном звуке аудио-референс недоступен
+        # Защита от устаревшей клавиатуры: при выключенном звуке аудио-ориентир недоступен
         await callback.answer("Включите звуковое сопровождение, чтобы добавить аудио")
         return
     audio_names = list(data.get("audio_reference_file_names") or [])
@@ -2180,10 +2180,10 @@ async def replace_video_ref(callback: CallbackQuery, state: FSMContext) -> None:
     await callback.answer()
 
 
-# ─── Загрузка референса (только для edit) ────────────────────────────────────
+# ─── Загрузка ориентира (только для edit) ────────────────────────────────────
 
 async def _show_confirm_after_reference(message: Message, state: FSMContext) -> None:
-    """Переходит в confirm state и показывает карточку после загрузки референса."""
+    """Переходит в confirm state и показывает карточку после загрузки ориентира."""
     data = await state.get_data()
     await state.set_state(MediaStates.confirm)
     sent = await message.answer(
@@ -2427,7 +2427,7 @@ async def receive_reference_video(message: Message, state: FSMContext, album: li
             await message.delete()
             asyncio.create_task(_toast(message, "⚠️ Здесь нужно прислать аудиофайл 🎵, а не видео."))
             return
-    # Видео-референс для генерации видео
+    # Видео-ориентир для генерации видео
     if data.get("adding_video_ref"):
         video_refs = list(data.get("video_style_reference_file_ids") or [])
         durations = list(data.get("video_ref_durations") or [])
@@ -2546,7 +2546,7 @@ async def receive_reference_audio(message: Message, state: FSMContext) -> None:
         return
     if not data.get("adding_audio_ref"):
         sent = await message.answer(
-            "Аудиофайл принимается только при добавлении аудио-референсов. "
+            "Аудиофайл принимается только при добавлении аудио-ориентиров. "
             "Нажми кнопку «🎵 Аудио» на карточке.",
             reply_markup=back_to_confirm_kb(),
         )
@@ -2557,7 +2557,7 @@ async def receive_reference_audio(message: Message, state: FSMContext) -> None:
     if audio_duration and max_video_dur and audio_duration > max_video_dur:
         sent = await message.answer(
             f"⚠️ Аудиофайл слишком длинный ({audio_duration} сек).\n"
-            f"Максимальная длительность аудио-референса — {max_video_dur} сек "
+            f"Максимальная длительность аудио-ориентира — {max_video_dur} сек "
             f"(максимальная длина видео для этой модели).",
             reply_markup=back_to_confirm_kb(),
         )
@@ -2654,7 +2654,7 @@ async def receive_reference_document(message: Message, state: FSMContext) -> Non
             sent = await message.answer("Для редактирования фото пришли изображение, а не видео.", reply_markup=back_to_model_kb())
             await _track_msg(state, sent.message_id)
             return
-        # Видео-документ при добавлении видео-референса — обрабатываем как видео
+        # Видео-документ при добавлении видео-ориентира — обрабатываем как видео
         if data.get("adding_video_ref"):
             video_refs = list(data.get("video_style_reference_file_ids") or [])
             max_refs = data.get("model_max_video_refs", 0)
@@ -3334,7 +3334,7 @@ async def confirm_unknown_input(message: Message, state: FSMContext, album: list
             await _update_confirm_card(message, state)
             return
 
-        # video: фото-референс
+        # video: фото-ориентир
         if media_type == "video":
             album_msgs = album or [message]
             for msg in album_msgs:
@@ -3518,7 +3518,7 @@ async def confirm_unknown_input(message: Message, state: FSMContext, album: list
                 await _update_confirm_card(message, state)
             return
         await message.delete()
-        asyncio.create_task(_toast(message, "⚠️ Эта модель не поддерживает видео-референсы."))
+        asyncio.create_task(_toast(message, "⚠️ Эта модель не поддерживает видео-ориентиры."))
         return
     elif (message.audio or message.voice) and media_type == "video":
         max_audio_refs = data.get("model_max_audio_refs", 0)
@@ -3538,7 +3538,7 @@ async def confirm_unknown_input(message: Message, state: FSMContext, album: list
             await _update_confirm_card(message, state)
             return
         await message.delete()
-        asyncio.create_task(_toast(message, "⚠️ Эта модель не поддерживает аудио-референсы."))
+        asyncio.create_task(_toast(message, "⚠️ Эта модель не поддерживает аудио-ориентиры."))
         return
     else:
         await message.delete()
@@ -4236,7 +4236,7 @@ async def _run_generation(send_msg: Message, tg_user, state: FSMContext, data: d
         last_frame_url = await _tg_file_url(send_msg.bot, data.get("video_last_frame_file_id"))
         _audio_ids = data.get("audio_reference_file_ids") or []
         if data.get("model_has_audio", True) and not data.get("video_audio_enabled", True):
-            # Звук выключен — ранее загруженные аудио-референсы не отправляем
+            # Звук выключен — ранее загруженные аудио-ориентиры не отправляем
             _audio_ids = []
         audio_reference_urls = [
             u for u in [await _tg_file_url(send_msg.bot, fid) for fid in _audio_ids] if u

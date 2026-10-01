@@ -161,7 +161,7 @@ PHOTO_EDIT_GUIDE = (
 # Руководство под заголовком выбора модели в разделе «Фото» (генерация с нуля, раскрывающийся блок)
 PHOTO_GEN_GUIDE = (
     "В этом разделе нейросеть генерирует фото с нуля по вашему описанию. После выбора модели, "
-    "можете отправить своё фото в качестве ориентира (референса) для нейросети, это поможет ИИ "
+    "можете отправить своё фото в качестве ориентира для нейросети, это поможет ИИ "
     "лучше понять, что вы от него хотите. Чтобы указать в описании на ориентир, используйте "
     "@image(номер фото), например, @image1, если это фото было загружено первым. Важно понимать, "
     "что это фото станет именно вдохновением для ИИ, и не все модели максимально точно изображают "
@@ -403,7 +403,7 @@ def video_confirm_kb(
             builder.row(InlineKeyboardButton(text="📎 Конец видео", callback_data="media:add_last_frame"))
     if max_audio_refs > 0:
         if show_audio_toggle and not audio_enabled:
-            # Звук выключен — аудио-референс не имеет смысла: кнопка неактивна (крестик)
+            # Звук выключен — аудио-ориентир не имеет смысла: кнопка неактивна (крестик)
             builder.row(InlineKeyboardButton(text="🎵 Аудио ❌", callback_data="media:audio_ref_disabled"))
         else:
             audio_text = f"🎵 Аудио: {audio_ref_count}/{max_audio_refs} ✅" if audio_ref_count else "🎵 Аудио"
@@ -499,7 +499,7 @@ def video_frames_menu_kb(
             builder.row(InlineKeyboardButton(text=video_text, callback_data="media:add_video_ref"))
     if show_characters:
         if character_kind == "pixverse":
-            char_text = f"🖼 Референсы: {character_count}/7 ✅" if character_count else "🖼 Добавить референс"
+            char_text = f"🖼 Ориентиры: {character_count}/7 ✅" if character_count else "🖼 Добавить ориентир"
         else:
             char_text = f"👤 Персонажи: {character_count}/3 ✅" if character_count else "👤 Создать персонажа"
         builder.row(InlineKeyboardButton(text=char_text, callback_data="char:menu"))
