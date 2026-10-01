@@ -513,13 +513,31 @@ class KieProvider(OpenAICompatProvider):
                 logger.warning("KIE: не удалось сохранить контекст job %s: %s", corr_id, _e)
         return task_id
 
+    @staticmethod
+    def _to_responses_content(content: str | list) -> str | list:
+        """Конвертирует OpenAI chat/completions формат контента в KIE Responses API формат."""
+        if isinstance(content, str):
+            return content
+        result = []
+        for item in content:
+            if item.get("type") == "text":
+                result.append({"type": "input_text", "text": item["text"]})
+            elif item.get("type") == "image_url":
+                url = item["image_url"]["url"] if isinstance(item.get("image_url"), dict) else item.get("image_url", "")
+                result.append({"type": "input_image", "image_url": url})
+        return result
+
     async def chat(self, messages: list[dict], system: str = "", model: str | None = None) -> ChatResult:
         """GPT-5.5 у KIE — Responses API (/codex/v1/responses), а не chat/completions."""
         actual_model = model or "gpt-5-5"
         payload_input: list[dict] = []
         if system:
             payload_input.append({"role": "system", "content": system})
-        payload_input.extend(messages)
+        # KIE Responses API использует input_text/input_image вместо text/image_url
+        converted = [
+            {**m, "content": self._to_responses_content(m["content"])} for m in messages
+        ]
+        payload_input.extend(converted)
         async with self._session(timeout=180) as session:
             async with session.post(
                 "https://api.kie.ai/codex/v1/responses",

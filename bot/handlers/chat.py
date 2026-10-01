@@ -1,5 +1,6 @@
 import logging
 from aiogram import Router, F
+from services.file_proxy import file_proxy
 
 logger = logging.getLogger(__name__)
 from aiogram.types import Message, CallbackQuery, ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
@@ -183,9 +184,48 @@ async def chat_message(message: Message, state: FSMContext) -> None:
         await message.answer("⚠️ Произошла непредвиденная ошибка. Попробуй позже.")
 
 
-@router.message(ChatStates.active, ~F.text.in_(MENU_BUTTONS))
+@router.message(ChatStates.active, F.photo)
+async def chat_photo(message: Message, state: FSMContext) -> None:
+    """Фото в чате: передаём его модели вместе с подписью (если есть)."""
+    data = await state.get_data()
+    model_slug = data.get("chat_model_slug")
+
+    tg_file = await message.bot.get_file(message.photo[-1].file_id)
+    image_url = file_proxy.url_for_path(tg_file.file_path)
+    caption = (message.caption or "").strip()
+
+    thinking = await message.answer("💭 Думаю...")
+    try:
+        response = await chat_service.send_message(
+            message.from_user.id, message.from_user.username, caption, model_slug,
+            image_url=image_url,
+        )
+        await thinking.delete()
+        await message.answer(response)
+
+    except InsufficientCreditsError as e:
+        await thinking.delete()
+        await state.update_data(pending_retry_type="chat", pending_message=caption)
+        await message.answer(
+            f"❌ {e}\n\nПополни баланс — я отвечу на твой вопрос автоматически:",
+            reply_markup=quick_topup_kb(_has_yookassa()),
+        )
+    except RateLimitError as e:
+        await thinking.delete()
+        await message.answer(f"⏱ {e}")
+    except ProviderError as e:
+        logger.error("ProviderError in chat_photo (model=%s): %s", model_slug, e)
+        await thinking.delete()
+        await message.answer("⚠️ Сервис временно недоступен. Попробуй позже.")
+    except Exception:
+        logger.exception("Unexpected error in chat_photo (model=%s)", model_slug)
+        await thinking.delete()
+        await message.answer("⚠️ Произошла непредвиденная ошибка. Попробуй позже.")
+
+
+@router.message(ChatStates.active, ~F.text.in_(MENU_BUTTONS), ~F.photo)
 async def chat_wrong_input(message: Message) -> None:
-    await message.answer("Напиши текстовое сообщение — я отвечу на него.")
+    await message.answer("Напиши текстовое сообщение или пришли фото — я отвечу на него.")
 
 
 async def resume_chat_after_topup(message: Message, state: FSMContext) -> None:
