@@ -1992,6 +1992,7 @@ async def back_to_confirm(callback: CallbackQuery, state: FSMContext) -> None:
         return
 
     await state.update_data(
+        picking_duration=None,
         adding_style_ref=None, adding_video_extra_frame=None, adding_audio_ref=None,
         adding_video_ref=None, adding_video_frame=None, adding_frame_from_confirm=None,
         managing_style_ref=None, managing_style_ref_index=None,
@@ -3101,6 +3102,23 @@ async def update_prompt_in_confirm(message: Message, state: FSMContext) -> None:
         await _update_confirm_card(message, state)
         return
 
+    # Экран «Выбери длительность»: число без кнопки «Своя» → принимаем и возвращаемся к карточке
+    if data.get("picking_duration") and message.text.strip().isdigit():
+        min_d = data.get("model_min_duration") or 1
+        max_d = data.get("model_max_duration") or 60
+        val = int(message.text.strip())
+        if not (min_d <= val <= max_d):
+            try:
+                await message.delete()
+            except Exception:
+                pass
+            asyncio.create_task(_toast(message, f"⚠️ Длительность должна быть от {min_d} до {max_d} секунд."))
+            return
+        await state.update_data(duration=val, picking_duration=False, entering_duration=False)
+        await message.delete()
+        await _update_confirm_card(message, state)
+        return
+
     # Ввод кастомной длительности видео
     if data.get("entering_duration"):
         min_d = data.get("model_min_duration") or 1
@@ -3655,7 +3673,7 @@ async def set_format(callback: CallbackQuery, state: FSMContext) -> None:
 @router.callback_query(MediaStates.confirm, F.data.startswith("media:duration:"))
 async def set_duration(callback: CallbackQuery, state: FSMContext) -> None:
     duration = int(callback.data.split(":")[2])
-    await state.update_data(duration=duration, entering_duration=False)
+    await state.update_data(duration=duration, entering_duration=False, picking_duration=False)
     data = await state.get_data()
     await callback.message.edit_text(_confirm_card_text(data), parse_mode="HTML", reply_markup=_confirm_kb(data))
     await _delete_msgs_below(callback.bot, callback.message.chat.id, state, callback.message.message_id)
@@ -3665,7 +3683,8 @@ async def set_duration(callback: CallbackQuery, state: FSMContext) -> None:
 @router.callback_query(MediaStates.confirm, F.data == "media:pick_duration")
 async def pick_duration(callback: CallbackQuery, state: FSMContext) -> None:
     data = await state.get_data()
-    await state.update_data(entering_duration=None)
+    # Пока открыт экран выбора, число, отправленное сообщением, сразу становится длительностью
+    await state.update_data(entering_duration=None, picking_duration=bool(data.get("model_duration_custom", True)))
     options = data.get("model_duration_options") or [5, 10]
     min_d = data.get("model_min_duration") or min(options)
     max_d = data.get("model_max_duration") or max(options)
@@ -3684,7 +3703,7 @@ async def duration_custom(callback: CallbackQuery, state: FSMContext) -> None:
     data = await state.get_data()
     min_d = data.get("model_min_duration") or 1
     max_d = data.get("model_max_duration") or 60
-    await state.update_data(entering_duration=True)
+    await state.update_data(entering_duration=True, picking_duration=False)
     await callback.message.edit_text(
         f"Введи длительность в секундах ({min_d}–{max_d}):",
         reply_markup=InlineKeyboardMarkup(inline_keyboard=[[
