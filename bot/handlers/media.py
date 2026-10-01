@@ -3175,6 +3175,35 @@ async def update_prompt_in_confirm(message: Message, state: FSMContext) -> None:
             await waiting.edit_text("⚠️ Произошла непредвиденная ошибка при отправке результата. Если рубли были списаны — обратись в поддержку.", reply_markup=error_kb())
         return
 
+    # Повторное редактирование уже отредактированного видео — текст сразу запускает новый проход
+    if data.get("generated_file_id") and data.get("media_type") == "video_edit":
+        await state.update_data(prompt=message.text)
+        await state.set_state(MediaStates.confirm)
+        await message.delete()
+        edit_data = await state.get_data()
+        waiting = await message.answer("⏳ Редактирую, подожди немного...", reply_markup=gen_waiting_kb())
+        try:
+            await _start_tracked(message.from_user.id, message, message.from_user, state, edit_data)
+            await waiting.delete()
+        except GenerationCancelledError:
+            await _delete_msgs_below(message.bot, message.chat.id, state, waiting.message_id)
+            await waiting.delete()
+        except InsufficientCreditsError as e:
+            await state.update_data(pending_retry_type="media")
+            await waiting.edit_text(
+                f"❌ {e}\n\nПополни баланс — редактирование продолжится автоматически:",
+                reply_markup=quick_topup_kb(_has_yookassa()),
+            )
+        except RateLimitError as e:
+            await waiting.edit_text(f"⏱ {e}", reply_markup=error_kb())
+        except ProviderContentPolicyError:
+            await waiting.edit_text("❌ Запрос не прошёл проверку безопасности — попробуй изменить описание или использовать другое видео.", reply_markup=error_kb())
+        except ProviderError:
+            await waiting.edit_text("⚠️ Сервис временно недоступен. Кредиты не списаны — попробуй ещё раз.", reply_markup=error_kb())
+        except Exception:
+            await waiting.edit_text("⚠️ Произошла непредвиденная ошибка при отправке результата. Если рубли были списаны — обратись в поддержку.", reply_markup=error_kb())
+        return
+
     # После генерации фото — текст сразу запускает редактирование
     if data.get("generated_file_id") and data.get("media_type") == "image":
         edit_model = await _apply_edit_model_to_state(state, edit_prompt=message.text)
@@ -4342,6 +4371,8 @@ async def _run_generation(send_msg: Message, tg_user, state: FSMContext, data: d
         sent = await send_msg.answer_video(file, caption=_cost_caption(result), reply_markup=after_generation_kb(edit=True))
         await _track_msg(state, sent.message_id)
         await save_generation(tg_user.id, "video", sent.video.file_id, prompt=prompt, model_label=data.get("model_label"))
+        # Сохраняем file_id результата, чтобы пользователь мог сразу редактировать снова текстом
+        await state.update_data(generated_file_id=sent.video.file_id, reference_file_id=sent.video.file_id)
 
 
 @router.callback_query(MediaStates.confirm, F.data == "media:start")
