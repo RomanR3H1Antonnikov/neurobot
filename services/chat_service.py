@@ -14,7 +14,8 @@ SYSTEM_PROMPT = (
 
 
 async def send_message(
-    telegram_id: int, username: str, text: str, model_slug: str | None = None
+    telegram_id: int, username: str, text: str, model_slug: str | None = None,
+    image_url: str | None = None,
 ) -> str:
     user = await get_or_create_user(telegram_id, username)
     user_id = user["id"]
@@ -35,14 +36,30 @@ async def send_message(
             f"Недостаточно средств. Нужно: {cost} ₽, у вас: {user['balance']} ₽"
         )
 
+    user_text = text.strip() if text else ""
     history = await get_chat_history(user_id)
-    history.append({"role": "user", "content": text})
+
+    if image_url:
+        # Мультимодальное сообщение: фото + текст (OpenAI-compat формат)
+        content: list | str = [
+            {"type": "image_url", "image_url": {"url": image_url}},
+        ]
+        if user_text:
+            content.insert(0, {"type": "text", "text": user_text})
+        else:
+            content.append({"type": "text", "text": "Опиши, что изображено на фото."})
+        history_text = f"[фото] {user_text}" if user_text else "[фото]"
+    else:
+        content = user_text
+        history_text = user_text
+
+    history.append({"role": "user", "content": content})
 
     result: ChatResult = await provider.chat(
         history, system=SYSTEM_PROMPT, model=model_cfg["model_id"]
     )
 
-    await add_chat_message(user_id, "user", text)
+    await add_chat_message(user_id, "user", history_text)
     await add_chat_message(user_id, "assistant", result.text)
     await deduct_credits(user_id, cost, TaskType.CHAT.value)
 
