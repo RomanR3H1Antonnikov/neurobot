@@ -890,6 +890,27 @@ class KieProvider(OpenAICompatProvider):
                 "generate_audio_switch": bool(audio),
             }
 
+        if is_pixverse and not characters and (first_frame_url or last_frame_url) and not video_reference_urls:
+            # text-to-video игнорирует кадры: для кадров у PixVerse отдельные модели KIE
+            _pv_common = {
+                "prompt": prompt,
+                "quality": resolution or "720p",
+                "duration": int(duration),
+                "generate_audio_switch": bool(audio),
+            }
+            if first_frame_url and last_frame_url:
+                actual_model = "pixverse-v6/transition"
+                input_data = {
+                    **_pv_common,
+                    "first_frame_image_url": first_frame_url,
+                    "last_frame_image_url": last_frame_url,
+                }
+            elif first_frame_url:
+                actual_model = "pixverse-v6/image-to-video"
+                input_data = {**_pv_common, "image_urls": [first_frame_url]}
+            else:
+                raise ProviderUnavailableError("PixVerse: конец видео можно задать только вместе с началом")
+
         if actual_model == KLING3_ALIAS:
             input_data = _kling3_request(
                 prompt, duration, aspect_ratio, resolution, audio, first_frame_url, last_frame_url,

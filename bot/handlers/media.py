@@ -4335,6 +4335,11 @@ async def start_generation(callback: CallbackQuery, state: FSMContext) -> None:
         await callback.answer(f"Сначала добавь {label} для редактирования 📎", show_alert=True)
         return
 
+    if (media_type == "video" and str(data.get("model_actual_id", "")).startswith("pixverse")
+            and data.get("video_last_frame_file_id") and not data.get("video_first_frame_file_id")):
+        await callback.answer("У PixVerse конец видео задаётся только вместе с началом — добавь первый кадр.", show_alert=True)
+        return
+
     if media_type == "video" and data.get("characters"):
         from bot.handlers.characters import characters_start_error
         _char_err = characters_start_error(data, prompt)
