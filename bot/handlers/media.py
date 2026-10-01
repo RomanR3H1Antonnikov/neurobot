@@ -4391,9 +4391,12 @@ async def start_generation(callback: CallbackQuery, state: FSMContext) -> None:
         await callback.answer(f"Сначала добавь {label} для редактирования 📎", show_alert=True)
         return
 
-    if (media_type == "video" and str(data.get("model_actual_id", "")).startswith("pixverse")
+    if (media_type == "video"
             and data.get("video_last_frame_file_id") and not data.get("video_first_frame_file_id")):
-        await callback.answer("У PixVerse конец видео задаётся только вместе с началом — добавь первый кадр.", show_alert=True)
+        await callback.answer(
+            "Для корректной работы нейросети, последний кадр необходимо загружать вместе с первым.",
+            show_alert=True,
+        )
         return
 
     if media_type == "video" and data.get("characters"):
