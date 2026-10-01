@@ -159,10 +159,12 @@ async def _back_to_frames_menu(bot, chat_id: int, state: FSMContext) -> None:
     else:
         # В режиме "оживить фото" кнопка доп. кадров не нужна — только первый/последний кадр
         max_extra_refs = 0
+        _has_last_only = bool(data.get("video_last_frame_file_id")) and not bool(data.get("video_first_frame_file_id"))
         title = (
             "📎 <b>Motion Control</b>\n\nДобавь фото (начальный кадр) и видео (задаёт характер движения):"
             if motion_control else
             "📎 <b>Кадры видео</b>\n\nДобавь фото для первого и/или последнего кадра:"
+            + ("\n\n⚠️ Для корректной работы нейросети, последний кадр необходимо загружать вместе с первым." if _has_last_only else "")
         )
         frames_kb = video_frames_menu_kb(
             has_first_frame=bool(data.get("video_first_frame_file_id")),
@@ -1657,10 +1659,12 @@ async def animate_photo(callback: CallbackQuery, state: FSMContext) -> None:
     motion_control = bool(data.get("model_motion_control"))
     show_first = data.get("model_has_first_frame", True)
     show_last = data.get("model_has_last_frame", True)
+    _has_last_only = bool(data.get("video_last_frame_file_id")) and not bool(data.get("video_first_frame_file_id"))
     title = (
         "📎 <b>Motion Control</b>\n\nДобавь фото (начальный кадр) и видео (задаёт характер движения):"
         if motion_control else
         "🖼 <b>Оживить фото</b>\n\nДобавь первый и/или последний кадр:"
+        + ("\n\n⚠️ Для корректной работы нейросети, последний кадр необходимо загружать вместе с первым." if _has_last_only else "")
     )
     await callback.message.edit_text(
         title,
