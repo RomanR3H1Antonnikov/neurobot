@@ -1,6 +1,6 @@
 import logging
 from aiogram import Router, F
-from services.file_proxy import file_proxy
+from services import file_proxy
 
 logger = logging.getLogger(__name__)
 from aiogram.types import Message, CallbackQuery, ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
