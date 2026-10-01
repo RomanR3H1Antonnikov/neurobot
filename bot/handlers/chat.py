@@ -207,12 +207,12 @@ async def chat_photo(message: Message, state: FSMContext) -> None:
     """Фото в чате: передаём его модели вместе с подписью (если есть)."""
     data = await state.get_data()
     model_slug = data.get("chat_model_slug")
-
-    tg_file = await message.bot.get_file(message.photo[-1].file_id)
-    image_url = file_proxy.url_for_path(tg_file.file_path)
     caption = (message.caption or "").strip()
+    logger.info("[CHAT] photo received user=%s model=%s caption=%r", message.from_user.id, model_slug, caption[:50])
 
     thinking = await message.answer("💭 Думаю...")
+    tg_file = await message.bot.get_file(message.photo[-1].file_id)
+    image_url = file_proxy.url_for_path(tg_file.file_path)
     try:
         response = await chat_service.send_message(
             message.from_user.id, message.from_user.username, caption, model_slug,
