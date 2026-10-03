@@ -13,9 +13,9 @@ def media_type_kb() -> InlineKeyboardMarkup:
     )
     builder.row(
         InlineKeyboardButton(text="ℹ️ Инфо", callback_data="media:info"),
-        InlineKeyboardButton(text="📖 Руководство", callback_data="media:guide"),
         InlineKeyboardButton(text="◀️ Назад", callback_data="media:back:menu"),
     )
+    builder.row(InlineKeyboardButton(text="📖 Руководство", callback_data="media:guide"))
     return builder.as_markup()
 
 
