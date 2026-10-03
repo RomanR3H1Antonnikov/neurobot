@@ -1532,7 +1532,10 @@ async def add_style_ref_prompt(callback: CallbackQuery, state: FSMContext) -> No
         f"📎 Пришли фото-ориентиры (до {max_refs} штук). Нейросеть будет ориентироваться на них при генерации:"
     )
     await callback.message.edit_text(hint, reply_markup=style_ref_collecting_kb(count, max_refs))
-    await state.update_data(adding_style_ref=True, _sref_msg_id=callback.message.message_id)
+    await state.update_data(
+        adding_style_ref=True, adding_video_ref=None,
+        _sref_msg_id=callback.message.message_id,
+    )
     await state.set_state(MediaStates.enter_reference)
     await callback.answer()
 
@@ -1941,7 +1944,11 @@ async def add_video_ref(callback: CallbackQuery, state: FSMContext) -> None:
         if count else
         f"🎬 Отправь видеофайл — он добавится как видео-ориентир. Можно добавить до {max_refs} файлов.\nКогда закончишь — нажми «Назад»."
     )
-    await state.update_data(adding_video_ref=True, adding_video_frame=None, _sref_msg_id=callback.message.message_id)
+    await state.update_data(
+        adding_video_ref=True, adding_video_frame=None,
+        adding_style_ref=None, adding_video_extra_frame=None,
+        _sref_msg_id=callback.message.message_id,
+    )
     await callback.message.edit_text(hint, reply_markup=back_to_frames_kb())
     await state.set_state(MediaStates.enter_reference)
     await callback.answer()
@@ -1957,6 +1964,7 @@ async def add_first_frame(callback: CallbackQuery, state: FSMContext) -> None:
         "_sref_msg_id": callback.message.message_id,
         "adding_video_extra_frame": None,
         "adding_style_ref": None,
+        "adding_video_ref": None,
         "adding_frame_from_confirm": from_confirm,
     }
     if not from_confirm:
@@ -1984,6 +1992,7 @@ async def add_last_frame(callback: CallbackQuery, state: FSMContext) -> None:
         "_sref_msg_id": callback.message.message_id,
         "adding_video_extra_frame": None,
         "adding_style_ref": None,
+        "adding_video_ref": None,
         "adding_frame_from_confirm": from_confirm,
     }
     await state.update_data(**upd)
@@ -2051,7 +2060,11 @@ async def back_to_confirm(callback: CallbackQuery, state: FSMContext) -> None:
 @router.callback_query(F.data == "media:back:frames")
 async def back_to_frames(callback: CallbackQuery, state: FSMContext) -> None:
     """Возврат в меню кадров из hint-сообщения (когда нажали 'Начало/Конец видео')."""
-    await state.update_data(adding_video_frame=None, _sref_msg_id=callback.message.message_id)
+    await state.update_data(
+        adding_video_frame=None, adding_video_ref=None,
+        adding_style_ref=None, adding_video_extra_frame=None,
+        _sref_msg_id=callback.message.message_id,
+    )
     await state.set_state(MediaStates.confirm)
     await _back_to_frames_menu(callback.bot, callback.message.chat.id, state)
     await callback.answer()
