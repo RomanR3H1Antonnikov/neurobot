@@ -23,7 +23,7 @@ def _has_yookassa() -> bool:
     return bool(_billing_cfg.yookassa_provider_token)
 from bot.keyboards.media import (
     media_type_kb, media_section_kb, MEDIA_SECTIONS, media_info_kb,
-    guide_main_kb, guide_section_kb, guide_photo_gen_card_kb, guide_param_back_kb,
+    guide_main_kb, guide_section_kb, guide_photo_gen_card_kb, guide_param_back_kb, guide_ratio_kb,
     model_top_kb, model_variant_kb,
     model_select_text, model_variant_text, back_to_model_kb, back_to_confirm_kb, back_to_frames_kb,
     image_confirm_kb, image_ratio_kb, image_resolution_kb, image_quality_kb,
@@ -724,13 +724,12 @@ _GUIDE_PHOTO_GEN_CARD_TEXT = (
 
 _GUIDE_PARAMS = {
     "ratio": (
-        "📐 <b>Масштаб (соотношение сторон)</b>\n\n"
-        "Это пропорция ширины и высоты изображения.\n\n"
-        "• <b>1:1</b> — квадрат. Подходит для публикаций в соцсетях.\n"
-        "• <b>16:9</b> — широкоэкранный горизонтальный формат.\n"
-        "• <b>9:16</b> — вертикальный (как у историй и Reels).\n"
-        "• <b>4:3</b> / <b>3:4</b> — классические форматы.\n\n"
-        "Выбирай под платформу, где будешь использовать изображение."
+        "📐 <b>Масштаб</b>\n\n"
+        "Ниже представлены стандартные масштабы моих фото-моделей. У каждой модели они могут быть разные. "
+        "Масштаб, или же соотношение сторон — это пропорция между её шириной и высотой, которая записывается "
+        "в виде двух чисел через двоеточие (например, 4:3, 3:2, 1:1, 16:9). Оно показывает форму кадра, "
+        "но не связано с физическим размером изображения или количеством пикселей в нём — "
+        "это именно соотношение пропорций."
     ),
     "resolution": (
         "🖼 <b>Качество (разрешение)</b>\n\n"
@@ -837,7 +836,13 @@ async def guide_photo_gen(callback: CallbackQuery) -> None:
 async def guide_param(callback: CallbackQuery) -> None:
     key = callback.data.split(":")[3]
     text = _GUIDE_PARAMS.get(key, "Раздел временно недоступен.")
-    await callback.message.edit_text(text, parse_mode="HTML", reply_markup=guide_param_back_kb())
+    kb = guide_ratio_kb() if key == "ratio" else guide_param_back_kb()
+    await callback.message.edit_text(text, parse_mode="HTML", reply_markup=kb)
+    await callback.answer()
+
+
+@router.callback_query(MediaStates.select_type, F.data == "media:guide:noop")
+async def guide_noop(callback: CallbackQuery) -> None:
     await callback.answer()
 
 
