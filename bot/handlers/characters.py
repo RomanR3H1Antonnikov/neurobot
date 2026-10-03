@@ -127,11 +127,13 @@ def _manage_kb(idx: int) -> InlineKeyboardMarkup:
     return b.as_markup()
 
 
-def _cancel_kb(back_to: str | None = None) -> InlineKeyboardMarkup:
-    """Отмена + (со 2-го шага) «Шаг назад»; back_to — на какой шаг вернуться: name | desc."""
+def _cancel_kb(back_to: str | None = None, forward_to: str | None = None) -> InlineKeyboardMarkup:
+    """Навигация по шагам создания персонажа."""
     b = InlineKeyboardBuilder()
     if back_to:
         b.row(InlineKeyboardButton(text="⬅️ Шаг назад", callback_data=f"char:step:{back_to}"))
+    if forward_to:
+        b.row(InlineKeyboardButton(text="➡️ Шаг вперёд", callback_data=f"char:step:{forward_to}"))
     b.row(InlineKeyboardButton(text="◀️ Отмена", callback_data="char:menu"))
     return b.as_markup()
 
@@ -145,20 +147,26 @@ def _photos_kb(count: int, minimum: int) -> InlineKeyboardMarkup:
     return b.as_markup()
 
 
-def _name_text(kind: str | None) -> str:
+def _name_text(kind: str | None, draft: dict | None = None) -> str:
     text = f"👤 <b>Шаг 1/3.</b> Введи имя персонажа (до {_NAME_MAX} символов)."
     if _is_kling(kind):
         text += (
             "\n\nДля ссылки в описании бот автоматически переведёт имя из кириллицы в латиницу "
             "и сделает тег: например, «Аня» → <code>@anya</code>. Готовый тег покажем после создания."
         )
+    if draft and draft.get("name"):
+        text += f"\n\nВаш текст: «{draft['name']}»"
     return text
 
 
-_DESC_TEXT = (
-    "📝 <b>Шаг 2/3.</b> Коротко опиши персонажа: внешность, одежда, характер "
-    "(например: «молодая девушка с короткими серебристыми волосами, в чёрной куртке»)."
-)
+def _desc_text(draft: dict | None = None) -> str:
+    text = (
+        "📝 <b>Шаг 2/3.</b> Коротко опиши персонажа: внешность, одежда, характер "
+        "(например: «молодая девушка с короткими серебристыми волосами, в чёрной куртке»)."
+    )
+    if draft and draft.get("description"):
+        text += f"\n\nВаш текст: «{draft['description']}»"
+    return text
 
 
 def _photos_text(kind: str, count: int) -> str:
@@ -305,18 +313,30 @@ async def new_character(callback: CallbackQuery, state: FSMContext) -> None:
     await callback.answer()
 
 
-@router.callback_query(F.data.in_({"char:step:name", "char:step:desc"}))
-async def step_back(callback: CallbackQuery, state: FSMContext) -> None:
-    """«Шаг назад»: введённые ранее данные сохраняются в черновике."""
+@router.callback_query(F.data.in_({"char:step:name", "char:step:desc", "char:step:photos"}))
+async def step_nav(callback: CallbackQuery, state: FSMContext) -> None:
+    """Навигация назад/вперёд по шагам создания персонажа."""
     data = await state.get_data()
+    draft = data.get("_char_draft") or {}
+    kind = data.get("model_characters") or ""
     await state.update_data(_sref_msg_id=callback.message.message_id)
+
     if callback.data.endswith(":name"):
+        forward_to = "desc" if draft.get("description") else None
         await state.set_state(CharacterStates.name)
         await _edit(callback.bot, callback.message.chat.id, state,
-                    _name_text(data.get("model_characters")), _cancel_kb())
-    else:
+                    _name_text(kind, draft), _cancel_kb(forward_to=forward_to))
+    elif callback.data.endswith(":desc"):
+        forward_to = "photos" if draft.get("file_ids") else None
         await state.set_state(CharacterStates.desc)
-        await _edit(callback.bot, callback.message.chat.id, state, _DESC_TEXT, _cancel_kb("name"))
+        await _edit(callback.bot, callback.message.chat.id, state,
+                    _desc_text(draft), _cancel_kb("name", forward_to))
+    else:  # :photos
+        await state.set_state(CharacterStates.photos)
+        count = len(draft.get("file_ids") or [])
+        lo = PHOTO_RULES[kind][0]
+        await _edit(callback.bot, callback.message.chat.id, state,
+                    _photos_text(kind, count), _photos_kb(count, lo))
     await callback.answer()
 
 
@@ -336,7 +356,7 @@ async def enter_name(message: Message, state: FSMContext) -> None:
     draft.update(name=name, tag=_make_tag(name, existing))
     await state.update_data(_char_draft=draft)
     await state.set_state(CharacterStates.desc)
-    await _edit(message.bot, message.chat.id, state, _DESC_TEXT, _cancel_kb("name"))
+    await _edit(message.bot, message.chat.id, state, _desc_text(draft), _cancel_kb("name"))
 
 
 @router.message(CharacterStates.desc, F.text, ~F.text.in_(MENU_BUTTONS))
