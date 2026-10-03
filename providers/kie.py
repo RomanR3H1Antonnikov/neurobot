@@ -201,14 +201,13 @@ def _kling3_motion_request(
     character_orientation: str | None,
 ) -> dict:
     """Kling 3.0 Motion Control: одно фото (input_urls) + одно видео с движением (video_urls).
-    Длительность берётся из видео; duration/aspect_ratio/audio модель не принимает."""
+    Длительность берётся из видео; duration/aspect_ratio/audio/mode модель не принимает."""
     if not image_url or not video_url:
         raise ProviderUnavailableError("Kling Motion Control: нужны и фото, и видео")
     return {
         "prompt": prompt,
         "input_urls": [image_url],
         "video_urls": [video_url],
-        "mode": "pro" if resolution == "1080p" else "std",
         "character_orientation": character_orientation or "video",
         "background_source": "input_video" if (character_orientation or "video") == "video" else "input_image",
     }
@@ -844,7 +843,7 @@ class KieProvider(OpenAICompatProvider):
         # ── Режим Kling (только для новых моделей вида kling-X.X/...) ────────
         # Старые модели kling/v*-{mode}-* кодируют режим в названии.
         # Новые (kling-3.0/video, kling-3.0-omni/video и др.) требуют явного mode.
-        if is_kling and "-" in actual_model.split("/")[0] and "." in actual_model:
+        if is_kling and "-" in actual_model.split("/")[0] and "." in actual_model and "motion-control" not in actual_model:
             input_data.setdefault("mode", "std")
 
         # ── Флаг аудио ───────────────────────────────────────────────────────
