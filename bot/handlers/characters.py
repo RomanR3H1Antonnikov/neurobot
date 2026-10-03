@@ -191,7 +191,7 @@ async def _edit(bot, chat_id: int, state: FSMContext, text: str, kb: InlineKeybo
 async def _show_menu(bot, chat_id: int, state: FSMContext) -> None:
     from bot.handlers.media import MediaStates
     await state.set_state(MediaStates.confirm)
-    await state.update_data(_char_draft=None)
+    await state.update_data(_char_draft=None, _char_menu_active=True)
     data = await state.get_data()
     await _edit(bot, chat_id, state, _menu_text(data), _menu_kb(data))
 
@@ -217,7 +217,7 @@ async def open_menu(callback: CallbackQuery, state: FSMContext) -> None:
 @router.callback_query(F.data == "char:back")
 async def back_to_constructor(callback: CallbackQuery, state: FSMContext) -> None:
     from bot.handlers.media import _back_to_frames_menu
-    await state.update_data(_char_draft=None)
+    await state.update_data(_char_draft=None, _char_menu_active=None)
     await _back_to_frames_menu(callback.bot, callback.message.chat.id, state)
     await callback.answer()
 

@@ -2030,6 +2030,7 @@ async def back_to_confirm(callback: CallbackQuery, state: FSMContext) -> None:
         entering_udio_float=None, entering_udio_lyrics=False,
         confirm_mode_switch=None,
         receiving_edit_audio=None,
+        _char_menu_active=None,
     )
     await state.set_state(MediaStates.confirm)
     data = await state.get_data()
@@ -3056,6 +3057,14 @@ async def update_prompt_in_confirm(message: Message, state: FSMContext) -> None:
     if data.get("_is_generating"):
         await message.delete()
         asyncio.create_task(_notify_generating(message.bot, message.chat.id))
+        return
+
+    if data.get("_char_menu_active"):
+        try:
+            await message.delete()
+        except Exception:
+            pass
+        asyncio.create_task(_toast(message, "⚠️ Нажми «➕ Создать персонажа», чтобы добавить персонажа."))
         return
 
     # Ввод настроек ElevenLabs Music
