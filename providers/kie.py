@@ -118,6 +118,7 @@ def _kling_omni_request(
     style_reference_urls: list[str] | None,
     video_reference_urls: list[str] | None,
     characters: list[dict] | None = None,
+    audio_reference_urls: list[str] | None = None,
 ) -> tuple[str, dict]:
     """Kling 3.0 Omni у KIE — три отдельные модели, а не одна: выбираем по входным данным.
 
@@ -142,13 +143,15 @@ def _kling_omni_request(
         else:
             # Только видео: KIE требует aspect_ratio="auto", длительность берётся из видео
             input_data["aspect_ratio"] = "auto"
-        # С видео-входом звук у Omni всегда выключен
+        # С видео-входом звук у Omni всегда выключен (audio_urls не передаём)
         input_data["audio"] = False
         if characters:
             input_data["elements"] = list(characters)
         return model, input_data
 
     input_data.update(duration=duration, aspect_ratio=ratio, audio=bool(audio))
+    if audio_reference_urls:
+        input_data["audio_urls"] = list(audio_reference_urls)[:1]
     if refs:
         model = "kling-3.0-omni/reference-to-video"
         input_data["image_urls"] = (frames + refs)[:7]
@@ -885,7 +888,7 @@ class KieProvider(OpenAICompatProvider):
             actual_model, input_data = _kling_omni_request(
                 prompt, duration, aspect_ratio, resolution, audio,
                 first_frame_url, last_frame_url, style_reference_urls, video_reference_urls,
-                characters,
+                characters, audio_reference_urls,
             )
 
         if actual_model == HAPPYHORSE_EDIT and video_reference_urls:
