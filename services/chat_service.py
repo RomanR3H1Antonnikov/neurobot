@@ -5,7 +5,7 @@ from db.queries import (
     get_chat_history, add_chat_message, clear_chat_history,
     check_and_increment_rate_limit,
 )
-from services.media_service import InsufficientCreditsError, RateLimitError
+from services.media_service import InsufficientCreditsError, RateLimitError, _try_provider
 
 SYSTEM_PROMPT = (
     "Ты — умный и дружелюбный ИИ-ассистент. "
@@ -55,8 +55,8 @@ async def send_message(
 
     history.append({"role": "user", "content": content})
 
-    result: ChatResult = await provider.chat(
-        history, system=SYSTEM_PROMPT, model=model_cfg["model_id"]
+    result: ChatResult = await _try_provider(
+        provider.chat, history, system=SYSTEM_PROMPT, model=model_cfg["model_id"]
     )
 
     await add_chat_message(user_id, "user", history_text)
