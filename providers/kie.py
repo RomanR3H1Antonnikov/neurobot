@@ -1015,6 +1015,8 @@ class KieProvider(OpenAICompatProvider):
             logger.error("KIE video failed: model=%s failMsg=%s", actual_model, _fail_msg)
             if any(k in _fail_msg for k in ("validation", "policy", "safety", "content")):
                 raise ProviderContentPolicyError("Изображение не прошло проверку безопасности — попробуйте другое фото")
+            if "character" in _fail_msg and ("not" in _fail_msg or "no valid" in _fail_msg or "detect" in _fail_msg):
+                raise ProviderContentPolicyError("Персонаж не распознан. Пришлите новое видео")
             raise ProviderUnavailableError("KIE: генерация видео завершилась с ошибкой")
 
         url = _extract_url(callback_body)
