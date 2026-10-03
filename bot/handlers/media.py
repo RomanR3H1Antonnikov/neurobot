@@ -23,7 +23,7 @@ def _has_yookassa() -> bool:
     return bool(_billing_cfg.yookassa_provider_token)
 from bot.keyboards.media import (
     media_type_kb, media_section_kb, MEDIA_SECTIONS, media_info_kb,
-    guide_main_kb, guide_section_kb, guide_photo_gen_card_kb, guide_param_back_kb, guide_ratio_kb,
+    guide_main_kb, guide_section_kb, guide_photo_gen_card_kb, guide_param_back_kb, guide_ratio_kb, guide_resolution_kb,
     model_top_kb, model_variant_kb,
     model_select_text, model_variant_text, back_to_model_kb, back_to_confirm_kb, back_to_frames_kb,
     image_confirm_kb, image_ratio_kb, image_resolution_kb, image_quality_kb,
@@ -732,12 +732,10 @@ _GUIDE_PARAMS = {
         "это именно соотношение пропорций."
     ),
     "resolution": (
-        "🖼 <b>Качество (разрешение)</b>\n\n"
-        "Определяет размер и детализацию изображения.\n\n"
-        "• <b>1K</b> — стандартное качество, быстрее и дешевле.\n"
-        "• <b>2K</b> — повышенное разрешение, чётче детали.\n"
-        "• <b>4K</b> — максимальное качество (доступно не у всех моделей).\n\n"
-        "Для большинства задач достаточно 1K–2K."
+        "🖼 <b>Качество</b>\n\n"
+        "Здесь можно выбрать качество генерируемой фотографии. У каждой модели свои возможности, "
+        "есть и те, которые могут сгенерировать 4К фотографии. "
+        "Чем выше качество, тем дороже фото. Но разница в цене несущественная."
     ),
     "quality": (
         "🎨 <b>Детализация</b>\n\n"
@@ -836,7 +834,12 @@ async def guide_photo_gen(callback: CallbackQuery) -> None:
 async def guide_param(callback: CallbackQuery) -> None:
     key = callback.data.split(":")[3]
     text = _GUIDE_PARAMS.get(key, "Раздел временно недоступен.")
-    kb = guide_ratio_kb() if key == "ratio" else guide_param_back_kb()
+    if key == "ratio":
+        kb = guide_ratio_kb()
+    elif key == "resolution":
+        kb = guide_resolution_kb()
+    else:
+        kb = guide_param_back_kb()
     await callback.message.edit_text(text, parse_mode="HTML", reply_markup=kb)
     await callback.answer()
 

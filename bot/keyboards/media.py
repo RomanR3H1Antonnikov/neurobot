@@ -69,6 +69,16 @@ def guide_ratio_kb() -> InlineKeyboardMarkup:
     return builder.as_markup()
 
 
+def guide_resolution_kb() -> InlineKeyboardMarkup:
+    """Наглядные кнопки разрешений в руководстве (нефункциональные)."""
+    builder = InlineKeyboardBuilder()
+    for res in ALL_RESOLUTIONS:
+        builder.add(InlineKeyboardButton(text=res, callback_data="media:guide:noop"))
+    builder.adjust(3)
+    builder.row(InlineKeyboardButton(text="◀️ Назад", callback_data="media:guide:photo_gen"))
+    return builder.as_markup()
+
+
 def media_info_kb(expanded: bool = False) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     if expanded:
