@@ -36,6 +36,29 @@ def guide_section_kb() -> InlineKeyboardMarkup:
     return builder.as_markup()
 
 
+def guide_photo_gen_card_kb() -> InlineKeyboardMarkup:
+    """Макет карточки настроек генерации фото (без цены, параметры — обучающие)."""
+    builder = InlineKeyboardBuilder()
+    builder.row(
+        InlineKeyboardButton(text="📐 Масштаб: 1:1", callback_data="media:guide:param:ratio"),
+        InlineKeyboardButton(text="🖼 Качество: 1K", callback_data="media:guide:param:resolution"),
+    )
+    builder.row(InlineKeyboardButton(text="🎨 Детализация: Стандарт", callback_data="media:guide:param:quality"))
+    builder.row(InlineKeyboardButton(text="📎 Добавить ориентир", callback_data="media:guide:param:style_ref"))
+    builder.row(
+        InlineKeyboardButton(text="✏️ Ввести описание", callback_data="media:guide:param:prompt"),
+        InlineKeyboardButton(text="◀️ Назад", callback_data="media:guide"),
+    )
+    builder.row(InlineKeyboardButton(text="🚀 Начать генерацию", callback_data="media:guide:param:start"))
+    return builder.as_markup()
+
+
+def guide_param_back_kb() -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    builder.row(InlineKeyboardButton(text="◀️ Назад", callback_data="media:guide:photo_gen"))
+    return builder.as_markup()
+
+
 def media_info_kb(expanded: bool = False) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     if expanded:

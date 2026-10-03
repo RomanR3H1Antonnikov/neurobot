@@ -22,7 +22,9 @@ from config import config as _billing_cfg
 def _has_yookassa() -> bool:
     return bool(_billing_cfg.yookassa_provider_token)
 from bot.keyboards.media import (
-    media_type_kb, media_section_kb, MEDIA_SECTIONS, media_info_kb, guide_main_kb, guide_section_kb, model_top_kb, model_variant_kb,
+    media_type_kb, media_section_kb, MEDIA_SECTIONS, media_info_kb,
+    guide_main_kb, guide_section_kb, guide_photo_gen_card_kb, guide_param_back_kb,
+    model_top_kb, model_variant_kb,
     model_select_text, model_variant_text, back_to_model_kb, back_to_confirm_kb, back_to_frames_kb,
     image_confirm_kb, image_ratio_kb, image_resolution_kb, image_quality_kb,
     video_confirm_kb, video_format_kb, video_frames_menu_kb, video_duration_picker_kb, audio_confirm_kb, edit_confirm_kb, edit_sound_kb,
@@ -711,17 +713,65 @@ _GUIDE_INTRO = (
     "выбери соответствующий раздел в «Генерация медиа»."
 )
 
-_GUIDE_SECTIONS = {
-    "photo_gen": (
-        "🖼 <b>Как сгенерировать фото</b>\n\n"
-        "1. В разделе «Генерация медиа» выбери <b>Фото → Генерация фото</b>.\n"
-        "2. Выбери модель и нажми «Выбрать».\n"
-        "3. Введи описание (промпт) — что должно быть на изображении.\n"
-        "4. Настрой параметры: соотношение сторон, разрешение, качество.\n"
-        "5. При желании добавь фото-ориентиры для стиля.\n"
-        "6. Нажми <b>«Начать генерацию»</b>.\n\n"
-        "💡 Чем подробнее промпт, тем точнее результат."
+_GUIDE_PHOTO_GEN_CARD_TEXT = (
+    "🖼 <b>Как сгенерировать фото</b>\n\n"
+    "Это — стандартные настройки генерации фото, они есть у каждой модели. Когда ты выберешь "
+    "реальную модель, вместо этого текста будет её описание, а также выбранные тобою параметры. "
+    "По умолчанию все модели уже настроены, и если настройки тебя устраивают, достаточно ввести "
+    "описание фотографии, которую ты хочешь увидеть, и нейросеть сгенерирует её. "
+    "Чтобы подробнее узнать про интересующий тебя параметр, нажми на него."
+)
+
+_GUIDE_PARAMS = {
+    "ratio": (
+        "📐 <b>Масштаб (соотношение сторон)</b>\n\n"
+        "Это пропорция ширины и высоты изображения.\n\n"
+        "• <b>1:1</b> — квадрат. Подходит для публикаций в соцсетях.\n"
+        "• <b>16:9</b> — широкоэкранный горизонтальный формат.\n"
+        "• <b>9:16</b> — вертикальный (как у историй и Reels).\n"
+        "• <b>4:3</b> / <b>3:4</b> — классические форматы.\n\n"
+        "Выбирай под платформу, где будешь использовать изображение."
     ),
+    "resolution": (
+        "🖼 <b>Качество (разрешение)</b>\n\n"
+        "Определяет размер и детализацию изображения.\n\n"
+        "• <b>1K</b> — стандартное качество, быстрее и дешевле.\n"
+        "• <b>2K</b> — повышенное разрешение, чётче детали.\n"
+        "• <b>4K</b> — максимальное качество (доступно не у всех моделей).\n\n"
+        "Для большинства задач достаточно 1K–2K."
+    ),
+    "quality": (
+        "🎨 <b>Детализация</b>\n\n"
+        "Уровень проработки деталей при генерации.\n\n"
+        "• <b>Стандарт</b> — баланс скорости и качества.\n"
+        "• <b>Высокая</b> — более чёткие детали, точнее передаёт промпт, но медленнее.\n\n"
+        "Для быстрого просмотра результата используй стандарт."
+    ),
+    "style_ref": (
+        "📎 <b>Ориентиры (референсы)</b>\n\n"
+        "Фото, которые задают стиль будущего изображения.\n\n"
+        "Например: загрузи фото в нужном художественном стиле — и нейросеть создаст "
+        "новое изображение в похожей манере. Поддерживается несколько фото одновременно.\n\n"
+        "💡 Чем точнее ориентир отражает нужный стиль, тем лучше результат."
+    ),
+    "prompt": (
+        "✏️ <b>Описание (промпт)</b>\n\n"
+        "Текст, который описывает, что должно быть на фото.\n\n"
+        "Пиши конкретно: вместо «девушка» — «молодая девушка с короткими тёмными волосами, "
+        "в кожаной куртке, на фоне зимнего леса, утреннее освещение».\n\n"
+        "💡 Чем подробнее описание, тем точнее нейросеть воссоздаёт задуманное."
+    ),
+    "start": (
+        "🚀 <b>Начать генерацию</b>\n\n"
+        "Запускает создание изображения. Перед нажатием убедись, что ввёл описание.\n\n"
+        "Стоимость генерации зависит от выбранной модели и настроек (разрешение, качество). "
+        "Реальная цена в кредитах будет видна на кнопке, когда откроешь реальную карточку."
+    ),
+}
+
+_GUIDE_PARAM_CALLBACKS = {f"media:guide:param:{k}" for k in _GUIDE_PARAMS}
+
+_GUIDE_SECTIONS = {
     "photo_edit": (
         "✏️ <b>Как отредактировать фото</b>\n\n"
         "1. В разделе «Генерация медиа» выбери <b>Фото → Редактировать ваше фото</b>.\n"
@@ -765,13 +815,29 @@ _GUIDE_SECTIONS = {
     ),
 }
 
-_GUIDE_CALLBACKS = {f"media:guide:{k}" for k in _GUIDE_SECTIONS}
+_GUIDE_CALLBACKS = {f"media:guide:{k}" for k in _GUIDE_SECTIONS} | {"media:guide:photo_gen"}
 
 
 @router.callback_query(MediaStates.select_type, F.data == "media:guide")
 @router.callback_query(MediaStates.select_type, F.data == "media:guide:back")
 async def guide_main(callback: CallbackQuery) -> None:
     await callback.message.edit_text(_GUIDE_INTRO, parse_mode="HTML", reply_markup=guide_main_kb())
+    await callback.answer()
+
+
+@router.callback_query(MediaStates.select_type, F.data == "media:guide:photo_gen")
+async def guide_photo_gen(callback: CallbackQuery) -> None:
+    await callback.message.edit_text(
+        _GUIDE_PHOTO_GEN_CARD_TEXT, parse_mode="HTML", reply_markup=guide_photo_gen_card_kb(),
+    )
+    await callback.answer()
+
+
+@router.callback_query(MediaStates.select_type, F.data.in_(_GUIDE_PARAM_CALLBACKS))
+async def guide_param(callback: CallbackQuery) -> None:
+    key = callback.data.split(":")[3]
+    text = _GUIDE_PARAMS.get(key, "Раздел временно недоступен.")
+    await callback.message.edit_text(text, parse_mode="HTML", reply_markup=guide_param_back_kb())
     await callback.answer()
 
 
