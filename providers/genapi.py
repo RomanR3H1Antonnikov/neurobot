@@ -330,7 +330,6 @@ class GenApiProvider(AbstractProvider):
         payload_messages.extend(messages)
 
         data = await self._post_sync(actual_model, {
-            "callback_url": None,
             "messages": payload_messages,
         })
 
