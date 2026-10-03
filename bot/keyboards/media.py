@@ -111,6 +111,26 @@ def guide_audio_main_kb() -> InlineKeyboardMarkup:
     return builder.as_markup()
 
 
+def guide_audio_voice_card_kb() -> InlineKeyboardMarkup:
+    """Макет карточки озвучки текста в руководстве (ElevenLabs V3)."""
+    builder = InlineKeyboardBuilder()
+    builder.row(InlineKeyboardButton(text="💬 Диалог: ВЫКЛ", callback_data="media:guide:param:voice_dialogue"))
+    builder.row(InlineKeyboardButton(text="🗣 Голос: Стандартный", callback_data="media:guide:param:voice_select"))
+    builder.row(InlineKeyboardButton(text="⚙️ Стандарт", callback_data="media:guide:param:voice_stability"))
+    builder.row(
+        InlineKeyboardButton(text="✏️ Ввести текст", callback_data="media:guide:param:prompt"),
+        InlineKeyboardButton(text="◀️ Назад", callback_data="media:guide:audio_gen"),
+    )
+    builder.row(InlineKeyboardButton(text="🚀 Начать генерацию", callback_data="media:guide:param:start"))
+    return builder.as_markup()
+
+
+def guide_audio_voice_back_kb() -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    builder.row(InlineKeyboardButton(text="◀️ Назад", callback_data="media:guide:audio_voice"))
+    return builder.as_markup()
+
+
 def media_info_kb(expanded: bool = False) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     if expanded:
