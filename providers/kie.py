@@ -491,10 +491,13 @@ class KieProvider(OpenAICompatProvider):
                     raise ProviderUnavailableError("Недостаточно средств на балансе KIE")
                 if resp.status == 400:
                     body = await resp.text()
+                    logger.error("KIE createTask HTTP 400: model=%s input=%s body=%s", model, input_data, body[:400])
                     if "content" in body.lower() or "policy" in body.lower():
                         raise ProviderContentPolicyError("Запрос не прошёл проверку безопасности KIE")
                     raise ProviderUnavailableError(f"Ошибка KIE: {body[:200]}")
                 if resp.status >= 400:
+                    body = await resp.text()
+                    logger.error("KIE createTask HTTP %s: model=%s input=%s body=%s", resp.status, model, input_data, body[:400])
                     raise ProviderUnavailableError(f"KIE ответил HTTP {resp.status}")
                 data = await resp.json()
 
