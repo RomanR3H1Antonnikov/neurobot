@@ -61,6 +61,21 @@ class GenApiProvider(AbstractProvider):
         from config import config
         return getattr(config, "kie_callback_base_url", "https://bot.rehy.ru").rstrip("/")
 
+    async def _post_sync(self, model: str, payload: dict, post_timeout: int = 60) -> dict:
+        """POST /networks/{model} синхронно (callback_url: null) — ответ приходит сразу в теле ответа."""
+        async with aiohttp.ClientSession(
+            headers=self._headers(),
+            timeout=aiohttp.ClientTimeout(total=post_timeout),
+        ) as session:
+            async with session.post(f"{_BASE_URL}/networks/{model}", json=payload) as resp:
+                if resp.status == 402:
+                    raise ProviderUnavailableError("Недостаточно средств на балансе GenAPI")
+                if resp.status >= 400:
+                    body = await resp.text()
+                    logger.error("GenAPI sync %s for model=%s: %s", resp.status, model, body[:300])
+                    raise ProviderUnavailableError(f"GenAPI ответил HTTP {resp.status}: {body[:200]}")
+                return await resp.json()
+
     async def _run(self, model: str, prompt: str, extra: dict | None = None, timeout: int | None = None, post_timeout: int = 120, prompt_key: str = "prompt") -> dict:
         """POST /networks/{model} с callback_url → ждёт callback.
         prompt_key: имя поля промпта в payload (по умолчанию 'prompt', для TTS — 'text')."""
@@ -215,6 +230,11 @@ class GenApiProvider(AbstractProvider):
             extra["lyrics_placement_end"] = music_params.get("lyrics_placement_end", 0.9)
             extra["clarity_strength"] = music_params.get("clarity_strength", 0.25)
 
+        elif actual_model == "lyria-3-pro" and music_params:
+            duration = music_params.get("music_duration")
+            if duration:
+                extra = {"duration": int(duration)}
+
         # Если передан URL фото-ориентира (например, для lyria-3-pro) — включаем в extra
         _has_image = bool(music_params and music_params.get("_image_url"))
         if _has_image:
@@ -303,4 +323,28 @@ class GenApiProvider(AbstractProvider):
                 return await resp.read()
 
     async def chat(self, messages: list[dict], system: str = "", model: str | None = None) -> ChatResult:
-        raise ProviderUnavailableError("Чат через GenAPI не настроен")
+        actual_model = model or "perplexity"
+        payload_messages: list[dict] = []
+        if system:
+            payload_messages.append({"role": "system", "content": system})
+        payload_messages.extend(messages)
+
+        data = await self._post_sync(actual_model, {
+            "callback_url": None,
+            "messages": payload_messages,
+        })
+
+        # Извлекаем текст из ответа — GenAPI может возвращать разные форматы
+        result = data.get("result") or data.get("data") or data.get("content") or data.get("text")
+        if isinstance(result, dict):
+            choices = result.get("choices") or []
+            if choices:
+                result = choices[0].get("message", {}).get("content", "")
+        if isinstance(result, list) and result:
+            first = result[0]
+            if isinstance(first, dict):
+                result = first.get("message", {}).get("content") or first.get("text") or first.get("content")
+        if not result or not isinstance(result, str):
+            logger.error("GenAPI chat: неожиданный формат ответа model=%s body=%s", actual_model, str(data)[:300])
+            raise ProviderUnavailableError("GenAPI: не удалось получить ответ чата")
+        return ChatResult(text=result)

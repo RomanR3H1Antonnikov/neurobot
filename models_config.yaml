@@ -852,6 +852,9 @@ tasks:
         provider: genapi
         audio_type: music
         max_style_refs: 1
+        has_lyria_settings: true
+        duration_min: 15
+        duration_max: 300
         cost_credits: 30
         cost_usd: 0.05
         enabled: true
@@ -1306,6 +1309,15 @@ tasks:
         provider: routerai
         cost_credits: 1
         cost_usd: 0.001
+        enabled: true
+
+      - id: perplexity
+        label: "Perplexity"
+        description: ""
+        model_id: perplexity
+        provider: genapi
+        cost_credits: 1
+        cost_usd: 0.002
         enabled: true
 
   # ─── Работа с документами (авто-выбор, пользователь не выбирает) ─────────────

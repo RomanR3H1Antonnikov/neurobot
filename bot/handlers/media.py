@@ -418,7 +418,7 @@ def _confirm_card_text(data: dict) -> str:
             lang_label = _lang_map.get(lang, lang)
             diag = "ВКЛ" if data.get("voice_dialogue_mode") else "ВЫКЛ"
             lines.append(f"<b>Стиль:</b> {stab_label}  |  <b>Язык:</b> {lang_label}  |  <b>Диалог:</b> {diag}")
-        if data.get("has_music_settings"):
+        if data.get("has_music_settings") or data.get("has_lyria_settings"):
             lines.append(f"<b>Длительность:</b> {data.get('music_duration', 30)} сек")
             if data.get("music_show_advanced"):
                 pos_styles = data.get("music_positive_styles") or []
@@ -606,6 +606,8 @@ def _confirm_kb(data: dict):
             has_prompt=has_prompt, cost_credits=cost, voice_label=voice_label,
             style_ref_count=style_ref_count,
             max_style_refs=data.get("model_max_style_refs", 0),
+            has_duration=bool(data.get("has_lyria_settings")),
+            duration=data.get("music_duration", 30),
         )
     elif media_type in ("photo_edit", "video_edit"):
         return edit_confirm_kb(
@@ -831,6 +833,10 @@ async def select_model(callback: CallbackQuery, state: FSMContext) -> None:
         update["audio_type"] = model_cfg.get("audio_type", "voice")
         update["has_music_settings"] = bool(model_cfg.get("has_music_settings"))
         update["has_udio_settings"] = bool(model_cfg.get("has_udio_settings"))
+        update["has_lyria_settings"] = bool(model_cfg.get("has_lyria_settings"))
+        if model_cfg.get("has_lyria_settings"):
+            update["music_duration"] = 30
+            update["entering_music_duration"] = False
         if model_cfg.get("has_music_settings"):
             update["music_duration"] = 5
             update["music_positive_styles"] = []
@@ -4311,6 +4317,11 @@ async def _run_generation(send_msg: Message, tg_user, state: FSMContext, data: d
                 "lyrics_placement_start": data.get("udio_lyrics_placement_start", 0.2),
                 "lyrics_placement_end": data.get("udio_lyrics_placement_end", 0.9),
                 "clarity_strength": data.get("udio_clarity_strength", 0.25),
+            }
+        elif data.get("has_lyria_settings"):
+            music_params = {
+                "_provider_model": "lyria-3-pro",
+                "music_duration": data.get("music_duration", 30),
             }
         # Фото-ориентир (например, для Lyria) — передаём через music_params
         if style_reference_urls:
