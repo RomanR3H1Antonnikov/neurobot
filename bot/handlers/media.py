@@ -3553,9 +3553,9 @@ async def confirm_unknown_input(message: Message, state: FSMContext, album: list
 
 # ─── Фото с подписью — быстрый запуск редактирования ─────────────────────────
 
-@router.message(~StateFilter("ChatStates:active", "ChatStates:select_model"), F.photo, F.caption)
+@router.message(StateFilter(None), F.photo, F.caption)
 async def photo_with_caption_shortcut(message: Message, state: FSMContext) -> None:
-    """Фото + подпись из любого контекста → редактирование фото (не срабатывает в режиме чата)."""
+    """Фото + подпись из главного меню (state=None) → редактирование фото без лишних шагов."""
     photo = message.photo[-1]
     caption = message.caption.strip()
 
