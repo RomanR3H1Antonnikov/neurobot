@@ -3815,12 +3815,7 @@ async def pick_ratio(callback: CallbackQuery, state: FSMContext) -> None:
     data = await state.get_data()
     allowed = data.get("model_aspect_ratios") or None
     await callback.message.edit_text(
-        "<b>Масштаб</b>\n\n"
-        "Ниже представлены стандартные масштабы моих фото-моделей. У каждой модели они могут быть разные. "
-        "Масштаб, или же соотношение сторон — это пропорция между её шириной и высотой, которая записывается "
-        "в виде двух чисел через двоеточие (например, 4:3, 3:2, 1:1, 16:9). Оно показывает форму кадра, "
-        "но не связано с физическим размером изображения или количеством пикселей в нём — "
-        "это именно соотношение пропорций.",
+        "<b>Выбери соотношение сторон:</b>",
         parse_mode="HTML",
         reply_markup=image_ratio_kb(data.get("aspect_ratio", "1:1"), allowed),
     )
@@ -3835,10 +3830,7 @@ async def pick_resolution(callback: CallbackQuery, state: FSMContext) -> None:
         await callback.answer()
         return
     await callback.message.edit_text(
-        "<b>Качество</b>\n\n"
-        "Здесь можно выбрать качество генерируемой фотографии. У каждой модели свои возможности, "
-        "есть и те, которые могут сгенерировать 4К фотографии. "
-        "Чем выше качество, тем дороже фото. Но разница в цене несущественная.",
+        "<b>Выбери качество:</b>",
         parse_mode="HTML",
         reply_markup=image_resolution_kb(data.get("resolution", "1K"), resolutions),
     )
