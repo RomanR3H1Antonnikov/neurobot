@@ -43,15 +43,37 @@ def get_provider_by_model_id(task_type: TaskType, model_slug: str) -> tuple[Abst
     Возвращает (провайдер, конфиг_модели) для конкретной модели по её slug.
     Raises ProviderUnavailableError если модель не найдена или отключена.
     """
+    chain = get_provider_chain_for_model(task_type, model_slug)
+    return chain[0]
+
+
+def get_provider_chain_for_model(task_type: TaskType, model_slug: str) -> list[tuple[AbstractProvider, dict]]:
+    """
+    Возвращает упорядоченный список (провайдер, конфиг) для попытки: primary первым,
+    затем fallbacks из конфига (поле `fallbacks: [{provider, model_id}]`).
+    """
     task_cfg = config.models.get(task_type.value, {})
+    base_cfg: dict | None = None
     for m in task_cfg.get("models", []):
         if m.get("id") == model_slug:
             if not m.get("enabled"):
                 raise ProviderUnavailableError(f"Модель '{model_slug}' временно отключена")
             if m.get("provider") not in _registry:
                 raise ProviderUnavailableError(f"Провайдер '{m.get('provider')}' не настроен")
-            return _registry[m["provider"]], m
-    raise ProviderUnavailableError(f"Модель '{model_slug}' не найдена в конфигурации")
+            base_cfg = m
+            break
+    if base_cfg is None:
+        raise ProviderUnavailableError(f"Модель '{model_slug}' не найдена в конфигурации")
+
+    chain: list[tuple[AbstractProvider, dict]] = [(_registry[base_cfg["provider"]], base_cfg)]
+    for fb in base_cfg.get("fallbacks", []):
+        fb_prov = fb.get("provider")
+        fb_model_id = fb.get("model_id")
+        if fb_prov and fb_model_id and fb_prov in _registry:
+            # Eff-конфиг = исходный конфиг с подменёнными provider/model_id
+            eff = {**base_cfg, "provider": fb_prov, "model_id": fb_model_id}
+            chain.append((_registry[fb_prov], eff))
+    return chain
 
 
 def get_provider(task_type: TaskType) -> tuple[AbstractProvider, dict]:

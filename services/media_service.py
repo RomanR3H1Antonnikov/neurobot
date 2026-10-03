@@ -6,8 +6,8 @@ import logging
 import os
 import tempfile
 
-from providers.base import TaskType, GenerationResult
-from providers.router import get_provider_by_model_id, get_task_rate_limit
+from providers.base import TaskType, GenerationResult, ProviderUnavailableError
+from providers.router import get_provider_by_model_id, get_provider_chain_for_model, get_task_rate_limit
 from db.queries import get_or_create_user, deduct_credits, check_and_increment_rate_limit
 
 logger = logging.getLogger(__name__)
@@ -138,14 +138,25 @@ async def generate_image(
     quality: str | None = None,
 ) -> GenerationResult:
     task = TaskType.IMAGE_GENERATION
-    provider, model_cfg = get_provider_by_model_id(task, model_slug)
+    chain = get_provider_chain_for_model(task, model_slug)
+    _, model_cfg = chain[0]
     user_id = await _check_preconditions(telegram_id, username, task, model_cfg, resolution=resolution)
 
-    result = await provider.generate_image(
-        prompt, aspect_ratio=aspect_ratio, resolution=resolution,
-        model=model_cfg["model_id"], style_reference_urls=style_reference_urls,
-        quality=quality,
-    )
+    result, last_err = None, None
+    for provider, eff_cfg in chain:
+        try:
+            result = await provider.generate_image(
+                prompt, aspect_ratio=aspect_ratio, resolution=resolution,
+                model=eff_cfg["model_id"], style_reference_urls=style_reference_urls,
+                quality=quality,
+            )
+            break
+        except ProviderUnavailableError as e:
+            last_err = e
+            if len(chain) > 1:
+                logger.warning("[FALLBACK] image %s → %s: %s", model_slug, eff_cfg.get("provider"), e)
+    if result is None:
+        raise last_err
     _cost = get_cost(model_cfg, resolution)
     await deduct_credits(user_id, _cost, task.value)
     result.cost = _cost
@@ -167,27 +178,37 @@ async def generate_video(
     characters: list[dict] | None = None,
 ) -> GenerationResult:
     task = TaskType.VIDEO_GENERATION
-    provider, model_cfg = get_provider_by_model_id(task, model_slug)
+    chain = get_provider_chain_for_model(task, model_slug)
+    _, model_cfg = chain[0]
     has_video_ref = bool(video_reference_urls)
     user_id = await _check_preconditions(telegram_id, username, task, model_cfg,
                                          resolution=resolution, duration=duration,
                                          has_video_ref=has_video_ref, has_audio=audio)
 
-    result = await provider.generate_video(
-        prompt, duration=duration, model=model_cfg["model_id"],
-        first_frame_url=first_frame_url,
-        last_frame_url=last_frame_url,
-        style_reference_urls=style_reference_urls,
-        aspect_ratio=aspect_ratio,
-        resolution=resolution,
-        audio_reference_urls=audio_reference_urls,
-        video_reference_urls=video_reference_urls,
-        output_format=output_format,
-        audio=audio,
-        character_orientation=character_orientation,
-        # только модели с персонажами (Kling 3.0/Omni, Gemini Omni) принимают этот параметр
-        **({"characters": characters} if characters else {}),
-    )
+    result, last_err = None, None
+    for provider, eff_cfg in chain:
+        try:
+            result = await provider.generate_video(
+                prompt, duration=duration, model=eff_cfg["model_id"],
+                first_frame_url=first_frame_url,
+                last_frame_url=last_frame_url,
+                style_reference_urls=style_reference_urls,
+                aspect_ratio=aspect_ratio,
+                resolution=resolution,
+                audio_reference_urls=audio_reference_urls,
+                video_reference_urls=video_reference_urls,
+                output_format=output_format,
+                audio=audio,
+                character_orientation=character_orientation,
+                **({"characters": characters} if characters else {}),
+            )
+            break
+        except ProviderUnavailableError as e:
+            last_err = e
+            if len(chain) > 1:
+                logger.warning("[FALLBACK] video %s → %s: %s", model_slug, eff_cfg.get("provider"), e)
+    if result is None:
+        raise last_err
     if not audio:
         result = GenerationResult(
             data=await _strip_audio(result.data),
@@ -205,12 +226,23 @@ async def generate_audio(
     music_params: dict | None = None,
 ) -> GenerationResult:
     task = TaskType.AUDIO_GENERATION
-    provider, model_cfg = get_provider_by_model_id(task, model_slug)
+    chain = get_provider_chain_for_model(task, model_slug)
+    _, model_cfg = chain[0]
     user_id = await _check_preconditions(telegram_id, username, task, model_cfg)
 
-    result = await provider.generate_audio(
-        prompt, audio_type=audio_type, model=model_cfg["model_id"], music_params=music_params,
-    )
+    result, last_err = None, None
+    for provider, eff_cfg in chain:
+        try:
+            result = await provider.generate_audio(
+                prompt, audio_type=audio_type, model=eff_cfg["model_id"], music_params=music_params,
+            )
+            break
+        except ProviderUnavailableError as e:
+            last_err = e
+            if len(chain) > 1:
+                logger.warning("[FALLBACK] audio %s → %s: %s", model_slug, eff_cfg.get("provider"), e)
+    if result is None:
+        raise last_err
     _cost = get_cost(model_cfg)
     await deduct_credits(user_id, _cost, task.value)
     result.cost = _cost
@@ -224,17 +256,28 @@ async def edit_image(
     quality: str | None = None, aspect_ratio: str | None = None,
 ) -> GenerationResult:
     task = TaskType.IMAGE_EDIT
-    provider, model_cfg = get_provider_by_model_id(task, model_slug)
+    chain = get_provider_chain_for_model(task, model_slug)
+    _, model_cfg = chain[0]
     user_id = await _check_preconditions(telegram_id, username, task, model_cfg, resolution=resolution)
 
-    result = await provider.edit_image(
-        image_bytes, prompt, model=model_cfg["model_id"],
-        image_url=image_url, style_reference_urls=style_reference_urls,
-        provider_task_id=provider_task_id,  # для KIE Grok: CDN URL из генерации
-        resolution=resolution,
-        quality=quality,
-        aspect_ratio=aspect_ratio,
-    )
+    result, last_err = None, None
+    for provider, eff_cfg in chain:
+        try:
+            result = await provider.edit_image(
+                image_bytes, prompt, model=eff_cfg["model_id"],
+                image_url=image_url, style_reference_urls=style_reference_urls,
+                provider_task_id=provider_task_id,
+                resolution=resolution,
+                quality=quality,
+                aspect_ratio=aspect_ratio,
+            )
+            break
+        except ProviderUnavailableError as e:
+            last_err = e
+            if len(chain) > 1:
+                logger.warning("[FALLBACK] image_edit %s → %s: %s", model_slug, eff_cfg.get("provider"), e)
+    if result is None:
+        raise last_err
     _cost = get_cost(model_cfg, resolution)
     await deduct_credits(user_id, _cost, task.value)
     result.cost = _cost
@@ -255,20 +298,31 @@ async def edit_video(
     # mute — вырезать звук из готового результата. По умолчанию (None) = not audio;
     # Wan-режим «Оригинальный звук» передаёт audio=False, но звук вырезать НЕ должен.
     task = TaskType.VIDEO_EDIT
-    provider, model_cfg = get_provider_by_model_id(task, model_slug)
+    chain = get_provider_chain_for_model(task, model_slug)
+    _, model_cfg = chain[0]
     user_id = await _check_preconditions(telegram_id, username, task, model_cfg,
                                          resolution=resolution, duration=duration)
 
-    result = await provider.edit_video(
-        video_bytes, prompt, model=model_cfg["model_id"],
-        video_url=video_url,
-        duration=duration,
-        aspect_ratio=aspect_ratio,
-        resolution=resolution,
-        audio=audio,
-        audio_url=audio_url,
-        style_reference_urls=style_reference_urls,
-    )
+    result, last_err = None, None
+    for provider, eff_cfg in chain:
+        try:
+            result = await provider.edit_video(
+                video_bytes, prompt, model=eff_cfg["model_id"],
+                video_url=video_url,
+                duration=duration,
+                aspect_ratio=aspect_ratio,
+                resolution=resolution,
+                audio=audio,
+                audio_url=audio_url,
+                style_reference_urls=style_reference_urls,
+            )
+            break
+        except ProviderUnavailableError as e:
+            last_err = e
+            if len(chain) > 1:
+                logger.warning("[FALLBACK] video_edit %s → %s: %s", model_slug, eff_cfg.get("provider"), e)
+    if result is None:
+        raise last_err
     if (not audio) if mute is None else mute:
         result = GenerationResult(
             data=await _strip_audio(result.data),

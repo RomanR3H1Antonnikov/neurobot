@@ -61,12 +61,13 @@ class GenApiProvider(AbstractProvider):
         from config import config
         return getattr(config, "kie_callback_base_url", "https://bot.rehy.ru").rstrip("/")
 
-    async def _run(self, model: str, prompt: str, extra: dict | None = None, timeout: int | None = None, post_timeout: int = 120) -> dict:
-        """POST /networks/{model} с callback_url → ждёт callback."""
+    async def _run(self, model: str, prompt: str, extra: dict | None = None, timeout: int | None = None, post_timeout: int = 120, prompt_key: str = "prompt") -> dict:
+        """POST /networks/{model} с callback_url → ждёт callback.
+        prompt_key: имя поля промпта в payload (по умолчанию 'prompt', для TTS — 'text')."""
         corr_id = uuid.uuid4().hex
         callback_url = f"{self._callback_base()}/genapi/callback/{corr_id}"
 
-        payload = {"prompt": prompt, "callback_url": callback_url}
+        payload = {prompt_key: prompt, "callback_url": callback_url}
         if extra:
             payload.update(extra)
 
@@ -222,7 +223,9 @@ class GenApiProvider(AbstractProvider):
 
         # GenAPI обрабатывает аудио синхронно перед ответом → длинный POST-таймаут
         _post_timeout = 600
-        data = await self._run(actual_model, prompt, extra=extra, timeout=_CALLBACK_TIMEOUT_AUDIO, post_timeout=_post_timeout)
+        # ElevenLabs V3 TTS использует поле "text" вместо стандартного "prompt"
+        _prompt_key = "text" if actual_model == "tts-eleven-v3" else "prompt"
+        data = await self._run(actual_model, prompt, extra=extra, timeout=_CALLBACK_TIMEOUT_AUDIO, post_timeout=_post_timeout, prompt_key=_prompt_key)
 
         url = _extract_url(data)
         if not url:

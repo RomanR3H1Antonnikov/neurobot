@@ -33,8 +33,10 @@ class RouteraiProvider(OpenAICompatProvider):
     ) -> GenerationResult:
         actual_model = model or self.image_model
 
-        if actual_model.startswith("x-ai/"):
-            extra_body: dict = {"aspect_ratio": aspect_ratio}
+        if actual_model.startswith("x-ai/") or actual_model.startswith("black-forest-labs/"):
+            extra_body: dict = {"aspect_ratio": aspect_ratio or "1:1", "output_format": "jpeg"}
+            if actual_model.startswith("x-ai/"):
+                extra_body["aspect_ratio"] = aspect_ratio
             if style_reference_urls:
                 extra_body["input_references"] = [
                     {"type": "image_url", "image_url": {"url": u}}
@@ -44,14 +46,16 @@ class RouteraiProvider(OpenAICompatProvider):
                 "model": actual_model,
                 "prompt": prompt,
                 "n": 1,
-                "size": self._compute_size(aspect_ratio, resolution),
                 "extra_body": extra_body,
             }
+            if actual_model.startswith("x-ai/"):
+                body["size"] = self._compute_size(aspect_ratio, resolution)
             async with self._session() as session:
                 async with session.post(f"{self.base_url}/images/generations", json=body) as resp:
                     data = await self._handle_response(resp)
             image_bytes = base64.b64decode(data["data"][0]["b64_json"])
-            return GenerationResult(data=image_bytes, mime_type="image/png", filename="image.png")
+            mime = "image/jpeg" if actual_model.startswith("black-forest-labs/") else "image/png"
+            return GenerationResult(data=image_bytes, mime_type=mime, filename="image.jpeg" if mime == "image/jpeg" else "image.png")
 
         return await super().generate_image(prompt, aspect_ratio, resolution, model, style_reference_urls)
 
@@ -166,10 +170,28 @@ class RouteraiProvider(OpenAICompatProvider):
                 body["images"] = [{"url": u, "type": "image_url"} for u in style_reference_urls]
             headers = {"Authorization": f"Bearer {self._api_key}", "Content-Type": "application/json"}
             async with aiohttp.ClientSession(headers=headers, timeout=aiohttp.ClientTimeout(total=120)) as session:
-                async with session.post(f"{_BASE_URL}/images/edits", json=body) as resp:
+                async with session.post(f"{self.base_url}/images/edits", json=body) as resp:
                     data = await self._handle_response(resp)
             image_out = base64.b64decode(data["data"][0]["b64_json"])
             return GenerationResult(data=image_out, mime_type="image/png", filename="edited.png")
+
+        if actual_model.startswith("black-forest-labs/"):
+            if not image_url:
+                raise ProviderUnavailableError("Flux 2 Pro edit: не передан URL исходного изображения")
+            refs = [{"type": "image_url", "image_url": {"url": image_url}}]
+            if style_reference_urls:
+                refs += [{"type": "image_url", "image_url": {"url": u}} for u in style_reference_urls]
+            extra_body: dict = {
+                "aspect_ratio": aspect_ratio or "1:1",
+                "output_format": "jpeg",
+                "input_references": refs,
+            }
+            body = {"model": actual_model, "prompt": prompt, "n": 1, "extra_body": extra_body}
+            async with self._session() as session:
+                async with session.post(f"{self.base_url}/images/generations", json=body) as resp:
+                    data = await self._handle_response(resp)
+            image_out = base64.b64decode(data["data"][0]["b64_json"])
+            return GenerationResult(data=image_out, mime_type="image/jpeg", filename="edited.jpeg")
 
         return await super().edit_image(image_bytes, prompt, model, image_url, style_reference_urls)
 
