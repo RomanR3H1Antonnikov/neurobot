@@ -167,6 +167,9 @@ tasks:
         cost_by_resolution: {"1K": 4, "2K": 6}
         cost_usd: 0.01
         enabled: true
+        fallbacks:
+          - provider: routerai
+            model_id: black-forest-labs/flux.2-pro
 
       - id: grok-image-2-0
         label: "Image 2.0"
@@ -785,6 +788,9 @@ tasks:
         cost_credits: 5
         cost_usd: 0.02
         enabled: true
+        fallbacks:
+          - provider: genapi
+            model_id: tts-eleven-v3
         voices:
           - id: EkK5I93UQWFDigLMpZcX
             label: "Стандартный"
@@ -819,7 +825,7 @@ tasks:
         has_udio_settings: true
         cost_credits: 20
         cost_usd: 0.04
-        enabled: true
+        enabled: false
 
       - id: elevenlabs-music
         label: "ElevenLabs Music"
@@ -1028,6 +1034,9 @@ tasks:
         cost_by_resolution: {"1K": 4, "2K": 6}
         cost_usd: 0.01
         enabled: true
+        fallbacks:
+          - provider: routerai
+            model_id: black-forest-labs/flux.2-pro
 
       - id: seedream-5-pro-edit
         label: "Pro"
