@@ -79,6 +79,38 @@ def guide_resolution_kb() -> InlineKeyboardMarkup:
     return builder.as_markup()
 
 
+def guide_photo_edit_card_kb() -> InlineKeyboardMarkup:
+    """Макет карточки редактирования фото в руководстве."""
+    builder = InlineKeyboardBuilder()
+    builder.row(InlineKeyboardButton(text="📎 Добавить фото", callback_data="media:guide:param:add_photo"))
+    builder.row(
+        InlineKeyboardButton(text="📐 Масштаб: 1:1", callback_data="media:guide:param:ratio"),
+        InlineKeyboardButton(text="🖼 Качество: 1K", callback_data="media:guide:param:resolution"),
+    )
+    builder.row(InlineKeyboardButton(text="📎 Добавить ориентир", callback_data="media:guide:param:style_ref"))
+    builder.row(
+        InlineKeyboardButton(text="✏️ Ввести описание", callback_data="media:guide:param:prompt"),
+        InlineKeyboardButton(text="◀️ Назад", callback_data="media:guide"),
+    )
+    builder.row(InlineKeyboardButton(text="🚀 Начать генерацию", callback_data="media:guide:param:start"))
+    return builder.as_markup()
+
+
+def guide_photo_edit_back_kb() -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    builder.row(InlineKeyboardButton(text="◀️ Назад", callback_data="media:guide:photo_edit"))
+    return builder.as_markup()
+
+
+def guide_audio_main_kb() -> InlineKeyboardMarkup:
+    """Меню выбора типа аудио в руководстве."""
+    builder = InlineKeyboardBuilder()
+    builder.row(InlineKeyboardButton(text="🎤 Озвучка текста", callback_data="media:guide:audio_voice"))
+    builder.row(InlineKeyboardButton(text="🎵 Генерация аудио", callback_data="media:guide:audio_music"))
+    builder.row(InlineKeyboardButton(text="◀️ Назад", callback_data="media:guide"))
+    return builder.as_markup()
+
+
 def media_info_kb(expanded: bool = False) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     if expanded:
