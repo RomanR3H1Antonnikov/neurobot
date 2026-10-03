@@ -6,6 +6,7 @@ import time
 import uuid
 from aiogram import Router, F
 from aiogram.exceptions import TelegramBadRequest, TelegramNetworkError
+from aiogram.filters import StateFilter
 
 logger = logging.getLogger(__name__)
 from aiogram.types import Message, CallbackQuery, BufferedInputFile, InlineKeyboardMarkup, InlineKeyboardButton
@@ -3552,9 +3553,9 @@ async def confirm_unknown_input(message: Message, state: FSMContext, album: list
 
 # ─── Фото с подписью — быстрый запуск редактирования ─────────────────────────
 
-@router.message(F.photo, F.caption)
+@router.message(~StateFilter("ChatStates:active", "ChatStates:select_model"), F.photo, F.caption)
 async def photo_with_caption_shortcut(message: Message, state: FSMContext) -> None:
-    """Фото + подпись из любого контекста → редактирование фото без лишних шагов."""
+    """Фото + подпись из любого контекста → редактирование фото (не срабатывает в режиме чата)."""
     photo = message.photo[-1]
     caption = message.caption.strip()
 
