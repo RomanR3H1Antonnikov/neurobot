@@ -13,8 +13,26 @@ def media_type_kb() -> InlineKeyboardMarkup:
     )
     builder.row(
         InlineKeyboardButton(text="ℹ️ Инфо", callback_data="media:info"),
+        InlineKeyboardButton(text="📖 Руководство", callback_data="media:guide"),
         InlineKeyboardButton(text="◀️ Назад", callback_data="media:back:menu"),
     )
+    return builder.as_markup()
+
+
+def guide_main_kb() -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    builder.row(InlineKeyboardButton(text="🖼 Как сгенерировать фото", callback_data="media:guide:photo_gen"))
+    builder.row(InlineKeyboardButton(text="✏️ Как отредактировать фото", callback_data="media:guide:photo_edit"))
+    builder.row(InlineKeyboardButton(text="🎬 Как сгенерировать видео", callback_data="media:guide:video_gen"))
+    builder.row(InlineKeyboardButton(text="✂️ Как отредактировать видео", callback_data="media:guide:video_edit"))
+    builder.row(InlineKeyboardButton(text="🎵 Как сгенерировать аудио", callback_data="media:guide:audio_gen"))
+    builder.row(InlineKeyboardButton(text="◀️ Назад", callback_data="media:guide:back"))
+    return builder.as_markup()
+
+
+def guide_section_kb() -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    builder.row(InlineKeyboardButton(text="◀️ Назад", callback_data="media:guide"))
     return builder.as_markup()
 
 
