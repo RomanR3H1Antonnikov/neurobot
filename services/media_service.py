@@ -12,6 +12,23 @@ from db.queries import get_or_create_user, deduct_credits, check_and_increment_r
 
 logger = logging.getLogger(__name__)
 
+_PROVIDER_RETRY = 2        # попыток на каждого провайдера (оригинал + ретрай)
+_PROVIDER_RETRY_DELAY = 3  # секунд между попытками
+
+
+async def _try_provider(fn, *args, **kwargs):
+    """Вызывает fn(*args, **kwargs) до _PROVIDER_RETRY раз при ProviderUnavailableError."""
+    last_err = None
+    for attempt in range(_PROVIDER_RETRY):
+        try:
+            return await fn(*args, **kwargs)
+        except ProviderUnavailableError as e:
+            last_err = e
+            if attempt < _PROVIDER_RETRY - 1:
+                logger.warning("[RETRY] %s attempt %d: %s", fn.__qualname__, attempt + 1, e)
+                await asyncio.sleep(_PROVIDER_RETRY_DELAY)
+    raise last_err
+
 
 async def _strip_audio(video_bytes: bytes) -> bytes:
     """Removes the audio track from a video using ffmpeg (-an -c:v copy)."""
@@ -145,7 +162,8 @@ async def generate_image(
     result, last_err = None, None
     for provider, eff_cfg in chain:
         try:
-            result = await provider.generate_image(
+            result = await _try_provider(
+                provider.generate_image,
                 prompt, aspect_ratio=aspect_ratio, resolution=resolution,
                 model=eff_cfg["model_id"], style_reference_urls=style_reference_urls,
                 quality=quality,
@@ -188,7 +206,8 @@ async def generate_video(
     result, last_err = None, None
     for provider, eff_cfg in chain:
         try:
-            result = await provider.generate_video(
+            result = await _try_provider(
+                provider.generate_video,
                 prompt, duration=duration, model=eff_cfg["model_id"],
                 first_frame_url=first_frame_url,
                 last_frame_url=last_frame_url,
@@ -233,7 +252,8 @@ async def generate_audio(
     result, last_err = None, None
     for provider, eff_cfg in chain:
         try:
-            result = await provider.generate_audio(
+            result = await _try_provider(
+                provider.generate_audio,
                 prompt, audio_type=audio_type, model=eff_cfg["model_id"], music_params=music_params,
             )
             break
@@ -263,7 +283,8 @@ async def edit_image(
     result, last_err = None, None
     for provider, eff_cfg in chain:
         try:
-            result = await provider.edit_image(
+            result = await _try_provider(
+                provider.edit_image,
                 image_bytes, prompt, model=eff_cfg["model_id"],
                 image_url=image_url, style_reference_urls=style_reference_urls,
                 provider_task_id=provider_task_id,
@@ -306,7 +327,8 @@ async def edit_video(
     result, last_err = None, None
     for provider, eff_cfg in chain:
         try:
-            result = await provider.edit_video(
+            result = await _try_provider(
+                provider.edit_video,
                 video_bytes, prompt, model=eff_cfg["model_id"],
                 video_url=video_url,
                 duration=duration,
