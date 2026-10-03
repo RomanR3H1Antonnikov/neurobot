@@ -109,11 +109,21 @@ def _menu_kb(data: dict) -> InlineKeyboardMarkup:
     kind = data.get("model_characters")
     b = InlineKeyboardBuilder()
     for i, c in enumerate(chars):
-        b.row(InlineKeyboardButton(text=f"🗑 {c['name']}", callback_data=f"char:del:{i}"))
+        b.row(InlineKeyboardButton(text=f"👤 {c['name']}", callback_data=f"char:manage:{i}"))
     if len(chars) < _max_items(kind):
         add_text = "➕ Добавить ориентир" if _is_pixverse(kind) else "➕ Создать персонажа"
         b.row(InlineKeyboardButton(text=add_text, callback_data="char:new"))
     b.row(InlineKeyboardButton(text="◀️ Назад", callback_data="char:back"))
+    return b.as_markup()
+
+
+def _manage_kb(idx: int) -> InlineKeyboardMarkup:
+    b = InlineKeyboardBuilder()
+    b.row(
+        InlineKeyboardButton(text="🗑 Удалить", callback_data=f"char:del:{idx}"),
+        InlineKeyboardButton(text="🔄 Заменить", callback_data=f"char:replace:{idx}"),
+    )
+    b.row(InlineKeyboardButton(text="◀️ Назад", callback_data="char:menu"))
     return b.as_markup()
 
 
@@ -212,6 +222,26 @@ async def back_to_constructor(callback: CallbackQuery, state: FSMContext) -> Non
     await callback.answer()
 
 
+@router.callback_query(F.data.startswith("char:manage:"))
+async def manage_character(callback: CallbackQuery, state: FSMContext) -> None:
+    """Показывает меню управления конкретным персонажем: удалить / заменить."""
+    data = await state.get_data()
+    try:
+        idx = int(callback.data.split(":")[2])
+        chars = data.get("characters") or []
+        char = chars[idx]
+    except (ValueError, IndexError):
+        await callback.answer()
+        return
+    label = "ориентир" if _is_pixverse(data.get("model_characters")) else "персонаж"
+    await callback.message.edit_text(
+        f"👤 <b>{char['name']}</b>\n\nЧто сделать с этим {label}ем?",
+        parse_mode="HTML",
+        reply_markup=_manage_kb(idx),
+    )
+    await callback.answer()
+
+
 @router.callback_query(F.data.startswith("char:del:"))
 async def delete_character(callback: CallbackQuery, state: FSMContext) -> None:
     data = await state.get_data()
@@ -225,6 +255,32 @@ async def delete_character(callback: CallbackQuery, state: FSMContext) -> None:
     await state.update_data(characters=chars)
     await _show_menu(callback.bot, callback.message.chat.id, state)
     await callback.answer("Персонаж удалён")
+
+
+@router.callback_query(F.data.startswith("char:replace:"))
+async def replace_character(callback: CallbackQuery, state: FSMContext) -> None:
+    """Удаляет персонажа и сразу запускает создание нового."""
+    data = await state.get_data()
+    chars = list(data.get("characters") or [])
+    try:
+        idx = int(callback.data.split(":")[2])
+        chars.pop(idx)
+    except (ValueError, IndexError):
+        await callback.answer()
+        return
+    await state.update_data(characters=chars)
+    # Запускаем создание нового — как нажали «Создать персонажа»
+    kind = data.get("model_characters")
+    await state.update_data(_sref_msg_id=callback.message.message_id, _char_draft={"file_ids": []})
+    if _is_pixverse(kind):
+        await state.set_state(CharacterStates.ref_photo)
+        await callback.message.edit_text(_REF_PHOTO_TEXT, parse_mode="HTML", reply_markup=_cancel_kb())
+    else:
+        await state.set_state(CharacterStates.name)
+        await callback.message.edit_text(
+            _name_text(kind), parse_mode="HTML", reply_markup=_cancel_kb(),
+        )
+    await callback.answer("Создай нового персонажа на замену")
 
 
 # ─── Создание: имя → описание → фото ─────────────────────────────────────────
