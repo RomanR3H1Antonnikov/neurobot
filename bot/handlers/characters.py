@@ -27,7 +27,7 @@ MAX_CHARACTERS = 3
 # сколько персонажей/ориентиров можно добавить (PixVerse — до 7 именованных ориентиров)
 MAX_BY_KIND = {"kling3": 3, "kling_omni": 3, "gemini": 3, "pixverse": 7}
 # тип → (мин., макс. фото на персонажа)
-PHOTO_RULES = {"kling3": (2, 4), "kling_omni": (1, 4), "gemini": (1, 2), "pixverse": (1, 1)}
+PHOTO_RULES = {"kling3": (2, 4), "kling_omni": (2, 4), "gemini": (1, 2), "pixverse": (1, 1)}
 _REF_TYPES = {"subject": "Объект", "background": "Фон"}
 _NAME_MAX = 30
 _DESC_MAX = 300

@@ -883,7 +883,8 @@ class KieProvider(OpenAICompatProvider):
                     {"url": url, "start": 0, "ends": duration}
                     for url in video_reference_urls
                 ]
-            else:
+            elif not is_wan_prime:
+                # wan/3-0-video-prime не принимает video_urls (422 "unsupported field")
                 input_data["video_urls"] = list(video_reference_urls)
 
         if actual_model == KLING_OMNI_GEN_ALIAS:
