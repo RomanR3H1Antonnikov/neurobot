@@ -43,7 +43,6 @@ def guide_photo_gen_card_kb() -> InlineKeyboardMarkup:
         InlineKeyboardButton(text="📐 Масштаб: 1:1", callback_data="media:guide:param:ratio"),
         InlineKeyboardButton(text="🖼 Качество: 1K", callback_data="media:guide:param:resolution"),
     )
-    builder.row(InlineKeyboardButton(text="🎨 Детализация: Стандарт", callback_data="media:guide:param:quality"))
     builder.row(InlineKeyboardButton(text="📎 Добавить ориентир", callback_data="media:guide:param:style_ref"))
     builder.row(
         InlineKeyboardButton(text="✏️ Ввести описание", callback_data="media:guide:param:prompt"),
