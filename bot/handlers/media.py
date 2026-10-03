@@ -783,6 +783,10 @@ _GUIDE_PARAMS = {
         "этот текст примется как описание."
     ),
     "start": None,
+    "voice_prompt": (
+        "✏️ <b>Ввести текст</b>\n\n"
+        "Здесь вы вводите текст, который впоследствии будет озвучен ИИ."
+    ),
     "voice_dialogue": (
         "💬 <b>Диалог</b>\n\n"
         "Кнопка «Диалог» даёт возможность активировать режим диалога — это инструмент для создания "
@@ -904,7 +908,7 @@ async def guide_param(callback: CallbackQuery) -> None:
         kb = guide_resolution_kb()
     elif key == "add_photo":
         kb = guide_photo_edit_back_kb()
-    elif key in ("voice_dialogue", "voice_stability", "voice_select"):
+    elif key in ("voice_prompt", "voice_dialogue", "voice_stability", "voice_select"):
         kb = guide_audio_voice_back_kb()
     else:
         kb = guide_param_back_kb()
