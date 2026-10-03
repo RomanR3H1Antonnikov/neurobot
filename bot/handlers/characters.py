@@ -155,7 +155,7 @@ def _name_text(kind: str | None, draft: dict | None = None) -> str:
             "и сделает тег: например, «Аня» → <code>@anya</code>. Готовый тег покажем после создания."
         )
     if draft and draft.get("name"):
-        text += f"\n\nВаш текст: «{draft['name']}»"
+        text += f"\n\nВаш текст: <code>{draft['name']}</code>"
     return text
 
 
@@ -165,7 +165,7 @@ def _desc_text(draft: dict | None = None) -> str:
         "(например: «молодая девушка с короткими серебристыми волосами, в чёрной куртке»)."
     )
     if draft and draft.get("description"):
-        text += f"\n\nВаш текст: «{draft['description']}»"
+        text += f"\n\nВаш текст: <code>{draft['description']}</code>"
     return text
 
 
@@ -322,15 +322,13 @@ async def step_nav(callback: CallbackQuery, state: FSMContext) -> None:
     await state.update_data(_sref_msg_id=callback.message.message_id)
 
     if callback.data.endswith(":name"):
-        forward_to = "desc" if draft.get("description") else None
         await state.set_state(CharacterStates.name)
         await _edit(callback.bot, callback.message.chat.id, state,
-                    _name_text(kind, draft), _cancel_kb(forward_to=forward_to))
+                    _name_text(kind, draft), _cancel_kb(forward_to="desc"))
     elif callback.data.endswith(":desc"):
-        forward_to = "photos" if draft.get("file_ids") else None
         await state.set_state(CharacterStates.desc)
         await _edit(callback.bot, callback.message.chat.id, state,
-                    _desc_text(draft), _cancel_kb("name", forward_to))
+                    _desc_text(draft), _cancel_kb("name", "photos"))
     else:  # :photos
         await state.set_state(CharacterStates.photos)
         count = len(draft.get("file_ids") or [])
@@ -429,8 +427,14 @@ async def finish_character(callback: CallbackQuery, state: FSMContext) -> None:
     draft = data.get("_char_draft") or {}
     file_ids = draft.get("file_ids") or []
     lo, _ = PHOTO_RULES[kind]
-    if len(file_ids) < lo or not draft.get("name") or not draft.get("description"):
-        await callback.answer(f"Нужно минимум {lo} фото", show_alert=True)
+    if not draft.get("name"):
+        await callback.answer("⚠️ Сначала заполни имя персонажа (шаг 1)", show_alert=True)
+        return
+    if not draft.get("description"):
+        await callback.answer("⚠️ Сначала заполни описание персонажа (шаг 2)", show_alert=True)
+        return
+    if len(file_ids) < lo:
+        await callback.answer(f"⚠️ Нужно минимум {lo} фото (шаг 3)", show_alert=True)
         return
 
     character = {
