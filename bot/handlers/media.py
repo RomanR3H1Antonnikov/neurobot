@@ -24,7 +24,8 @@ def _has_yookassa() -> bool:
 from bot.keyboards.media import (
     media_type_kb, media_section_kb, MEDIA_SECTIONS, media_info_kb,
     guide_main_kb, guide_section_kb, guide_photo_gen_card_kb, guide_photo_edit_card_kb,
-    guide_audio_main_kb, guide_param_back_kb, guide_photo_edit_back_kb, guide_ratio_kb, guide_resolution_kb,
+    guide_audio_main_kb, guide_audio_voice_card_kb, guide_audio_voice_back_kb,
+    guide_param_back_kb, guide_photo_edit_back_kb, guide_ratio_kb, guide_resolution_kb,
     model_top_kb, model_variant_kb,
     model_select_text, model_variant_text, back_to_model_kb, back_to_confirm_kb, back_to_frames_kb,
     image_confirm_kb, image_ratio_kb, image_resolution_kb, image_quality_kb,
@@ -729,6 +730,11 @@ _GUIDE_AUDIO_INTRO = (
     "Здесь я разделил эти возможности на два раздела для твоего удобства."
 )
 
+_GUIDE_AUDIO_VOICE_TEXT = (
+    "🎤 <b>Озвучка текста</b>\n\n"
+    "У меня есть только одна модель для озвучки — ElevenLabs V3."
+)
+
 _GUIDE_PHOTO_GEN_CARD_TEXT = (
     "🖼 <b>Как сгенерировать фото</b>\n\n"
     "Это — стандартные настройки генерации фото, они есть у каждой модели. Когда ты выберешь "
@@ -777,6 +783,23 @@ _GUIDE_PARAMS = {
         "этот текст примется как описание."
     ),
     "start": None,
+    "voice_dialogue": (
+        "💬 <b>Диалог</b>\n\n"
+        "Кнопка «Диалог» даёт возможность активировать режим диалога — это инструмент для создания "
+        "естественной речи в разговорах между несколькими персонажами. Он позволяет модели обрабатывать "
+        "перебивания, смену тона и эмоциональные оттенки, опираясь на контекст беседы. Перед генерацией "
+        "обязательно размечайте реплики по говорящим (например, «Персонаж А:», «Персонаж Б:»). Это помогает "
+        "модели правильно распределить голоса. На результат сильно влияют знаки препинания, длина фраз и "
+        "общий ритм текста. Иногда стоит разбить длинные предложения или добавить абзацы для нужных пауз."
+    ),
+    "voice_stability": (
+        "⚙️ <b>Стиль</b>\n\n"
+        "Кнопка с шестерёнкой отвечает за стиль, который позволяет регулировать баланс между "
+        "естественностью и эмоциональностью."
+    ),
+    "voice_select": (
+        "🗣 <b>Голос</b>\n\nЗдесь можно выбрать голос озвучки."
+    ),
     "add_photo": (
         "📎 <b>Добавить фото</b>\n\n"
         "Сюда вы загружаете фото, которое хотите отредактировать. При загрузке фото, оно становится для "
@@ -855,8 +878,16 @@ async def guide_audio_gen(callback: CallbackQuery) -> None:
     await callback.answer()
 
 
-@router.callback_query(MediaStates.select_type, F.data.in_({"media:guide:audio_voice", "media:guide:audio_music"}))
-async def guide_audio_section(callback: CallbackQuery) -> None:
+@router.callback_query(MediaStates.select_type, F.data == "media:guide:audio_voice")
+async def guide_audio_voice(callback: CallbackQuery) -> None:
+    await callback.message.edit_text(
+        _GUIDE_AUDIO_VOICE_TEXT, parse_mode="HTML", reply_markup=guide_audio_voice_card_kb(),
+    )
+    await callback.answer()
+
+
+@router.callback_query(MediaStates.select_type, F.data == "media:guide:audio_music")
+async def guide_audio_music(callback: CallbackQuery) -> None:
     await callback.answer("Раздел в разработке — скоро здесь будет подробное объяснение.", show_alert=True)
 
 
@@ -873,6 +904,8 @@ async def guide_param(callback: CallbackQuery) -> None:
         kb = guide_resolution_kb()
     elif key == "add_photo":
         kb = guide_photo_edit_back_kb()
+    elif key in ("voice_dialogue", "voice_stability", "voice_select"):
+        kb = guide_audio_voice_back_kb()
     else:
         kb = guide_param_back_kb()
     await callback.message.edit_text(text, parse_mode="HTML", reply_markup=kb)
