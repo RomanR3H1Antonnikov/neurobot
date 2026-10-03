@@ -22,7 +22,7 @@ from config import config as _billing_cfg
 def _has_yookassa() -> bool:
     return bool(_billing_cfg.yookassa_provider_token)
 from bot.keyboards.media import (
-    media_type_kb, media_section_kb, MEDIA_SECTIONS, media_info_kb, model_top_kb, model_variant_kb,
+    media_type_kb, media_section_kb, MEDIA_SECTIONS, media_info_kb, guide_main_kb, guide_section_kb, model_top_kb, model_variant_kb,
     model_select_text, model_variant_text, back_to_model_kb, back_to_confirm_kb, back_to_frames_kb,
     image_confirm_kb, image_ratio_kb, image_resolution_kb, image_quality_kb,
     video_confirm_kb, video_format_kb, video_frames_menu_kb, video_duration_picker_kb, audio_confirm_kb, edit_confirm_kb, edit_sound_kb,
@@ -701,6 +701,85 @@ async def media_info(callback: CallbackQuery) -> None:
 @router.callback_query(MediaStates.select_type, F.data == "media:info:expand")
 async def media_info_expand(callback: CallbackQuery) -> None:
     await callback.message.edit_text(_INFO_FULL, parse_mode="HTML", reply_markup=media_info_kb(expanded=True))
+    await callback.answer()
+
+
+_GUIDE_INTRO = (
+    "📖 <b>Руководство</b>\n\n"
+    "Этот раздел создан для объяснения настроек ИИ моделей, которые есть в боте. "
+    "Раздел учебный и ничего не генерирует. Чтобы сгенерировать реальное фото/видео/аудио, "
+    "выбери соответствующий раздел в «Генерация медиа»."
+)
+
+_GUIDE_SECTIONS = {
+    "photo_gen": (
+        "🖼 <b>Как сгенерировать фото</b>\n\n"
+        "1. В разделе «Генерация медиа» выбери <b>Фото → Генерация фото</b>.\n"
+        "2. Выбери модель и нажми «Выбрать».\n"
+        "3. Введи описание (промпт) — что должно быть на изображении.\n"
+        "4. Настрой параметры: соотношение сторон, разрешение, качество.\n"
+        "5. При желании добавь фото-ориентиры для стиля.\n"
+        "6. Нажми <b>«Начать генерацию»</b>.\n\n"
+        "💡 Чем подробнее промпт, тем точнее результат."
+    ),
+    "photo_edit": (
+        "✏️ <b>Как отредактировать фото</b>\n\n"
+        "1. В разделе «Генерация медиа» выбери <b>Фото → Редактировать ваше фото</b>.\n"
+        "2. Выбери модель редактирования.\n"
+        "3. Отправь фото, которое нужно изменить.\n"
+        "4. Опиши, что именно надо изменить (промпт).\n"
+        "5. При необходимости настрой разрешение и соотношение сторон.\n"
+        "6. Нажми <b>«Начать генерацию»</b>.\n\n"
+        "💡 Конкретно опиши изменение: «замени фон на закат» лучше, чем «измени фон»."
+    ),
+    "video_gen": (
+        "🎬 <b>Как сгенерировать видео</b>\n\n"
+        "1. В разделе «Генерация медиа» выбери <b>Видео → Генерация видео</b>.\n"
+        "2. Выбери модель и нажми «Выбрать».\n"
+        "3. Введи описание сцены (промпт).\n"
+        "4. Настрой параметры: длительность, разрешение, соотношение сторон.\n"
+        "5. Дополнительно:\n"
+        "   — «Оживить фото» — добавь первый/последний кадр;\n"
+        "   — «Конструктор видео» — загрузи фото-/видео-ориентиры и персонажей;\n"
+        "   — «Добавить аудио» — прикрепи звуковой файл (если поддерживается моделью).\n"
+        "6. Нажми <b>«Начать генерацию»</b>."
+    ),
+    "video_edit": (
+        "✂️ <b>Как отредактировать видео</b>\n\n"
+        "1. В разделе «Генерация медиа» выбери <b>Видео → Редактировать ваше видео</b>.\n"
+        "2. Выбери модель редактирования.\n"
+        "3. Отправь видео для редактирования (обрати внимание на допустимую длину).\n"
+        "4. Опиши изменения в промпте.\n"
+        "5. При поддержке модели можно добавить фото-ориентир для стиля.\n"
+        "6. Нажми <b>«Начать генерацию»</b>.\n\n"
+        "💡 Чем конкретнее описание изменений, тем лучше результат."
+    ),
+    "audio_gen": (
+        "🎵 <b>Как сгенерировать аудио</b>\n\n"
+        "1. В разделе «Генерация медиа» выбери <b>Аудио</b>.\n"
+        "2. Выбери модель: озвучка текста, генерация музыки или звуковых эффектов.\n"
+        "3. Введи текст или описание звука (промпт).\n"
+        "4. Для голоса: выбери голос и язык.\n"
+        "5. Для музыки: можно задать жанр, настроение, стиль.\n"
+        "6. Нажми <b>«Начать генерацию»</b>."
+    ),
+}
+
+_GUIDE_CALLBACKS = {f"media:guide:{k}" for k in _GUIDE_SECTIONS}
+
+
+@router.callback_query(MediaStates.select_type, F.data == "media:guide")
+@router.callback_query(MediaStates.select_type, F.data == "media:guide:back")
+async def guide_main(callback: CallbackQuery) -> None:
+    await callback.message.edit_text(_GUIDE_INTRO, parse_mode="HTML", reply_markup=guide_main_kb())
+    await callback.answer()
+
+
+@router.callback_query(MediaStates.select_type, F.data.in_(_GUIDE_CALLBACKS))
+async def guide_section(callback: CallbackQuery) -> None:
+    key = callback.data.split(":")[2]
+    text = _GUIDE_SECTIONS.get(key, "Раздел временно недоступен.")
+    await callback.message.edit_text(text, parse_mode="HTML", reply_markup=guide_section_kb())
     await callback.answer()
 
 
