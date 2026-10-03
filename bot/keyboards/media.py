@@ -541,8 +541,15 @@ def audio_confirm_kb(
     voice_label: str | None = None,
     style_ref_count: int = 0,
     max_style_refs: int = 0,
+    has_duration: bool = False,
+    duration: int = 30,
 ) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
+    if has_duration:
+        builder.row(InlineKeyboardButton(
+            text=f"⏱ Длительность: {duration} сек",
+            callback_data="media:music_duration",
+        ))
     if voice_label is not None:
         builder.row(InlineKeyboardButton(text=f"🗣 Голос: {voice_label}", callback_data="media:pick_voice"))
     if max_style_refs > 0:
