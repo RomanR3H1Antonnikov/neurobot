@@ -23,7 +23,8 @@ def _has_yookassa() -> bool:
     return bool(_billing_cfg.yookassa_provider_token)
 from bot.keyboards.media import (
     media_type_kb, media_section_kb, MEDIA_SECTIONS, media_info_kb,
-    guide_main_kb, guide_section_kb, guide_photo_gen_card_kb, guide_param_back_kb, guide_ratio_kb, guide_resolution_kb,
+    guide_main_kb, guide_section_kb, guide_photo_gen_card_kb, guide_photo_edit_card_kb,
+    guide_audio_main_kb, guide_param_back_kb, guide_photo_edit_back_kb, guide_ratio_kb, guide_resolution_kb,
     model_top_kb, model_variant_kb,
     model_select_text, model_variant_text, back_to_model_kb, back_to_confirm_kb, back_to_frames_kb,
     image_confirm_kb, image_ratio_kb, image_resolution_kb, image_quality_kb,
@@ -713,6 +714,21 @@ _GUIDE_INTRO = (
     "выбери соответствующий раздел в «Генерация медиа»."
 )
 
+_GUIDE_PHOTO_EDIT_CARD_TEXT = (
+    "✏️ <b>Как отредактировать фото</b>\n\n"
+    "Этот раздел позволяет отредактировать готовое фото. Здесь те же самые настройки, что и в разделе "
+    "генерации фото, плюс кнопка «Добавить фото», суть этих параметров ничем не отличается от тех, "
+    "что настраивают генерацию фото. Единственное, что стоит отметить — ориентиры здесь переносятся "
+    "на фото более детально и чётко. Нейросеть пытается по-максимуму воспроизвести добавленные вами "
+    "ориентиры, это связано с логикой работы ИИ в режиме редактирования."
+)
+
+_GUIDE_AUDIO_INTRO = (
+    "🎵 <b>Как сгенерировать аудио</b>\n\n"
+    "Я могу как сгенерировать аудио с нуля, так и озвучить твой текст. "
+    "Здесь я разделил эти возможности на два раздела для твоего удобства."
+)
+
 _GUIDE_PHOTO_GEN_CARD_TEXT = (
     "🖼 <b>Как сгенерировать фото</b>\n\n"
     "Это — стандартные настройки генерации фото, они есть у каждой модели. Когда ты выберешь "
@@ -761,21 +777,23 @@ _GUIDE_PARAMS = {
         "этот текст примется как описание."
     ),
     "start": None,
+    "add_photo": (
+        "📎 <b>Добавить фото</b>\n\n"
+        "Сюда вы загружаете фото, которое хотите отредактировать. При загрузке фото, оно становится для "
+        "нейросети ключевым. Расскажу про чисто технический момент: нейросеть принимает загруженное вами "
+        "фото как @image1, но указывать на него так при составлении описания необязательно, нейросеть сама "
+        "понимает, что это фото ключевое, и всё, что вы пишите, должно применяться к нему. "
+        "Стоит понимать, что если главное фото идёт как @image1, то добавленные вами фото-ориентиры, "
+        "даже если он первый по списку, будет принят ботом как @image2, а второй по списку как @image3 "
+        "и так далее. После загрузки рядом появится кнопка с мусорным баком, нажав на неё, вы удалите "
+        "загруженное фото. Если захотите поменять его, просто отправьте новое, можете отправить его в общие "
+        "настройки, можете сюда, бот примет его в любом случае."
+    ),
 }
 
 _GUIDE_PARAM_CALLBACKS = {f"media:guide:param:{k}" for k in _GUIDE_PARAMS}
 
 _GUIDE_SECTIONS = {
-    "photo_edit": (
-        "✏️ <b>Как отредактировать фото</b>\n\n"
-        "1. В разделе «Генерация медиа» выбери <b>Фото → Редактировать ваше фото</b>.\n"
-        "2. Выбери модель редактирования.\n"
-        "3. Отправь фото, которое нужно изменить.\n"
-        "4. Опиши, что именно надо изменить (промпт).\n"
-        "5. При необходимости настрой разрешение и соотношение сторон.\n"
-        "6. Нажми <b>«Начать генерацию»</b>.\n\n"
-        "💡 Конкретно опиши изменение: «замени фон на закат» лучше, чем «измени фон»."
-    ),
     "video_gen": (
         "🎬 <b>Как сгенерировать видео</b>\n\n"
         "1. В разделе «Генерация медиа» выбери <b>Видео → Генерация видео</b>.\n"
@@ -798,18 +816,12 @@ _GUIDE_SECTIONS = {
         "6. Нажми <b>«Начать генерацию»</b>.\n\n"
         "💡 Чем конкретнее описание изменений, тем лучше результат."
     ),
-    "audio_gen": (
-        "🎵 <b>Как сгенерировать аудио</b>\n\n"
-        "1. В разделе «Генерация медиа» выбери <b>Аудио</b>.\n"
-        "2. Выбери модель: озвучка текста, генерация музыки или звуковых эффектов.\n"
-        "3. Введи текст или описание звука (промпт).\n"
-        "4. Для голоса: выбери голос и язык.\n"
-        "5. Для музыки: можно задать жанр, настроение, стиль.\n"
-        "6. Нажми <b>«Начать генерацию»</b>."
-    ),
 }
 
-_GUIDE_CALLBACKS = {f"media:guide:{k}" for k in _GUIDE_SECTIONS} | {"media:guide:photo_gen"}
+_GUIDE_CALLBACKS = (
+    {f"media:guide:{k}" for k in _GUIDE_SECTIONS}
+    | {"media:guide:photo_gen", "media:guide:photo_edit", "media:guide:audio_gen"}
+)
 
 
 @router.callback_query(MediaStates.select_type, F.data == "media:guide")
@@ -827,6 +839,27 @@ async def guide_photo_gen(callback: CallbackQuery) -> None:
     await callback.answer()
 
 
+@router.callback_query(MediaStates.select_type, F.data == "media:guide:photo_edit")
+async def guide_photo_edit(callback: CallbackQuery) -> None:
+    await callback.message.edit_text(
+        _GUIDE_PHOTO_EDIT_CARD_TEXT, parse_mode="HTML", reply_markup=guide_photo_edit_card_kb(),
+    )
+    await callback.answer()
+
+
+@router.callback_query(MediaStates.select_type, F.data == "media:guide:audio_gen")
+async def guide_audio_gen(callback: CallbackQuery) -> None:
+    await callback.message.edit_text(
+        _GUIDE_AUDIO_INTRO, parse_mode="HTML", reply_markup=guide_audio_main_kb(),
+    )
+    await callback.answer()
+
+
+@router.callback_query(MediaStates.select_type, F.data.in_({"media:guide:audio_voice", "media:guide:audio_music"}))
+async def guide_audio_section(callback: CallbackQuery) -> None:
+    await callback.answer("Раздел в разработке — скоро здесь будет подробное объяснение.", show_alert=True)
+
+
 @router.callback_query(MediaStates.select_type, F.data.in_(_GUIDE_PARAM_CALLBACKS))
 async def guide_param(callback: CallbackQuery) -> None:
     key = callback.data.split(":")[3]
@@ -838,6 +871,8 @@ async def guide_param(callback: CallbackQuery) -> None:
         kb = guide_ratio_kb()
     elif key == "resolution":
         kb = guide_resolution_kb()
+    elif key == "add_photo":
+        kb = guide_photo_edit_back_kb()
     else:
         kb = guide_param_back_kb()
     await callback.message.edit_text(text, parse_mode="HTML", reply_markup=kb)
