@@ -1624,15 +1624,25 @@ async def style_ref_back_to_collect(callback: CallbackQuery, state: FSMContext) 
 
 @router.callback_query(F.data == "media:style_ref_replace")
 async def style_ref_replace_start(callback: CallbackQuery, state: FSMContext) -> None:
-    """Запрашивает номер фото для замены."""
+    """Запрашивает номер фото для замены (или пропускает шаг, если фото одно)."""
     data = await state.get_data()
-    count = len(data.get("style_reference_file_ids") or [])
+    srefs = list(data.get("style_reference_file_ids") or [])
+    count = len(srefs)
     max_refs = data.get("model_max_style_refs", 14)
-    await state.update_data(managing_style_ref="replace")
-    await callback.message.edit_text(
-        f"Введи номер фото для замены (1–{count}):",
-        reply_markup=style_ref_collecting_kb(count, max_refs),
-    )
+    await state.update_data(adding_style_ref=True, _sref_msg_id=callback.message.message_id)
+    await state.set_state(MediaStates.enter_reference)
+    if count == 1:
+        await state.update_data(managing_style_ref="replace_photo", managing_style_ref_index=0)
+        await callback.message.edit_text(
+            "Пришли новое фото для замены #1:",
+            reply_markup=style_ref_collecting_kb(count, max_refs),
+        )
+    else:
+        await state.update_data(managing_style_ref="replace")
+        await callback.message.edit_text(
+            f"Введи номер фото для замены (1–{count}):",
+            reply_markup=style_ref_collecting_kb(count, max_refs),
+        )
     await callback.answer()
 
 
@@ -2175,16 +2185,20 @@ async def delete_video_refs_all(callback: CallbackQuery, state: FSMContext) -> N
 async def replace_extra_frame(callback: CallbackQuery, state: FSMContext) -> None:
     data = await state.get_data()
     count = len(data.get("style_reference_file_ids") or [])
-    await state.update_data(
-        adding_video_extra_frame=True,
-        managing_style_ref="replace",
-        _sref_msg_id=callback.message.message_id,
-    )
-    await callback.message.edit_text(
-        f"Введи номер фото для замены (1–{count}):",
-        reply_markup=back_to_frames_kb(),
-    )
+    await state.update_data(adding_video_extra_frame=True, _sref_msg_id=callback.message.message_id)
     await state.set_state(MediaStates.enter_reference)
+    if count == 1:
+        await state.update_data(managing_style_ref="replace_photo", managing_style_ref_index=0)
+        await callback.message.edit_text(
+            "Пришли новое фото для замены #1:",
+            reply_markup=back_to_frames_kb(),
+        )
+    else:
+        await state.update_data(managing_style_ref="replace")
+        await callback.message.edit_text(
+            f"Введи номер фото для замены (1–{count}):",
+            reply_markup=back_to_frames_kb(),
+        )
     await callback.answer()
 
 
@@ -2192,15 +2206,20 @@ async def replace_extra_frame(callback: CallbackQuery, state: FSMContext) -> Non
 async def replace_video_ref(callback: CallbackQuery, state: FSMContext) -> None:
     data = await state.get_data()
     count = len(data.get("video_style_reference_file_ids") or [])
-    await state.update_data(
-        adding_video_ref=True,
-        managing_video_ref="replace",
-        _sref_msg_id=callback.message.message_id,
-    )
-    await callback.message.edit_text(
-        f"Введи номер видео для замены (1–{count}):",
-        reply_markup=back_to_frames_kb(),
-    )
+    await state.update_data(adding_video_ref=True, _sref_msg_id=callback.message.message_id)
+    await state.set_state(MediaStates.enter_reference)
+    if count == 1:
+        await state.update_data(managing_video_ref="replace_video", managing_video_ref_index=0)
+        await callback.message.edit_text(
+            "Пришли новое видео для замены #1:",
+            reply_markup=back_to_frames_kb(),
+        )
+    else:
+        await state.update_data(managing_video_ref="replace")
+        await callback.message.edit_text(
+            f"Введи номер видео для замены (1–{count}):",
+            reply_markup=back_to_frames_kb(),
+        )
     await state.set_state(MediaStates.enter_reference)
     await callback.answer()
 
