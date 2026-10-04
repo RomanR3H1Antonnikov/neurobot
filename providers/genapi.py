@@ -372,7 +372,13 @@ class GenApiProvider(AbstractProvider):
                 result = choices[0].get("message", {}).get("content", "") if choices else None
             elif isinstance(raw, list) and raw:
                 first = raw[0]
-                result = (first.get("message", {}).get("content") or first.get("text") or first.get("content")) if isinstance(first, dict) else None
+                if isinstance(first, dict):
+                    # Формат GenAPI Perplexity: result=[{"choices":[{"message":{"content":...}}]}]
+                    first_choices = first.get("choices") or []
+                    if first_choices:
+                        result = first_choices[0].get("message", {}).get("content")
+                    if not result:
+                        result = first.get("message", {}).get("content") or first.get("text") or first.get("content")
             elif isinstance(raw, str):
                 result = raw
         if not result or not isinstance(result, str):
