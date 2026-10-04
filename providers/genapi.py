@@ -329,24 +329,52 @@ class GenApiProvider(AbstractProvider):
             payload_messages.append({"role": "system", "content": system})
         payload_messages.extend(messages)
 
-        data = await self._post_sync(actual_model, {
-            "messages": payload_messages,
-        })
+        # GenAPI chat-модели (Perplexity и др.) используют callback-flow,
+        # аналогично генерации, но с messages вместо prompt.
+        corr_id = uuid.uuid4().hex
+        callback_url = f"{self._callback_base()}/genapi/callback/{corr_id}"
+        payload = {"messages": payload_messages, "callback_url": callback_url}
 
-        # Извлекаем текст из ответа — GenAPI может возвращать разные форматы
-        # 1) OpenAI-совместимый формат на верхнем уровне: {"choices": [{"message": {"content": ...}}]}
-        if "choices" in data and isinstance(data["choices"], list) and data["choices"]:
-            result = data["choices"][0].get("message", {}).get("content", "")
-        else:
-            result = data.get("result") or data.get("data") or data.get("content") or data.get("text")
-            if isinstance(result, dict):
-                choices = result.get("choices") or []
-                if choices:
-                    result = choices[0].get("message", {}).get("content", "")
-            if isinstance(result, list) and result:
-                first = result[0]
-                if isinstance(first, dict):
-                    result = first.get("message", {}).get("content") or first.get("text") or first.get("content")
+        fut = register_pending(corr_id)
+        try:
+            async with aiohttp.ClientSession(
+                headers=self._headers(),
+                timeout=aiohttp.ClientTimeout(total=60),
+            ) as session:
+                async with session.post(f"{_BASE_URL}/networks/{actual_model}", json=payload) as resp:
+                    if resp.status == 402:
+                        raise ProviderUnavailableError("Недостаточно средств на балансе GenAPI")
+                    if resp.status >= 400:
+                        body = await resp.text()
+                        logger.error("GenAPI chat HTTP %s model=%s: %s", resp.status, actual_model, body[:300])
+                        raise ProviderUnavailableError(f"GenAPI chat HTTP {resp.status}")
+                    await resp.json()
+
+            data = await asyncio.wait_for(fut, timeout=_CALLBACK_TIMEOUT)
+        except asyncio.TimeoutError:
+            raise ProviderUnavailableError("GenAPI: истекло время ожидания ответа чата")
+        finally:
+            unregister_pending(corr_id)
+
+        if _is_failed(data):
+            logger.error("GenAPI chat failed: model=%s body=%s", actual_model, str(data)[:300])
+            raise ProviderUnavailableError("GenAPI: задача чата завершилась с ошибкой")
+
+        # Извлекаем текст — GenAPI возвращает разные форматы
+        result = None
+        # Формат 1: {"choices": [{"message": {"content": ...}}]} на верхнем уровне
+        if isinstance(data.get("choices"), list) and data["choices"]:
+            result = data["choices"][0].get("message", {}).get("content")
+        if not result:
+            raw = data.get("result") or data.get("data") or data.get("content") or data.get("text")
+            if isinstance(raw, dict):
+                choices = raw.get("choices") or []
+                result = choices[0].get("message", {}).get("content", "") if choices else None
+            elif isinstance(raw, list) and raw:
+                first = raw[0]
+                result = (first.get("message", {}).get("content") or first.get("text") or first.get("content")) if isinstance(first, dict) else None
+            elif isinstance(raw, str):
+                result = raw
         if not result or not isinstance(result, str):
             logger.error("GenAPI chat: неожиданный формат ответа model=%s body=%s", actual_model, str(data)[:400])
             raise ProviderUnavailableError("GenAPI: не удалось получить ответ чата")
