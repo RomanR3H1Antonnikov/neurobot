@@ -334,16 +334,20 @@ class GenApiProvider(AbstractProvider):
         })
 
         # Извлекаем текст из ответа — GenAPI может возвращать разные форматы
-        result = data.get("result") or data.get("data") or data.get("content") or data.get("text")
-        if isinstance(result, dict):
-            choices = result.get("choices") or []
-            if choices:
-                result = choices[0].get("message", {}).get("content", "")
-        if isinstance(result, list) and result:
-            first = result[0]
-            if isinstance(first, dict):
-                result = first.get("message", {}).get("content") or first.get("text") or first.get("content")
+        # 1) OpenAI-совместимый формат на верхнем уровне: {"choices": [{"message": {"content": ...}}]}
+        if "choices" in data and isinstance(data["choices"], list) and data["choices"]:
+            result = data["choices"][0].get("message", {}).get("content", "")
+        else:
+            result = data.get("result") or data.get("data") or data.get("content") or data.get("text")
+            if isinstance(result, dict):
+                choices = result.get("choices") or []
+                if choices:
+                    result = choices[0].get("message", {}).get("content", "")
+            if isinstance(result, list) and result:
+                first = result[0]
+                if isinstance(first, dict):
+                    result = first.get("message", {}).get("content") or first.get("text") or first.get("content")
         if not result or not isinstance(result, str):
-            logger.error("GenAPI chat: неожиданный формат ответа model=%s body=%s", actual_model, str(data)[:300])
+            logger.error("GenAPI chat: неожиданный формат ответа model=%s body=%s", actual_model, str(data)[:400])
             raise ProviderUnavailableError("GenAPI: не удалось получить ответ чата")
         return ChatResult(text=result)
