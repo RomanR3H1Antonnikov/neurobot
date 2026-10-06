@@ -199,7 +199,7 @@ async def _edit(bot, chat_id: int, state: FSMContext, text: str, kb: InlineKeybo
 async def _show_menu(bot, chat_id: int, state: FSMContext) -> None:
     from bot.handlers.media import MediaStates
     await state.set_state(MediaStates.confirm)
-    await state.update_data(_char_draft=None, _char_menu_active=True)
+    await state.update_data(_char_draft=None, _char_menu_active=True, _replacing_idx=None)
     data = await state.get_data()
     await _edit(bot, chat_id, state, _menu_text(data), _menu_kb(data))
 
@@ -225,7 +225,7 @@ async def open_menu(callback: CallbackQuery, state: FSMContext) -> None:
 @router.callback_query(F.data == "char:back")
 async def back_to_constructor(callback: CallbackQuery, state: FSMContext) -> None:
     from bot.handlers.media import _back_to_frames_menu
-    await state.update_data(_char_draft=None, _char_menu_active=None)
+    await state.update_data(_char_draft=None, _char_menu_active=None, _replacing_idx=None)
     await _back_to_frames_menu(callback.bot, callback.message.chat.id, state)
     await callback.answer()
 
@@ -267,19 +267,20 @@ async def delete_character(callback: CallbackQuery, state: FSMContext) -> None:
 
 @router.callback_query(F.data.startswith("char:replace:"))
 async def replace_character(callback: CallbackQuery, state: FSMContext) -> None:
-    """Удаляет персонажа и сразу запускает создание нового."""
+    """Запускает создание нового персонажа на замену; старый удаляется только при нажатии «Готово»."""
     data = await state.get_data()
     chars = list(data.get("characters") or [])
     try:
         idx = int(callback.data.split(":")[2])
-        chars.pop(idx)
+        if idx < 0 or idx >= len(chars):
+            raise IndexError
     except (ValueError, IndexError):
         await callback.answer()
         return
-    await state.update_data(characters=chars)
-    # Запускаем создание нового — как нажали «Создать персонажа»
     kind = data.get("model_characters")
-    await state.update_data(_sref_msg_id=callback.message.message_id, _char_draft={"file_ids": []})
+    # Сохраняем индекс замены — старый персонаж пока остаётся в списке
+    await state.update_data(_sref_msg_id=callback.message.message_id, _char_draft={"file_ids": []},
+                            _replacing_idx=idx)
     if _is_pixverse(kind):
         await state.set_state(CharacterStates.ref_photo)
         await callback.message.edit_text(_REF_PHOTO_TEXT, parse_mode="HTML", reply_markup=_cancel_kb())
@@ -466,8 +467,12 @@ async def finish_character(callback: CallbackQuery, state: FSMContext) -> None:
         await callback.answer()
 
     chars = list(data.get("characters") or [])
-    chars.append(character)
-    await state.update_data(characters=chars)
+    replacing_idx = data.get("_replacing_idx")
+    if replacing_idx is not None and 0 <= replacing_idx < len(chars):
+        chars[replacing_idx] = character
+    else:
+        chars.append(character)
+    await state.update_data(characters=chars, _replacing_idx=None)
     await _show_menu(callback.bot, callback.message.chat.id, state)
 
 
