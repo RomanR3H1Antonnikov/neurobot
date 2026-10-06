@@ -921,6 +921,17 @@ async def guide_noop(callback: CallbackQuery) -> None:
     await callback.answer()
 
 
+@router.message(MediaStates.select_type, F.photo | F.video | F.document | F.audio | F.voice)
+async def guide_media_received(message: Message) -> None:
+    await message.delete()
+    notice = await message.answer(
+        "Я принял твоё фото. В этом разделе я не могу ничего сделать с ним, "
+        "чтобы начать реальную работу, выбери настоящие модели."
+    )
+    await asyncio.sleep(5)
+    await notice.delete()
+
+
 @router.callback_query(MediaStates.select_type, F.data.in_(_GUIDE_CALLBACKS))
 async def guide_section(callback: CallbackQuery) -> None:
     key = callback.data.split(":")[2]
