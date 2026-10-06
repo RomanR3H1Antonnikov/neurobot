@@ -33,6 +33,9 @@ class RetryingSession(AiohttpSession):
         # Неактивное соединение с Telegram закрываем через 5 сек (по умолчанию 15): иначе запрос
         # уходит в уже «мёртвое» соединение, висит десятки секунд и заканчивается Connection reset.
         self._connector_init["keepalive_timeout"] = 5
+        # Закрываем соединения, которые удалённая сторона уже закрыла (CLOSE_WAIT),
+        # чтобы polling не вис молча при «тихом» разрыве TCP-канала к Telegram.
+        self._connector_init["enable_cleanup_closed"] = True
 
     async def make_request(self, bot, method, timeout=None):
         name = type(method).__name__
