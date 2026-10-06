@@ -141,7 +141,11 @@ def guide_video_gen_card_kb() -> InlineKeyboardMarkup:
     builder.row(InlineKeyboardButton(text="🌅 Оживить фото", callback_data="media:guide:param:video_animate"))
     builder.row(InlineKeyboardButton(text="🎛 Конструктор видео", callback_data="media:guide:param:video_constructor"))
     builder.row(
-        InlineKeyboardButton(text="✏️ Ввести описание", callback_data="media:guide:param:prompt"),
+        InlineKeyboardButton(text="🎵 Аудио", callback_data="media:guide:param:video_audio"),
+        InlineKeyboardButton(text="🔊 Звуковое сопровождение", callback_data="media:guide:param:video_sound"),
+    )
+    builder.row(
+        InlineKeyboardButton(text="✏️ Ввести описание", callback_data="media:guide:param:video_prompt"),
         InlineKeyboardButton(text="◀️ Назад", callback_data="media:guide"),
     )
     builder.row(InlineKeyboardButton(text="🚀 Начать генерацию", callback_data="media:guide:param:start"))

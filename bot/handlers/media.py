@@ -840,6 +840,19 @@ _GUIDE_PARAMS = {
         "от начала видео (первого кадра) к концу (последнему кадру), зависит от твоего описания. "
         "Постарайся сделать текст логичным и подробным."
     ),
+    "video_audio": (
+        "🎵 <b>Аудио</b>\n\n"
+        "Сюда ты можешь загрузить свои аудио файлы, которые воспроизведутся в видео. "
+        "Количество таких файлов индивидуально у каждой модели, у каких-то их вообще нет. "
+        "Суммарная длительность всех загруженных тобой файлов не должна превышать максимальную длительность видео."
+    ),
+    "video_sound": None,  # показывается как алерт, текст задан в guide_param
+    "video_prompt": (
+        "✏️ <b>Ввести описание</b>\n\n"
+        "Здесь вводится описание желаемого видео. При этом, бот устроен так, что необязательно "
+        "нажимать на эту кнопку, можно ввести текст в общий раздел с параметрами, "
+        "этот текст примется как описание."
+    ),
     "video_constructor": (
         "🎛 <b>Конструктор видео</b>\n\n"
         "Сюда загружаются ориентиры (референсы), на которые будет опираться нейросеть. Поскольку это шаблон, "
@@ -943,6 +956,14 @@ async def guide_param(callback: CallbackQuery) -> None:
     if key == "start":
         await callback.answer("Здесь я ничего не генерирую, только объясняю.", show_alert=True)
         return
+    if key == "video_sound":
+        await callback.answer(
+            "Если «Звуковое сопровождение» включено, то ИИ сгенерирует фоновую музыку для твоего видео на свой вкус. "
+            "При этом, если ты добавил свой аудио-файл, проигрываться будет он. "
+            "В случае отключения этого параметра, музыки на фоне не будет вообще.",
+            show_alert=True,
+        )
+        return
     text = _GUIDE_PARAMS.get(key, "Раздел временно недоступен.")
     if key == "ratio":
         kb = guide_ratio_kb()
@@ -952,7 +973,8 @@ async def guide_param(callback: CallbackQuery) -> None:
         kb = guide_photo_edit_back_kb()
     elif key in ("voice_prompt", "voice_dialogue", "voice_stability", "voice_select"):
         kb = guide_audio_voice_back_kb()
-    elif key in ("duration", "video_ratio", "video_resolution", "video_animate", "video_constructor"):
+    elif key in ("duration", "video_ratio", "video_resolution", "video_animate", "video_constructor",
+                 "video_audio", "video_prompt"):
         kb = guide_video_param_back_kb()
     else:
         kb = guide_param_back_kb()
