@@ -26,6 +26,7 @@ from bot.keyboards.media import (
     guide_main_kb, guide_section_kb, guide_photo_gen_card_kb, guide_photo_edit_card_kb,
     guide_audio_main_kb, guide_audio_voice_card_kb, guide_audio_voice_back_kb,
     guide_param_back_kb, guide_photo_edit_back_kb, guide_ratio_kb, guide_resolution_kb,
+    guide_video_gen_card_kb, guide_video_param_back_kb,
     model_top_kb, model_variant_kb,
     model_select_text, model_variant_text, back_to_model_kb, back_to_confirm_kb, back_to_frames_kb,
     image_confirm_kb, image_ratio_kb, image_resolution_kb, image_quality_kb,
@@ -816,17 +817,41 @@ _GUIDE_PARAMS = {
         "загруженное фото. Если захотите поменять его, просто отправьте новое, можете отправить его в общие "
         "настройки, можете сюда, бот примет его в любом случае."
     ),
+    "duration": (
+        "⏱ <b>Длительность</b>\n\n"
+        "Здесь ты можешь выбрать длительность видео нажав на одну из кнопок, либо ввести своё число. "
+        "Введённое тобой число не должно превышать максимально допустимую длительность видео, "
+        "у каждой модели она своя."
+    ),
+    "video_ratio": (
+        "📐 <b>Масштаб</b>\n\n"
+        "Как и в генерации фото, здесь ты выбираешь соотношение сторон в твоём видео."
+    ),
+    "video_resolution": (
+        "🖼 <b>Качество</b>\n\n"
+        "Здесь ты выбираешь качество твоего видео."
+    ),
+    "video_animate": (
+        "🌅 <b>Оживить фото</b>\n\n"
+        "Если у тебя есть фото, которое ты хочешь оживить, загрузи его как первое фото, а затем задай "
+        "описание видео. ИИ применит описание к твоей фотографии, сделав из неё видео. "
+        "Ряд моделей также позволяют добавить второе фото, оно будет играть роль последнего кадра, "
+        "то есть содержимое фотографии ИИ поместит в конец видео. Насколько плавно будет работать переход "
+        "от начала видео (первого кадра) к концу (последнему кадру), зависит от твоего описания. "
+        "Постарайся сделать текст логичным и подробным."
+    ),
 }
 
 _GUIDE_PARAM_CALLBACKS = {f"media:guide:param:{k}" for k in _GUIDE_PARAMS}
 
+_GUIDE_VIDEO_GEN_CARD_TEXT = (
+    "🎬 <b>Как сгенерировать видео</b>\n\n"
+    "Здесь представлены наиболее распространённые настройки генерации видео и инструкция по их использованию. "
+    "При работе с реальной моделью, вместо этого текста будут отображаться выбранные тобой параметры, "
+    "название и описание нейросети."
+)
+
 _GUIDE_SECTIONS = {
-    "video_gen": (
-        "🎬 <b>Как сгенерировать видео</b>\n\n"
-        "Здесь представлены наиболее распространённые настройки генерации видео и инструкция по их использованию. "
-        "При работе с реальной моделью, вместо этого текста будут отображаться выбранные тобой параметры, "
-        "название и описание нейросети."
-    ),
     "video_edit": (
         "✂️ <b>Как отредактировать видео</b>\n\n"
         "1. В разделе «Генерация медиа» выбери <b>Видео → Редактировать ваше видео</b>.\n"
@@ -841,7 +866,7 @@ _GUIDE_SECTIONS = {
 
 _GUIDE_CALLBACKS = (
     {f"media:guide:{k}" for k in _GUIDE_SECTIONS}
-    | {"media:guide:photo_gen", "media:guide:photo_edit", "media:guide:audio_gen"}
+    | {"media:guide:photo_gen", "media:guide:photo_edit", "media:guide:audio_gen", "media:guide:video_gen"}
 )
 
 
@@ -849,6 +874,14 @@ _GUIDE_CALLBACKS = (
 @router.callback_query(MediaStates.select_type, F.data == "media:guide:back")
 async def guide_main(callback: CallbackQuery) -> None:
     await callback.message.edit_text(_GUIDE_INTRO, parse_mode="HTML", reply_markup=guide_main_kb())
+    await callback.answer()
+
+
+@router.callback_query(MediaStates.select_type, F.data == "media:guide:video_gen")
+async def guide_video_gen(callback: CallbackQuery) -> None:
+    await callback.message.edit_text(
+        _GUIDE_VIDEO_GEN_CARD_TEXT, parse_mode="HTML", reply_markup=guide_video_gen_card_kb(),
+    )
     await callback.answer()
 
 
@@ -904,6 +937,8 @@ async def guide_param(callback: CallbackQuery) -> None:
         kb = guide_photo_edit_back_kb()
     elif key in ("voice_prompt", "voice_dialogue", "voice_stability", "voice_select"):
         kb = guide_audio_voice_back_kb()
+    elif key in ("duration", "video_ratio", "video_resolution", "video_animate"):
+        kb = guide_video_param_back_kb()
     else:
         kb = guide_param_back_kb()
     await callback.message.edit_text(text, parse_mode="HTML", reply_markup=kb)

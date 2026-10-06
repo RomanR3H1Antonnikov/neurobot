@@ -130,6 +130,29 @@ def guide_audio_voice_back_kb() -> InlineKeyboardMarkup:
     return builder.as_markup()
 
 
+def guide_video_gen_card_kb() -> InlineKeyboardMarkup:
+    """Макет карточки настроек генерации видео (обучающий, нефункциональный)."""
+    builder = InlineKeyboardBuilder()
+    builder.row(
+        InlineKeyboardButton(text="⏱ Длительность: 5с", callback_data="media:guide:param:duration"),
+        InlineKeyboardButton(text="📐 Масштаб: 16:9", callback_data="media:guide:param:video_ratio"),
+    )
+    builder.row(InlineKeyboardButton(text="🖼 Качество: 720p", callback_data="media:guide:param:video_resolution"))
+    builder.row(InlineKeyboardButton(text="🌅 Оживить фото", callback_data="media:guide:param:video_animate"))
+    builder.row(
+        InlineKeyboardButton(text="✏️ Ввести описание", callback_data="media:guide:param:prompt"),
+        InlineKeyboardButton(text="◀️ Назад", callback_data="media:guide"),
+    )
+    builder.row(InlineKeyboardButton(text="🚀 Начать генерацию", callback_data="media:guide:param:start"))
+    return builder.as_markup()
+
+
+def guide_video_param_back_kb() -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    builder.row(InlineKeyboardButton(text="◀️ Назад", callback_data="media:guide:video_gen"))
+    return builder.as_markup()
+
+
 def media_info_kb(expanded: bool = False) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     if expanded:
