@@ -3,7 +3,7 @@ import logging
 import re
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
-from bot.retry_session import RetryingSession
+from bot.retry_session import RetryingSession, polling_watchdog
 from aiogram.enums import ParseMode
 
 from config import config
@@ -68,6 +68,7 @@ async def main() -> None:
     webhook_runner = await start_webhook_server(host="0.0.0.0", port=8081)
     logger.info("Бот запущен")
     asyncio.create_task(recover_orphaned_jobs())  # забрать результаты, пришедшие пока бот был выключен
+    asyncio.create_task(polling_watchdog())  # перезапуск при зависании getUpdates
 
     try:
         await dp.start_polling(bot, allowed_updates=dp.resolve_used_update_types())

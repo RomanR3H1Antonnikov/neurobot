@@ -8,10 +8,15 @@
 
 Повторяем только методы, где повтор безопасен или важнее возможного дубля (доставка результата),
 и только при сетевых обрывах — не при таймаутах (они могут означать долгую загрузку большого
-видео). getUpdates не трогаем: у диспетчера своя логика переподключения.
+видео).
+
+Watchdog: если GetUpdates не возвращает ответ дольше WATCHDOG_SECONDS — TCP-соединение
+«тихо» зависло. os._exit(1) + Restart=always в systemd поднимают бот заново за ~5 сек.
 """
 import asyncio
 import logging
+import os
+import time
 
 from aiogram.client.session.aiohttp import AiohttpSession
 from aiogram.exceptions import TelegramBadRequest, TelegramNetworkError
@@ -25,6 +30,19 @@ _RETRY_METHODS = {
     "SendMessage", "SendPhoto", "SendVideo", "SendDocument", "SendAudio", "SendVoice", "SendMediaGroup",
 }
 _ATTEMPTS = 3
+WATCHDOG_SECONDS = 300  # 5 минут без ответа от getUpdates → перезапуск
+
+_last_get_updates: float = time.monotonic()
+
+
+async def polling_watchdog() -> None:
+    """Перезапускает процесс если polling завис дольше WATCHDOG_SECONDS."""
+    while True:
+        await asyncio.sleep(60)
+        elapsed = time.monotonic() - _last_get_updates
+        if elapsed > WATCHDOG_SECONDS:
+            logger.error("Watchdog: getUpdates не отвечал %.0f сек — принудительный перезапуск", elapsed)
+            os._exit(1)
 
 
 class RetryingSession(AiohttpSession):
@@ -33,12 +51,18 @@ class RetryingSession(AiohttpSession):
         # Неактивное соединение с Telegram закрываем через 5 сек (по умолчанию 15): иначе запрос
         # уходит в уже «мёртвое» соединение, висит десятки секунд и заканчивается Connection reset.
         self._connector_init["keepalive_timeout"] = 5
-        # Закрываем соединения, которые удалённая сторона уже закрыла (CLOSE_WAIT),
-        # чтобы polling не вис молча при «тихом» разрыве TCP-канала к Telegram.
+        # Закрываем соединения, которые удалённая сторона уже закрыла (CLOSE_WAIT).
         self._connector_init["enable_cleanup_closed"] = True
 
     async def make_request(self, bot, method, timeout=None):
+        global _last_get_updates
         name = type(method).__name__
+
+        if name == "GetUpdates":
+            # Обновляем метку времени ДО запроса; если запрос завис, watchdog поймает это
+            # через WATCHDOG_SECONDS и перезапустит процесс.
+            _last_get_updates = time.monotonic()
+
         if name == "AnswerCallbackQuery":
             # Ответ на нажатие кнопки живёт у Telegram считанные секунды. Если он «протух» (бот
             # успел повисеть на сетевом сбое), это не ошибка обработки: раньше исключение
@@ -50,7 +74,14 @@ class RetryingSession(AiohttpSession):
                     logger.info("Нажатие кнопки устарело — ответ на него пропускаем")
                     return True
                 raise
-        return await self._request_with_retry(name, bot, method, timeout)
+
+        result = await self._request_with_retry(name, bot, method, timeout)
+
+        if name == "GetUpdates":
+            # Успешный ответ сбрасывает watchdog-таймер.
+            _last_get_updates = time.monotonic()
+
+        return result
 
     async def _request_with_retry(self, name, bot, method, timeout):
         if name not in _RETRY_METHODS:
