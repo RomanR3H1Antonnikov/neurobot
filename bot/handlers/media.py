@@ -27,7 +27,7 @@ from bot.keyboards.media import (
     guide_audio_main_kb, guide_audio_voice_card_kb, guide_audio_voice_back_kb,
     guide_param_back_kb, guide_photo_edit_back_kb, guide_ratio_kb, guide_resolution_kb,
     guide_video_gen_card_kb, guide_video_animate_kb, guide_video_constructor_kb, guide_video_audio_kb,
-    guide_video_param_back_kb,
+    guide_video_param_back_kb, guide_video_duration_kb, guide_video_ratio_kb, guide_video_resolution_kb,
     model_top_kb, model_variant_kb,
     model_select_text, model_variant_text, back_to_model_kb, back_to_confirm_kb, back_to_frames_kb,
     image_confirm_kb, image_ratio_kb, image_resolution_kb, image_quality_kb,
@@ -1008,8 +1008,13 @@ async def guide_param(callback: CallbackQuery) -> None:
         kb = guide_photo_edit_back_kb()
     elif key in ("voice_prompt", "voice_dialogue", "voice_stability", "voice_select"):
         kb = guide_audio_voice_back_kb()
-    elif key in ("duration", "video_ratio", "video_resolution", "video_animate", "video_constructor",
-                 "video_audio", "video_prompt"):
+    elif key == "duration":
+        kb = guide_video_duration_kb()
+    elif key == "video_ratio":
+        kb = guide_video_ratio_kb()
+    elif key == "video_resolution":
+        kb = guide_video_resolution_kb()
+    elif key in ("video_animate", "video_constructor", "video_audio", "video_prompt"):
         kb = guide_video_param_back_kb()
     else:
         kb = guide_param_back_kb()

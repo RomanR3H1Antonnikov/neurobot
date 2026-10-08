@@ -185,6 +185,41 @@ def guide_video_param_back_kb() -> InlineKeyboardMarkup:
     return builder.as_markup()
 
 
+_VIDEO_DURATIONS = [5, 10, 20, 30]
+_VIDEO_RATIOS = ["16:9", "4:3", "1:1", "3:4", "9:16", "21:9"]
+_VIDEO_RESOLUTIONS = ["480p", "720p", "1080p"]
+
+
+def guide_video_duration_kb() -> InlineKeyboardMarkup:
+    """Наглядные кнопки длительности видео в руководстве (Seedance 2.5, нефункциональные)."""
+    builder = InlineKeyboardBuilder()
+    for d in _VIDEO_DURATIONS:
+        builder.add(InlineKeyboardButton(text=f"{d} сек", callback_data="media:guide:noop"))
+    builder.adjust(4)
+    builder.row(InlineKeyboardButton(text="◀️ Назад", callback_data="media:guide:video_gen"))
+    return builder.as_markup()
+
+
+def guide_video_ratio_kb() -> InlineKeyboardMarkup:
+    """Наглядные кнопки масштаба видео в руководстве (Seedance 2.5, нефункциональные)."""
+    builder = InlineKeyboardBuilder()
+    for r in _VIDEO_RATIOS:
+        builder.add(InlineKeyboardButton(text=r, callback_data="media:guide:noop"))
+    builder.adjust(3)
+    builder.row(InlineKeyboardButton(text="◀️ Назад", callback_data="media:guide:video_gen"))
+    return builder.as_markup()
+
+
+def guide_video_resolution_kb() -> InlineKeyboardMarkup:
+    """Наглядные кнопки качества видео в руководстве (Seedance 2.5, нефункциональные)."""
+    builder = InlineKeyboardBuilder()
+    for r in _VIDEO_RESOLUTIONS:
+        builder.add(InlineKeyboardButton(text=r, callback_data="media:guide:noop"))
+    builder.adjust(3)
+    builder.row(InlineKeyboardButton(text="◀️ Назад", callback_data="media:guide:video_gen"))
+    return builder.as_markup()
+
+
 def media_info_kb(expanded: bool = False) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     if expanded:
