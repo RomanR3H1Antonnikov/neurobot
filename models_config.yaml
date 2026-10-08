@@ -370,8 +370,6 @@ tasks:
         aspect_ratios: ["16:9", "9:16", "1:1"]
         resolutions: ["720p", "1080p", "4K"]
         max_style_refs: 0
-        # Кнопка «Создать персонажа» в Конструкторе видео (kling3)
-        characters: kling3
         model_id: kling-3.0/video
         provider: kie
         cost_credits: 10
