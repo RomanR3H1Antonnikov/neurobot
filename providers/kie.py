@@ -830,15 +830,8 @@ class KieProvider(OpenAICompatProvider):
                 # Append after first_frame (if any) — total cap 7 images
                 existing = input_data.get("image_urls", [])
                 input_data["image_urls"] = existing + list(style_reference_urls)
-            elif is_wan_prime:
-                # wan/3-0-video-prime не поддерживает image_urls — используем frame urls
-                refs = list(style_reference_urls)
-                if not input_data.get("first_frame_url"):
-                    input_data["first_frame_url"] = refs[0]
-                if len(refs) > 1 and not input_data.get("last_frame_url"):
-                    input_data["last_frame_url"] = refs[1]
-            elif is_wan3:
-                # Wan 3.0 использует reference_image_urls, а не image_urls (422 на старом поле)
+            elif is_wan_prime or is_wan3:
+                # Wan 3.0 и Prime используют reference_image_urls (image_urls даёт 422)
                 input_data["reference_image_urls"] = list(style_reference_urls)
             else:
                 # minimax-h3, wan (2.7), pixverse, google и прочие
