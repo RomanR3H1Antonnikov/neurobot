@@ -375,6 +375,7 @@ tasks:
         cost_credits: 10
         cost_per_second_by_resolution: {"720p": 13.0, "1080p": 16.0, "4K": 36.0}
         cost_per_second_by_resolution_no_audio: {"720p": 10.0, "1080p": 12.0}
+        audio_default: false
         cost_usd: 0.08
         enabled: true
 

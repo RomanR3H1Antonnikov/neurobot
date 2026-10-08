@@ -1095,7 +1095,7 @@ async def select_model(callback: CallbackQuery, state: FSMContext) -> None:
         "model_input_video_max": model_cfg.get("max_input_video_seconds"),
         "model_duration_custom": model_cfg.get("duration_custom", True),
         "model_has_audio": model_cfg.get("audio", True),
-        "video_audio_enabled": model_cfg.get("audio", True),
+        "video_audio_enabled": model_cfg.get("audio_default", model_cfg.get("audio", True)),
         "motion_orientation": "image" if model_cfg.get("motion_control") else None,
         "video_frames_mode": None,
     }
