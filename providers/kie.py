@@ -767,6 +767,9 @@ class KieProvider(OpenAICompatProvider):
         is_bytedance = actual_model.startswith("bytedance/")
         is_wan = actual_model.startswith("wan/")
         is_wan_prime = actual_model == "wan/3-0-video-prime"
+        # Wan 3.0 (wan/3-0-video) использует новые имена полей: reference_image/video/audio_urls
+        # Wan 2.7 (wan/2-7-*) использует старые: image_urls, video_urls, audio_urls
+        is_wan3 = actual_model == "wan/3-0-video"
         is_pixverse = actual_model.startswith("pixverse")
         is_google = actual_model.startswith("google/")
         is_grok_video = actual_model.startswith("grok-imagine-video")
@@ -834,8 +837,11 @@ class KieProvider(OpenAICompatProvider):
                     input_data["first_frame_url"] = refs[0]
                 if len(refs) > 1 and not input_data.get("last_frame_url"):
                     input_data["last_frame_url"] = refs[1]
+            elif is_wan3:
+                # Wan 3.0 использует reference_image_urls, а не image_urls (422 на старом поле)
+                input_data["reference_image_urls"] = list(style_reference_urls)
             else:
-                # minimax-h3, wan, pixverse, google и прочие
+                # minimax-h3, wan (2.7), pixverse, google и прочие
                 input_data["image_urls"] = list(style_reference_urls)
 
         # ── Формат вывода ────────────────────────────────────────────────────
@@ -868,6 +874,9 @@ class KieProvider(OpenAICompatProvider):
             if is_google:
                 # Gemini ожидает поле audio_ids
                 input_data["audio_ids"] = list(audio_reference_urls)
+            elif is_wan3:
+                # Wan 3.0 использует reference_audio_urls
+                input_data["reference_audio_urls"] = list(audio_reference_urls)
             else:
                 input_data["audio_urls"] = list(audio_reference_urls)
 
@@ -883,6 +892,9 @@ class KieProvider(OpenAICompatProvider):
                     {"url": url, "start": 0, "ends": duration}
                     for url in video_reference_urls
                 ]
+            elif is_wan3:
+                # Wan 3.0 использует reference_video_urls
+                input_data["reference_video_urls"] = list(video_reference_urls)
             elif not is_wan_prime:
                 # wan/3-0-video-prime не принимает video_urls (422 "unsupported field")
                 input_data["video_urls"] = list(video_reference_urls)
