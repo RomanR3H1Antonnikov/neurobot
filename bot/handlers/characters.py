@@ -112,7 +112,7 @@ def _menu_kb(data: dict) -> InlineKeyboardMarkup:
     for i, c in enumerate(chars):
         b.row(InlineKeyboardButton(text=f"👤 {c['name']}", callback_data=f"char:manage:{i}"))
     if len(chars) < _max_items(kind):
-        add_text = "➕ Добавить ориентир" if _is_pixverse(kind) else "➕ Создать персонажа"
+        add_text = "➕ Добавить фото-ориентир" if _is_pixverse(kind) else "➕ Создать персонажа"
         b.row(InlineKeyboardButton(text=add_text, callback_data="char:new"))
     b.row(InlineKeyboardButton(text="◀️ Назад", callback_data="char:back"))
     return b.as_markup()
