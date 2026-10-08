@@ -899,9 +899,14 @@ _GUIDE_CALLBACKS = (
 
 
 @router.callback_query(MediaStates.select_type, F.data == "media:guide")
-@router.callback_query(MediaStates.select_type, F.data == "media:guide:back")
 async def guide_main(callback: CallbackQuery) -> None:
     await callback.message.edit_text(_GUIDE_INTRO, parse_mode="HTML", reply_markup=guide_main_kb())
+    await callback.answer()
+
+
+@router.callback_query(MediaStates.select_type, F.data == "media:guide:back")
+async def guide_back(callback: CallbackQuery) -> None:
+    await callback.message.edit_text(MEDIA_MENU_TEXT, parse_mode="HTML", reply_markup=media_type_kb())
     await callback.answer()
 
 
