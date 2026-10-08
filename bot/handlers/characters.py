@@ -130,10 +130,13 @@ def _manage_kb(idx: int) -> InlineKeyboardMarkup:
 def _cancel_kb(back_to: str | None = None, forward_to: str | None = None) -> InlineKeyboardMarkup:
     """Навигация по шагам создания персонажа."""
     b = InlineKeyboardBuilder()
+    nav = []
     if back_to:
-        b.row(InlineKeyboardButton(text="⬅️ Шаг назад", callback_data=f"char:step:{back_to}"))
+        nav.append(InlineKeyboardButton(text="⬅️ Назад", callback_data=f"char:step:{back_to}"))
     if forward_to:
-        b.row(InlineKeyboardButton(text="➡️ Шаг вперёд", callback_data=f"char:step:{forward_to}"))
+        nav.append(InlineKeyboardButton(text="➡️ Вперёд", callback_data=f"char:step:{forward_to}"))
+    if nav:
+        b.row(*nav)
     b.row(InlineKeyboardButton(text="◀️ Отмена", callback_data="char:menu"))
     return b.as_markup()
 
@@ -287,7 +290,7 @@ async def replace_character(callback: CallbackQuery, state: FSMContext) -> None:
     else:
         await state.set_state(CharacterStates.name)
         await callback.message.edit_text(
-            _name_text(kind), parse_mode="HTML", reply_markup=_cancel_kb(),
+            _name_text(kind), parse_mode="HTML", reply_markup=_cancel_kb(forward_to="desc"),
         )
     await callback.answer("Создай нового персонажа на замену")
 
@@ -309,7 +312,8 @@ async def new_character(callback: CallbackQuery, state: FSMContext) -> None:
         return
     await state.set_state(CharacterStates.name)
     await callback.message.edit_text(
-        _name_text(data.get("model_characters")), parse_mode="HTML", reply_markup=_cancel_kb(),
+        _name_text(data.get("model_characters")), parse_mode="HTML",
+        reply_markup=_cancel_kb(forward_to="desc"),
     )
     await callback.answer()
 
@@ -327,10 +331,16 @@ async def step_nav(callback: CallbackQuery, state: FSMContext) -> None:
         await _edit(callback.bot, callback.message.chat.id, state,
                     _name_text(kind, draft), _cancel_kb(forward_to="desc"))
     elif callback.data.endswith(":desc"):
+        if not draft.get("name"):
+            await callback.answer("⚠️ Сначала введи имя персонажа", show_alert=True)
+            return
         await state.set_state(CharacterStates.desc)
         await _edit(callback.bot, callback.message.chat.id, state,
                     _desc_text(draft), _cancel_kb("name", "photos"))
     else:  # :photos
+        if not draft.get("description"):
+            await callback.answer("⚠️ Сначала введи описание персонажа", show_alert=True)
+            return
         await state.set_state(CharacterStates.photos)
         count = len(draft.get("file_ids") or [])
         lo = PHOTO_RULES[kind][0]
@@ -355,7 +365,7 @@ async def enter_name(message: Message, state: FSMContext) -> None:
     draft.update(name=name, tag=_make_tag(name, existing))
     await state.update_data(_char_draft=draft)
     await state.set_state(CharacterStates.desc)
-    await _edit(message.bot, message.chat.id, state, _desc_text(draft), _cancel_kb("name"))
+    await _edit(message.bot, message.chat.id, state, _desc_text(draft), _cancel_kb("name", "photos"))
 
 
 @router.message(CharacterStates.desc, F.text, ~F.text.in_(MENU_BUTTONS))
