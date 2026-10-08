@@ -88,6 +88,14 @@ class RouteraiProvider(OpenAICompatProvider):
         if style_reference_urls:
             payload["image_urls"] = list(style_reference_urls)
 
+        logger.info(
+            "RouteAI video payload: model=%s first_frame=%s last_frame=%s image_urls_count=%d",
+            actual_model,
+            bool(first_frame_url),
+            bool(last_frame_url),
+            len(style_reference_urls) if style_reference_urls else 0,
+        )
+
         headers = {
             "Authorization": f"Bearer {self._api_key}",
             "Content-Type": "application/json",
