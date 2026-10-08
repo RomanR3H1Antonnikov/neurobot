@@ -81,6 +81,10 @@ class RouteraiProvider(OpenAICompatProvider):
             "resolution": resolution or "720p",
             "audio": audio,
         }
+        if first_frame_url:
+            payload["first_frame_url"] = first_frame_url
+        if last_frame_url:
+            payload["last_frame_url"] = last_frame_url
         if style_reference_urls:
             payload["image_urls"] = list(style_reference_urls)
 
