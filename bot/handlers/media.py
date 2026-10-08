@@ -26,7 +26,8 @@ from bot.keyboards.media import (
     guide_main_kb, guide_section_kb, guide_photo_gen_card_kb, guide_photo_edit_card_kb,
     guide_audio_main_kb, guide_audio_voice_card_kb, guide_audio_voice_back_kb,
     guide_param_back_kb, guide_photo_edit_back_kb, guide_ratio_kb, guide_resolution_kb,
-    guide_video_gen_card_kb, guide_video_param_back_kb,
+    guide_video_gen_card_kb, guide_video_animate_kb, guide_video_constructor_kb, guide_video_audio_kb,
+    guide_video_param_back_kb,
     model_top_kb, model_variant_kb,
     model_select_text, model_variant_text, back_to_model_kb, back_to_confirm_kb, back_to_frames_kb,
     image_confirm_kb, image_ratio_kb, image_resolution_kb, image_quality_kb,
@@ -911,15 +912,44 @@ async def guide_back(callback: CallbackQuery) -> None:
 
 
 @router.callback_query(MediaStates.select_type, F.data == "media:guide:video_gen")
-async def guide_video_gen(callback: CallbackQuery) -> None:
+async def guide_video_gen(callback: CallbackQuery, state: FSMContext) -> None:
+    await state.update_data(guide_section="video_gen")
     await callback.message.edit_text(
         _GUIDE_VIDEO_GEN_CARD_TEXT, parse_mode="HTML", reply_markup=guide_video_gen_card_kb(),
     )
     await callback.answer()
 
 
+@router.callback_query(MediaStates.select_type, F.data == "media:guide:video_animate")
+async def guide_video_animate(callback: CallbackQuery, state: FSMContext) -> None:
+    await state.update_data(guide_section="video_animate")
+    await callback.message.edit_text(
+        _GUIDE_PARAMS["video_animate"], parse_mode="HTML", reply_markup=guide_video_animate_kb(),
+    )
+    await callback.answer()
+
+
+@router.callback_query(MediaStates.select_type, F.data == "media:guide:video_constructor")
+async def guide_video_constructor(callback: CallbackQuery, state: FSMContext) -> None:
+    await state.update_data(guide_section="video_constructor")
+    await callback.message.edit_text(
+        _GUIDE_PARAMS["video_constructor"], parse_mode="HTML", reply_markup=guide_video_constructor_kb(),
+    )
+    await callback.answer()
+
+
+@router.callback_query(MediaStates.select_type, F.data == "media:guide:video_audio")
+async def guide_video_audio_sub(callback: CallbackQuery, state: FSMContext) -> None:
+    await state.update_data(guide_section="video_audio")
+    await callback.message.edit_text(
+        _GUIDE_PARAMS["video_audio"], parse_mode="HTML", reply_markup=guide_video_audio_kb(),
+    )
+    await callback.answer()
+
+
 @router.callback_query(MediaStates.select_type, F.data == "media:guide:photo_gen")
-async def guide_photo_gen(callback: CallbackQuery) -> None:
+async def guide_photo_gen(callback: CallbackQuery, state: FSMContext) -> None:
+    await state.update_data(guide_section="photo_gen")
     await callback.message.edit_text(
         _GUIDE_PHOTO_GEN_CARD_TEXT, parse_mode="HTML", reply_markup=guide_photo_gen_card_kb(),
     )
@@ -993,12 +1023,40 @@ async def guide_noop(callback: CallbackQuery) -> None:
 
 
 @router.message(MediaStates.select_type, F.photo | F.video | F.document | F.audio | F.voice)
-async def guide_media_received(message: Message) -> None:
+async def guide_media_received(message: Message, state: FSMContext) -> None:
+    data = await state.get_data()
+    section = data.get("guide_section", "")
     await message.delete()
-    notice = await message.answer(
-        "Я принял твоё фото. В этом разделе я не могу ничего сделать с ним, "
-        "чтобы начать реальную работу, выбери настоящие модели."
-    )
+
+    if section == "photo_gen":
+        if message.photo:
+            text = "В реальной генерации это фото стало бы ориентиром стиля."
+        else:
+            text = "Здесь принимаются только фото — как ориентир стиля для генерации."
+    elif section == "video_animate":
+        if message.photo:
+            text = "В реальной генерации это фото стало бы первым или последним кадром видео."
+        else:
+            text = "В этом разделе принимаются только фото — для первого и последнего кадра."
+    elif section == "video_constructor":
+        if message.photo:
+            text = "В реальной генерации это фото стало бы фото-ориентиром."
+        elif message.video:
+            text = "В реальной генерации это видео стало бы видео-ориентиром."
+        else:
+            text = "В конструкторе принимаются фото и видео. Аудио-файлы — не подходят."
+    elif section == "video_audio":
+        if message.audio or message.voice:
+            text = "В реальной генерации этот файл стал бы аудио-ориентиром."
+        else:
+            text = "Здесь принимаются только аудио-файлы."
+    else:
+        text = (
+            "Я принял твой файл. В этом разделе я не могу ничего сделать с ним — "
+            "чтобы начать реальную работу, выбери настоящие модели."
+        )
+
+    notice = await message.answer(text)
     await asyncio.sleep(5)
     await notice.delete()
 

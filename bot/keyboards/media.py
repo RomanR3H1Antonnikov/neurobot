@@ -131,24 +131,51 @@ def guide_audio_voice_back_kb() -> InlineKeyboardMarkup:
 
 
 def guide_video_gen_card_kb() -> InlineKeyboardMarkup:
-    """Макет карточки настроек генерации видео (обучающий, нефункциональный)."""
+    """Макет карточки настроек генерации видео (Seedance 2.5-like, нефункциональный)."""
     builder = InlineKeyboardBuilder()
+    builder.row(InlineKeyboardButton(text="⏱ Длительность: 5 сек", callback_data="media:guide:param:duration"))
     builder.row(
-        InlineKeyboardButton(text="⏱ Длительность: 5с", callback_data="media:guide:param:duration"),
         InlineKeyboardButton(text="📐 Масштаб: 16:9", callback_data="media:guide:param:video_ratio"),
+        InlineKeyboardButton(text="🖼 Качество: 720p", callback_data="media:guide:param:video_resolution"),
     )
-    builder.row(InlineKeyboardButton(text="🖼 Качество: 720p", callback_data="media:guide:param:video_resolution"))
-    builder.row(InlineKeyboardButton(text="🌅 Оживить фото", callback_data="media:guide:param:video_animate"))
-    builder.row(InlineKeyboardButton(text="🎛 Конструктор видео", callback_data="media:guide:param:video_constructor"))
     builder.row(
-        InlineKeyboardButton(text="🎵 Аудио", callback_data="media:guide:param:video_audio"),
-        InlineKeyboardButton(text="🔊 Звуковое сопровождение", callback_data="media:guide:param:video_sound"),
+        InlineKeyboardButton(text="🌅 Оживить фото", callback_data="media:guide:video_animate"),
+        InlineKeyboardButton(text="🎬 Конструктор видео", callback_data="media:guide:video_constructor"),
     )
+    builder.row(InlineKeyboardButton(text="🎵 Аудио", callback_data="media:guide:video_audio"))
+    builder.row(InlineKeyboardButton(text="🔊 Звуковое сопровождение: ВКЛ", callback_data="media:guide:param:video_sound"))
     builder.row(
         InlineKeyboardButton(text="✏️ Ввести описание", callback_data="media:guide:param:video_prompt"),
         InlineKeyboardButton(text="◀️ Назад", callback_data="media:guide"),
     )
     builder.row(InlineKeyboardButton(text="🚀 Начать генерацию", callback_data="media:guide:param:start"))
+    return builder.as_markup()
+
+
+def guide_video_animate_kb() -> InlineKeyboardMarkup:
+    """Макет режима 'Оживить фото' в руководстве (нефункциональный)."""
+    builder = InlineKeyboardBuilder()
+    builder.row(InlineKeyboardButton(text="📎 Начало видео", callback_data="media:guide:noop"))
+    builder.row(InlineKeyboardButton(text="📎 Конец видео", callback_data="media:guide:noop"))
+    builder.row(InlineKeyboardButton(text="◀️ Назад", callback_data="media:guide:video_gen"))
+    return builder.as_markup()
+
+
+def guide_video_constructor_kb() -> InlineKeyboardMarkup:
+    """Макет конструктора видео в руководстве (нефункциональный)."""
+    builder = InlineKeyboardBuilder()
+    builder.row(InlineKeyboardButton(text="📷 Фото", callback_data="media:guide:noop"))
+    builder.row(InlineKeyboardButton(text="🎬 Видео", callback_data="media:guide:noop"))
+    builder.row(InlineKeyboardButton(text="👤 Создать персонажа", callback_data="media:guide:noop"))
+    builder.row(InlineKeyboardButton(text="◀️ Назад", callback_data="media:guide:video_gen"))
+    return builder.as_markup()
+
+
+def guide_video_audio_kb() -> InlineKeyboardMarkup:
+    """Макет раздела аудио-ориентира в руководстве (нефункциональный)."""
+    builder = InlineKeyboardBuilder()
+    builder.row(InlineKeyboardButton(text="🎵 Добавить аудио", callback_data="media:guide:noop"))
+    builder.row(InlineKeyboardButton(text="◀️ Назад", callback_data="media:guide:video_gen"))
     return builder.as_markup()
 
 
