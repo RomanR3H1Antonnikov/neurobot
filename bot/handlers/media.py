@@ -1051,8 +1051,16 @@ async def guide_media_received(message: Message, state: FSMContext) -> None:
         else:
             text = "Здесь принимаются только аудио-файлы."
     else:
+        if message.photo:
+            received = "твоё фото"
+        elif message.video or message.document:
+            received = "твоё видео"
+        elif message.audio or message.voice:
+            received = "твой аудио-файл"
+        else:
+            received = "твой файл"
         text = (
-            "Я принял твой файл. В этом разделе я не могу ничего сделать с ним — "
+            f"Я принял {received}. В этом разделе я не могу ничего сделать с ним — "
             "чтобы начать реальную работу, выбери настоящие модели."
         )
 
