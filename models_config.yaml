@@ -702,6 +702,7 @@ tasks:
         max_style_refs: 5
         max_video_refs: 1
         max_audio_refs: 3
+        constructor_includes_video: true
         # Кнопка «Создать персонажа» в Конструкторе видео (gemini)
         characters: gemini
         model_id: google/gemini-omni-flash-1-1
