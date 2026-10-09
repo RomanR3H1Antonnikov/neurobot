@@ -185,6 +185,51 @@ def guide_video_param_back_kb() -> InlineKeyboardMarkup:
     return builder.as_markup()
 
 
+def guide_video_edit_card_kb() -> InlineKeyboardMarkup:
+    """Макет карточки настроек редактирования видео (Kling 3.0 Omni, нефункциональный)."""
+    builder = InlineKeyboardBuilder()
+    builder.row(InlineKeyboardButton(text="📎 Добавить видео", callback_data="media:guide:param:add_video"))
+    builder.row(
+        InlineKeyboardButton(text="📐 Масштаб: 16:9", callback_data="media:guide:param:video_edit_ratio"),
+        InlineKeyboardButton(text="🖼 Качество: 720p", callback_data="media:guide:param:video_edit_resolution"),
+    )
+    builder.row(InlineKeyboardButton(text="📎 Добавить ориентир", callback_data="media:guide:param:video_edit_style"))
+    builder.row(
+        InlineKeyboardButton(text="✏️ Ввести описание", callback_data="media:guide:param:video_edit_prompt"),
+        InlineKeyboardButton(text="◀️ Назад", callback_data="media:guide"),
+    )
+    builder.row(InlineKeyboardButton(text="🚀 Начать генерацию", callback_data="media:guide:param:start"))
+    return builder.as_markup()
+
+
+def guide_video_edit_param_back_kb() -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    builder.row(InlineKeyboardButton(text="◀️ Назад", callback_data="media:guide:video_edit"))
+    return builder.as_markup()
+
+
+_VIDEO_EDIT_RATIOS = ["16:9", "9:16", "1:1", "21:9"]
+_VIDEO_EDIT_RESOLUTIONS = ["720p", "1080p", "4K"]
+
+
+def guide_video_edit_ratio_kb() -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    for r in _VIDEO_EDIT_RATIOS:
+        builder.add(InlineKeyboardButton(text=r, callback_data="media:guide:noop"))
+    builder.adjust(4)
+    builder.row(InlineKeyboardButton(text="◀️ Назад", callback_data="media:guide:video_edit"))
+    return builder.as_markup()
+
+
+def guide_video_edit_resolution_kb() -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    for r in _VIDEO_EDIT_RESOLUTIONS:
+        builder.add(InlineKeyboardButton(text=r, callback_data="media:guide:noop"))
+    builder.adjust(3)
+    builder.row(InlineKeyboardButton(text="◀️ Назад", callback_data="media:guide:video_edit"))
+    return builder.as_markup()
+
+
 _VIDEO_DURATIONS = [5, 10, 20, 30]
 _VIDEO_RATIOS = ["16:9", "4:3", "1:1", "3:4", "9:16", "21:9"]
 _VIDEO_RESOLUTIONS = ["480p", "720p", "1080p"]

@@ -28,6 +28,8 @@ from bot.keyboards.media import (
     guide_param_back_kb, guide_photo_edit_back_kb, guide_ratio_kb, guide_resolution_kb,
     guide_video_gen_card_kb, guide_video_animate_kb, guide_video_constructor_kb, guide_video_audio_kb,
     guide_video_param_back_kb, guide_video_duration_kb, guide_video_ratio_kb, guide_video_resolution_kb,
+    guide_video_edit_card_kb, guide_video_edit_param_back_kb,
+    guide_video_edit_ratio_kb, guide_video_edit_resolution_kb,
     model_top_kb, model_variant_kb,
     model_select_text, model_variant_text, back_to_model_kb, back_to_confirm_kb, back_to_frames_kb,
     image_confirm_kb, image_ratio_kb, image_resolution_kb, image_quality_kb,
@@ -870,6 +872,34 @@ _GUIDE_PARAMS = {
         "Разделы «Оживить фото» и «Конструктор видео» взаимоисключающие: бот не даст одновременно загрузить "
         "фото, которое нужно оживить, и ориентиры. Это сделано для корректной работы нейросети."
     ),
+    "add_video": (
+        "📎 <b>Добавить видео</b>\n\n"
+        "Сюда загружается исходное видео, которое необходимо отредактировать."
+    ),
+    "video_edit_ratio": (
+        "📐 <b>Масштаб</b>\n\n"
+        "Как и в генерации фото, здесь ты выбираешь соотношение сторон в твоём видео."
+    ),
+    "video_edit_resolution": (
+        "🖼 <b>Качество</b>\n\n"
+        "Здесь ты выбираешь качество твоего видео."
+    ),
+    "video_edit_style": (
+        "📎 <b>Ориентиры</b>\n\n"
+        "Ориентиры, они же референсы — это визуальный образец (пример), который вы предоставляете нейросети. "
+        "На него модель должна ориентироваться при создании нового изображения, видео или другого контента. "
+        "Они позволяют задать атмосферу или стиль, воплотить конкретные детали. "
+        "Каждое загруженное фото принимается как @image(номер фото), например @image1, если фото загружено первым. "
+        "Максимально возможное количество ориентиров у каждой модели разное. "
+        "Можете отправлять фотографии в общие настройки без нажатия на кнопку, бот примет их как ориентиры. "
+        "Рекомендуем перед выбором модели прочитать описание нюансов раздела, оно всегда на виду."
+    ),
+    "video_edit_prompt": (
+        "✏️ <b>Ввести описание</b>\n\n"
+        "Здесь вводится описание желаемого видео. При этом, бот устроен так, что необязательно "
+        "нажимать на эту кнопку, можно ввести текст в общий раздел с параметрами, "
+        "этот текст примется как описание."
+    ),
 }
 
 _GUIDE_PARAM_CALLBACKS = {f"media:guide:param:{k}" for k in _GUIDE_PARAMS}
@@ -879,6 +909,13 @@ _GUIDE_VIDEO_GEN_CARD_TEXT = (
     "Здесь представлены наиболее распространённые настройки генерации видео и инструкция по их использованию. "
     "При работе с реальной моделью, вместо этого текста будут отображаться выбранные тобой параметры, "
     "название и описание нейросети."
+)
+
+_GUIDE_VIDEO_EDIT_CARD_TEXT = (
+    "✂️ <b>Как отредактировать видео</b>\n\n"
+    "Данный раздел редактирует загруженное тобой видео. Здесь гораздо меньше настроек по сравнению "
+    "с генерацией видео. Загруженное видео не должно быть дольше допустимой для нейросети длительности.\n\n"
+    "Нажми на любую кнопку для подробного объяснения."
 )
 
 _GUIDE_SECTIONS = {
@@ -967,6 +1004,15 @@ async def guide_photo_edit(callback: CallbackQuery) -> None:
     await callback.answer()
 
 
+@router.callback_query(MediaStates.select_type, F.data == "media:guide:video_edit")
+async def guide_video_edit(callback: CallbackQuery, state: FSMContext) -> None:
+    await state.update_data(guide_section="video_edit")
+    await callback.message.edit_text(
+        _GUIDE_VIDEO_EDIT_CARD_TEXT, parse_mode="HTML", reply_markup=guide_video_edit_card_kb(),
+    )
+    await callback.answer()
+
+
 @router.callback_query(MediaStates.select_type, F.data == "media:guide:audio_gen")
 async def guide_audio_gen(callback: CallbackQuery) -> None:
     await callback.message.edit_text(
@@ -1019,6 +1065,12 @@ async def guide_param(callback: CallbackQuery) -> None:
         kb = guide_video_resolution_kb()
     elif key in ("video_animate", "video_constructor", "video_audio", "video_prompt"):
         kb = guide_video_param_back_kb()
+    elif key == "video_edit_ratio":
+        kb = guide_video_edit_ratio_kb()
+    elif key == "video_edit_resolution":
+        kb = guide_video_edit_resolution_kb()
+    elif key in ("add_video", "video_edit_style", "video_edit_prompt"):
+        kb = guide_video_edit_param_back_kb()
     else:
         kb = guide_param_back_kb()
     await callback.message.edit_text(text, parse_mode="HTML", reply_markup=kb)
