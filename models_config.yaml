@@ -544,7 +544,7 @@ tasks:
         enabled: true
 
       - id: happyhorse-1-1
-        label: "HappyHorse 1.1"
+        label: "Happyhorse 1.1"
         description: >-
           Нейросеть от Alibaba для генерации коротких видео (до 15 сек, 1080p) по тексту,
           изображению или референсам с синхронным звуком, стабильной идентичностью персонажей
