@@ -29,7 +29,7 @@ from bot.keyboards.media import (
     guide_video_gen_card_kb, guide_video_animate_kb, guide_video_constructor_kb, guide_video_audio_kb,
     guide_video_param_back_kb, guide_video_duration_kb, guide_video_ratio_kb, guide_video_resolution_kb,
     guide_video_edit_card_kb, guide_video_edit_param_back_kb,
-    guide_video_edit_ratio_kb, guide_video_edit_resolution_kb,
+    guide_video_edit_duration_kb, guide_video_edit_ratio_kb, guide_video_edit_resolution_kb,
     model_top_kb, model_variant_kb,
     model_select_text, model_variant_text, back_to_model_kb, back_to_confirm_kb, back_to_frames_kb,
     image_confirm_kb, image_ratio_kb, image_resolution_kb, image_quality_kb,
@@ -900,6 +900,13 @@ _GUIDE_PARAMS = {
         "нажимать на эту кнопку, можно ввести текст в общий раздел с параметрами, "
         "этот текст примется как описание."
     ),
+    "video_edit_duration": (
+        "⏱ <b>Длительность</b>\n\n"
+        "В режиме редактирования видео, эта кнопка показывается, только если ты добавляешь ориентир (референс). "
+        "Без него повлиять на длительность финального видео нельзя, она будет равняться длительности исходного видео. "
+        "В случае, если ориентир загружен, ты можешь указать свою продолжительность видео, "
+        "которое должно получиться в результате редактирования."
+    ),
 }
 
 _GUIDE_PARAM_CALLBACKS = {f"media:guide:param:{k}" for k in _GUIDE_PARAMS}
@@ -1065,6 +1072,8 @@ async def guide_param(callback: CallbackQuery) -> None:
         kb = guide_video_resolution_kb()
     elif key in ("video_animate", "video_constructor", "video_audio", "video_prompt"):
         kb = guide_video_param_back_kb()
+    elif key == "video_edit_duration":
+        kb = guide_video_edit_duration_kb()
     elif key == "video_edit_ratio":
         kb = guide_video_edit_ratio_kb()
     elif key == "video_edit_resolution":

@@ -189,11 +189,12 @@ def guide_video_edit_card_kb() -> InlineKeyboardMarkup:
     """Макет карточки настроек редактирования видео (Kling 3.0 Omni, нефункциональный)."""
     builder = InlineKeyboardBuilder()
     builder.row(InlineKeyboardButton(text="📎 Добавить видео", callback_data="media:guide:param:add_video"))
+    builder.row(InlineKeyboardButton(text="📎 Добавить ориентир", callback_data="media:guide:param:video_edit_style"))
+    builder.row(InlineKeyboardButton(text="⏱ Длительность: 5 сек", callback_data="media:guide:param:video_edit_duration"))
     builder.row(
         InlineKeyboardButton(text="📐 Масштаб: 16:9", callback_data="media:guide:param:video_edit_ratio"),
         InlineKeyboardButton(text="🖼 Качество: 720p", callback_data="media:guide:param:video_edit_resolution"),
     )
-    builder.row(InlineKeyboardButton(text="📎 Добавить ориентир", callback_data="media:guide:param:video_edit_style"))
     builder.row(
         InlineKeyboardButton(text="✏️ Ввести описание", callback_data="media:guide:param:video_edit_prompt"),
         InlineKeyboardButton(text="◀️ Назад", callback_data="media:guide"),
@@ -210,6 +211,16 @@ def guide_video_edit_param_back_kb() -> InlineKeyboardMarkup:
 
 _VIDEO_EDIT_RATIOS = ["16:9", "9:16", "1:1", "21:9"]
 _VIDEO_EDIT_RESOLUTIONS = ["720p", "1080p", "4K"]
+_VIDEO_EDIT_DURATIONS = [5, 10, 15]
+
+
+def guide_video_edit_duration_kb() -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    for d in _VIDEO_EDIT_DURATIONS:
+        builder.add(InlineKeyboardButton(text=f"{d} сек", callback_data="media:guide:noop"))
+    builder.adjust(3)
+    builder.row(InlineKeyboardButton(text="◀️ Назад", callback_data="media:guide:video_edit"))
+    return builder.as_markup()
 
 
 def guide_video_edit_ratio_kb() -> InlineKeyboardMarkup:
@@ -1110,7 +1121,7 @@ def edit_confirm_kb(
         style_text = f"🖼 Ориентиры: {style_ref_count} фото ✅" if style_ref_count else "📎 Фото-ориентиры"
         builder.row(InlineKeyboardButton(text=style_text, callback_data="media:add_style_ref"))
     if media_type == "video_edit":
-        if duration is not None and duration_options:
+        if duration is not None and duration_options and style_ref_count > 0:
             builder.row(InlineKeyboardButton(
                 text=f"⏱ Длительность: {duration} сек",
                 callback_data="media:pick_duration",
