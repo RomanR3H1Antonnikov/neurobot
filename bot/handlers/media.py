@@ -3782,8 +3782,32 @@ async def confirm_unknown_input(message: Message, state: FSMContext, album: list
         await message.answer("Для редактирования фото пришли изображение, а не видео.")
         return
     if media_type == "video_edit" and message.photo:
-        await message.delete()
-        await message.answer("Для редактирования видео пришли видеофайл, а не фото.")
+        max_refs = data.get("model_max_style_refs", 0)
+        if max_refs == 0:
+            await message.delete()
+            await message.answer("Для редактирования видео пришли видеофайл, а не фото.")
+            return
+        album_msgs = album or [message]
+        album_photos = [msg.photo[-1].file_id for msg in album_msgs if msg.photo]
+        for msg in album_msgs:
+            try:
+                await msg.delete()
+            except Exception:
+                pass
+        _upd: dict = {}
+        _caption = (message.caption or "").strip()
+        if _caption:
+            _upd["prompt"] = _caption
+        srefs = list(data.get("style_reference_file_ids") or [])
+        _room = max(max_refs - len(srefs), 0)
+        srefs.extend(album_photos[:_room])
+        _upd["style_reference_file_ids"] = srefs
+        if len(album_photos) > _room:
+            asyncio.create_task(_toast(
+                message, _too_many_photos_text(max_refs, min(_room, len(album_photos))), delay=6.0,
+            ))
+        await state.update_data(**_upd)
+        await _update_confirm_card(message, state)
         return
 
     # Фото в confirm state
@@ -4914,7 +4938,11 @@ async def start_generation(callback: CallbackQuery, state: FSMContext) -> None:
             )
             return
 
-    if media_type == "video_edit" and data.get("model_duration_from_input") and not data.get("reference_video_duration"):
+    if (media_type == "video_edit"
+            and not data.get("reference_video_duration")
+            and (data.get("model_duration_from_input")
+                 or data.get("model_input_video_min")
+                 or data.get("model_input_video_max"))):
         await callback.answer(
             "Не удалось определить длительность видео. Отправь его как видео, а не как файл.", show_alert=True,
         )
