@@ -148,11 +148,12 @@ async def _back_to_frames_menu(bot, chat_id: int, state: FSMContext) -> None:
     if data.get("video_frames_mode") == "constructor":
         constructor_video = data.get("model_constructor_video", False)
         max_video_refs = data.get("model_max_video_refs", 0) if constructor_video else 0
-        title = (
-            "🎬 <b>Конструктор видео</b>\n\nДобавь ориентиры для генерации:"
-            if constructor_video else
-            "🎬 <b>Конструктор видео</b>\n\nДобавь ориентиры для генерации:"
+        _ref_hint = (
+            "Добавь ориентиры для генерации. Чтобы указать на ориентиры при генерации:\n"
+            "@image(порядковый номер), если это фото. Например @image1.\n"
+            "@video(порядковый номер), если это видео. Например @video1."
         )
+        title = f"🎬 <b>Конструктор видео</b>\n\n{_ref_hint}"
         frames_kb = video_frames_menu_kb(
             extra_ref_count=len(data.get("style_reference_file_ids") or []),
             max_extra_refs=data.get("model_max_style_refs", 0),
