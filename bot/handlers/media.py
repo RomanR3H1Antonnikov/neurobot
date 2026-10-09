@@ -4720,6 +4720,15 @@ async def _run_generation(send_msg: Message, tg_user, state: FSMContext, data: d
     # Пауза перед отправкой в агрегатор — даёт окно реальной отмены
     await asyncio.sleep(_CANCEL_WINDOW_SEC)
 
+    gen_nonce = data.get("_gen_nonce")
+
+    async def _result_markup(**kb_kwargs):
+        """Кнопки к результату только если сессия не устарела (пользователь всё ещё ждёт)."""
+        cur = await state.get_data()
+        if cur.get("_gen_nonce") == gen_nonce:
+            return after_generation_kb(**kb_kwargs)
+        return None
+
     _sref_ids = data.get("style_reference_file_ids") or []
     style_reference_urls = [
         u for u in [await _tg_file_url(send_msg.bot, fid) for fid in _sref_ids] if u
@@ -4732,7 +4741,6 @@ async def _run_generation(send_msg: Message, tg_user, state: FSMContext, data: d
             style_reference_urls=style_reference_urls,
             quality=data.get("quality"),
         )
-        gen_nonce = data.get("_gen_nonce")
         if result.variants:
             all_images = [result.data] + result.variants
             gen_file_id = None
@@ -4742,7 +4750,7 @@ async def _run_generation(send_msg: Message, tg_user, state: FSMContext, data: d
                 sent = await send_msg.answer_photo(
                     f,
                     caption=_cost_caption(result) if is_last else None,
-                    reply_markup=after_generation_kb(is_image=True) if is_last else None,
+                    reply_markup=await _result_markup(is_image=True) if is_last else None,
                 )
                 await _track_msg(state, sent.message_id)
                 fid = sent.photo[-1].file_id
@@ -4755,7 +4763,7 @@ async def _run_generation(send_msg: Message, tg_user, state: FSMContext, data: d
                                         kie_gen_task_id=result.provider_image_url)
         else:
             file = BufferedInputFile(result.data, filename=result.filename)
-            sent = await send_msg.answer_photo(file, caption=_cost_caption(result), reply_markup=after_generation_kb(is_image=True))
+            sent = await send_msg.answer_photo(file, caption=_cost_caption(result), reply_markup=await _result_markup(is_image=True))
             await _track_msg(state, sent.message_id)
             await save_generation(tg_user.id, "photo", sent.photo[-1].file_id, prompt=prompt, model_label=data.get("model_label"))
             current = await state.get_data()
@@ -4794,12 +4802,13 @@ async def _run_generation(send_msg: Message, tg_user, state: FSMContext, data: d
             characters=_characters,
         )
         file = BufferedInputFile(result.data, filename=result.filename)
+        _video_kb = await _result_markup()
         if result.mime_type == "video/quicktime":
-            sent = await send_msg.answer_document(file, caption=_cost_caption(result), reply_markup=after_generation_kb())
+            sent = await send_msg.answer_document(file, caption=_cost_caption(result), reply_markup=_video_kb)
             await _track_msg(state, sent.message_id)
             await save_generation(tg_user.id, "video", sent.document.file_id, prompt=prompt, model_label=data.get("model_label"))
         else:
-            sent = await send_msg.answer_video(file, caption=_cost_caption(result), reply_markup=after_generation_kb())
+            sent = await send_msg.answer_video(file, caption=_cost_caption(result), reply_markup=_video_kb)
             await _track_msg(state, sent.message_id)
             await save_generation(tg_user.id, "video", sent.video.file_id, prompt=prompt, model_label=data.get("model_label"))
 
@@ -4853,7 +4862,7 @@ async def _run_generation(send_msg: Message, tg_user, state: FSMContext, data: d
             music_params=music_params,
         )
         file = BufferedInputFile(result.data, filename=result.filename)
-        sent = await send_msg.answer_audio(file, caption=_cost_caption(result), reply_markup=after_generation_kb())
+        sent = await send_msg.answer_audio(file, caption=_cost_caption(result), reply_markup=await _result_markup())
         await _track_msg(state, sent.message_id)
         await save_generation(tg_user.id, "audio", sent.audio.file_id, prompt=prompt, model_label=data.get("model_label"))
 
@@ -4869,7 +4878,7 @@ async def _run_generation(send_msg: Message, tg_user, state: FSMContext, data: d
             aspect_ratio=data.get("aspect_ratio"),
         )
         file = BufferedInputFile(result.data, filename=result.filename)
-        sent = await send_msg.answer_photo(file, caption=_cost_caption(result), reply_markup=after_generation_kb(is_image=True, edit=True))
+        sent = await send_msg.answer_photo(file, caption=_cost_caption(result), reply_markup=await _result_markup(is_image=True, edit=True))
         await _track_msg(state, sent.message_id)
         new_file_id = sent.photo[-1].file_id
         await save_generation(tg_user.id, "photo", new_file_id, prompt=prompt, model_label=data.get("model_label"))
@@ -4905,7 +4914,7 @@ async def _run_generation(send_msg: Message, tg_user, state: FSMContext, data: d
             mute=_mute,
         )
         file = BufferedInputFile(result.data, filename=result.filename)
-        sent = await send_msg.answer_video(file, caption=_cost_caption(result), reply_markup=after_generation_kb(edit=True))
+        sent = await send_msg.answer_video(file, caption=_cost_caption(result), reply_markup=await _result_markup(edit=True))
         await _track_msg(state, sent.message_id)
         await save_generation(tg_user.id, "video", sent.video.file_id, prompt=prompt, model_label=data.get("model_label"))
         # Сохраняем file_id результата, чтобы пользователь мог сразу редактировать снова текстом
