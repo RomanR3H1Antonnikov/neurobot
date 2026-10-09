@@ -556,7 +556,7 @@ tasks:
         resolutions: ["720p", "1080p"]
         first_frame: true
         last_frame: false
-        max_style_refs: 9
+        max_style_refs: 0
         model_id: alibaba/happyhorse-1.1
         provider: routerai
         cost_credits: 12
