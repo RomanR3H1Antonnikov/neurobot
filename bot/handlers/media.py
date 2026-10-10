@@ -593,10 +593,9 @@ def _confirm_kb(data: dict):
         _show_last = data.get("model_has_last_frame", True)
         _max_extra = data.get("model_max_style_refs", 0)
         _max_video = data.get("model_max_video_refs", 0)
-        _is_motion_control = data.get("motion_orientation") is not None
         _show_animate = bool(_show_first or _show_last)
         _show_constructor = bool(_max_extra > 0 or data.get("model_characters"))
-        _show_frames = bool(_show_animate or _show_constructor) and not _is_motion_control
+        _show_frames = bool(_show_animate or _show_constructor)
         _frames_mode = data.get("video_frames_mode")
         return video_confirm_kb(
             data.get("duration", 5),
@@ -617,8 +616,6 @@ def _confirm_kb(data: dict):
             show_first_frame_btn=_show_animate,
             show_constructor_btn=_show_constructor,
             frames_mode=_frames_mode,
-            show_first_frame_slot=_is_motion_control and _show_first,
-            show_last_frame_slot=_is_motion_control and _show_last,
             output_format=data.get("video_output_format"),
             output_formats=data.get("model_output_formats"),
             audio_enabled=data.get("video_audio_enabled", True),
