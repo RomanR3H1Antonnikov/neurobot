@@ -302,6 +302,17 @@ _TYPE_TO_TASK = {
     "video_edit": TaskType.VIDEO_EDIT,
 }
 
+_CONTENT_POLICY_MSG = (
+    "❌ <b>Запрос не прошёл модерацию</b>\n\n"
+    "Модерация — это автоматическая проверка запроса самой нейросетью на соответствие её правилам. "
+    "Проверяются и текст, и загруженные файлы.\n\n"
+    "Чаще всего не проходят: реальные люди и известные личности, обнажённость, насилие и оружие, "
+    "логотипы и бренды, тексты известных песен.\n\n"
+    "Деньги за этот запрос уже вернулись на баланс.\n\n"
+    "<b>Что делать:</b> переформулируйте запрос, уберите спорную часть или замените фото. "
+    "У разных нейросетей правила разные, поэтому другая нейросеть может выполнить тот же запрос."
+)
+
 _PROMPT_HINTS = {
     "image": "Опиши изображение, которое хочешь получить:",
     "video": "Опиши видео (действие, сцена, стиль):",
@@ -3500,7 +3511,7 @@ async def receive_prompt(message: Message, state: FSMContext) -> None:
         except ProviderInputError as e:
             await waiting.edit_text(str(e), reply_markup=error_kb())
         except ProviderContentPolicyError:
-            await waiting.edit_text("❌ Запрос не прошёл проверку безопасности — попробуй изменить описание или использовать другое изображение.", reply_markup=error_kb())
+            await waiting.edit_text(_CONTENT_POLICY_MSG, parse_mode="HTML", reply_markup=error_kb())
         except ProviderError:
             await waiting.edit_text("⚠️ Сервис временно недоступен. Кредиты не списаны — попробуй ещё раз.", reply_markup=error_kb())
         except Exception:
@@ -3698,7 +3709,7 @@ async def update_prompt_in_confirm(message: Message, state: FSMContext) -> None:
         except ProviderInputError as e:
             await waiting.edit_text(str(e), reply_markup=error_kb())
         except ProviderContentPolicyError:
-            await waiting.edit_text("❌ Запрос не прошёл проверку безопасности — попробуй изменить описание или использовать другое изображение.", reply_markup=error_kb())
+            await waiting.edit_text(_CONTENT_POLICY_MSG, parse_mode="HTML", reply_markup=error_kb())
         except ProviderError:
             await waiting.edit_text("⚠️ Сервис временно недоступен. Кредиты не списаны — попробуй ещё раз.", reply_markup=error_kb())
         except Exception:
@@ -3729,7 +3740,7 @@ async def update_prompt_in_confirm(message: Message, state: FSMContext) -> None:
         except ProviderInputError as e:
             await waiting.edit_text(str(e), reply_markup=error_kb())
         except ProviderContentPolicyError:
-            await waiting.edit_text("❌ Запрос не прошёл проверку безопасности — попробуй изменить описание или использовать другое видео.", reply_markup=error_kb())
+            await waiting.edit_text(_CONTENT_POLICY_MSG, parse_mode="HTML", reply_markup=error_kb())
         except ProviderError:
             await waiting.edit_text("⚠️ Сервис временно недоступен. Кредиты не списаны — попробуй ещё раз.", reply_markup=error_kb())
         except Exception:
@@ -3763,7 +3774,7 @@ async def update_prompt_in_confirm(message: Message, state: FSMContext) -> None:
             except ProviderInputError as e:
                 await waiting.edit_text(str(e), reply_markup=error_kb())
             except ProviderContentPolicyError:
-                await waiting.edit_text("❌ Запрос не прошёл проверку безопасности — попробуй изменить описание или использовать другое изображение.", reply_markup=error_kb())
+                await waiting.edit_text(_CONTENT_POLICY_MSG, parse_mode="HTML", reply_markup=error_kb())
             except ProviderError:
                 await waiting.edit_text("⚠️ Сервис временно недоступен. Кредиты не списаны — попробуй ещё раз.", reply_markup=error_kb())
             except Exception:
@@ -5036,7 +5047,8 @@ async def start_generation(callback: CallbackQuery, state: FSMContext) -> None:
         await callback.message.edit_text(str(e), reply_markup=error_kb())
     except ProviderContentPolicyError:
         await callback.message.edit_text(
-            "❌ Запрос не прошёл проверку безопасности — попробуй изменить описание или использовать другое изображение.",
+            _CONTENT_POLICY_MSG,
+            parse_mode="HTML",
             reply_markup=error_kb(),
         )
     except ProviderError as e:
@@ -5074,7 +5086,7 @@ async def resume_generation_after_topup(message: Message, state: FSMContext) -> 
     except ProviderInputError as e:
         await waiting.edit_text(str(e), reply_markup=error_kb())
     except ProviderContentPolicyError:
-        await waiting.edit_text("❌ Запрос не прошёл проверку безопасности — попробуй изменить описание или использовать другое изображение.", reply_markup=error_kb())
+        await waiting.edit_text(_CONTENT_POLICY_MSG, parse_mode="HTML", reply_markup=error_kb())
     except ProviderError:
         await waiting.edit_text("⚠️ Сервис временно недоступен. Кредиты не списаны — попробуй ещё раз.", reply_markup=error_kb())
     except Exception:
