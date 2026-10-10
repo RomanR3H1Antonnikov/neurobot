@@ -153,7 +153,7 @@ class BratuhaProvider(AbstractProvider):
         tool = _MODEL_TOOLS.get(actual_model, actual_model)
 
         op_id = await self._create_operation(tool, {
-            "mode": "normal",
+            "mode": "cheap",
             "prompt": prompt,
             "aspect_ratio": aspect_ratio,
             "image_size": resolution,
@@ -184,7 +184,7 @@ class BratuhaProvider(AbstractProvider):
     async def edit_image(self, image_bytes: bytes, prompt: str, model: str | None = None,
                          image_url: str | None = None, style_reference_urls: list[str] | None = None,
                          provider_task_id: str | None = None, resolution: str | None = None,
-                         quality: str | None = None) -> GenerationResult:
+                         quality: str | None = None, aspect_ratio: str | None = None) -> GenerationResult:
         actual_model = model or "nano-banana-pro"
         tool = _MODEL_TOOLS.get(actual_model, actual_model)
 
@@ -193,6 +193,8 @@ class BratuhaProvider(AbstractProvider):
             "prompt": prompt,
             "image_size": resolution or "1K",
         }
+        if aspect_ratio:
+            input_data["aspect_ratio"] = aspect_ratio
         if image_url:
             input_data["image_url"] = image_url
         if style_reference_urls:
