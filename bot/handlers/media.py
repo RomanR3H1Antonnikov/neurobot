@@ -825,7 +825,7 @@ _GUIDE_PARAMS = {
         "нейросети ключевым. Расскажу про чисто технический момент: нейросеть принимает загруженное вами "
         "фото как @image1, но указывать на него так при составлении описания необязательно, нейросеть сама "
         "понимает, что это фото ключевое, и всё, что вы пишите, должно применяться к нему. "
-        "Стоит понимать, что если главное фото идёт как @image1, то добавленные вами фото-ориентиры, "
+        "Стоит понимать, что если главное фото идёт как @image1, то добавленный вами фото-ориентир, "
         "даже если он первый по списку, будет принят ботом как @image2, а второй по списку как @image3 "
         "и так далее. После загрузки рядом появится кнопка с мусорным баком, нажав на неё, вы удалите "
         "загруженное фото. Если захотите поменять его, просто отправьте новое, можете отправить его в общие "
@@ -1017,7 +1017,8 @@ async def guide_photo_gen(callback: CallbackQuery, state: FSMContext) -> None:
 
 
 @router.callback_query(MediaStates.select_type, F.data == "media:guide:photo_edit")
-async def guide_photo_edit(callback: CallbackQuery) -> None:
+async def guide_photo_edit(callback: CallbackQuery, state: FSMContext) -> None:
+    await state.update_data(guide_section="photo_edit")
     await callback.message.edit_text(
         _GUIDE_PHOTO_EDIT_CARD_TEXT, parse_mode="HTML", reply_markup=guide_photo_edit_card_kb(),
     )
@@ -1055,7 +1056,7 @@ async def guide_audio_music(callback: CallbackQuery) -> None:
 
 
 @router.callback_query(MediaStates.select_type, F.data.in_(_GUIDE_PARAM_CALLBACKS))
-async def guide_param(callback: CallbackQuery) -> None:
+async def guide_param(callback: CallbackQuery, state: FSMContext) -> None:
     key = callback.data.split(":")[3]
     if key == "start":
         await callback.answer("Здесь я ничего не генерирую, только объясняю.", show_alert=True)
@@ -1068,6 +1069,8 @@ async def guide_param(callback: CallbackQuery) -> None:
             show_alert=True,
         )
         return
+    if key == "add_photo":
+        await state.update_data(guide_section="add_photo")
     text = _GUIDE_PARAMS.get(key, "Раздел временно недоступен.")
     if key == "ratio":
         kb = guide_ratio_kb()
@@ -1127,6 +1130,11 @@ async def guide_media_received(message: Message, state: FSMContext) -> None:
             text = "В реальной генерации это видео стало бы видео-ориентиром."
         else:
             text = "В конструкторе принимаются фото и видео. Аудио-файлы — не подходят."
+    elif section == "add_photo":
+        if message.photo:
+            text = "В реальном редактировании это фото стало бы объектом редактирования."
+        else:
+            text = "В этот раздел принимаются только фото — как главное фото для редактирования."
     elif section == "video_audio":
         if message.audio or message.voice:
             text = "В реальной генерации этот файл стал бы аудио-ориентиром."
