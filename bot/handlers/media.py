@@ -39,7 +39,7 @@ from bot.keyboards.media import (
     voice_picker_kb, voice_confirm_kb, voice_language_kb,
     style_ref_collecting_kb, style_ref_delete_kb, video_ref_delete_kb, audio_ref_delete_kb, video_extra_frames_delete_kb, after_generation_kb, after_orphaned_photo_kb, gen_waiting_kb, error_kb,
 )
-from providers.base import ProviderError, ProviderUnavailableError, ProviderContentPolicyError, TaskType
+from providers.base import ProviderError, ProviderUnavailableError, ProviderContentPolicyError, ProviderInputError, TaskType
 from providers.router import get_models_for_task
 from services import media_service, file_proxy
 from services.media_service import InsufficientCreditsError, RateLimitError
@@ -3497,6 +3497,8 @@ async def receive_prompt(message: Message, state: FSMContext) -> None:
             )
         except RateLimitError as e:
             await waiting.edit_text(f"⏱ {e}", reply_markup=error_kb())
+        except ProviderInputError as e:
+            await waiting.edit_text(str(e), reply_markup=error_kb())
         except ProviderContentPolicyError:
             await waiting.edit_text("❌ Запрос не прошёл проверку безопасности — попробуй изменить описание или использовать другое изображение.", reply_markup=error_kb())
         except ProviderError:
@@ -3693,6 +3695,8 @@ async def update_prompt_in_confirm(message: Message, state: FSMContext) -> None:
             )
         except RateLimitError as e:
             await waiting.edit_text(f"⏱ {e}", reply_markup=error_kb())
+        except ProviderInputError as e:
+            await waiting.edit_text(str(e), reply_markup=error_kb())
         except ProviderContentPolicyError:
             await waiting.edit_text("❌ Запрос не прошёл проверку безопасности — попробуй изменить описание или использовать другое изображение.", reply_markup=error_kb())
         except ProviderError:
@@ -3722,6 +3726,8 @@ async def update_prompt_in_confirm(message: Message, state: FSMContext) -> None:
             )
         except RateLimitError as e:
             await waiting.edit_text(f"⏱ {e}", reply_markup=error_kb())
+        except ProviderInputError as e:
+            await waiting.edit_text(str(e), reply_markup=error_kb())
         except ProviderContentPolicyError:
             await waiting.edit_text("❌ Запрос не прошёл проверку безопасности — попробуй изменить описание или использовать другое видео.", reply_markup=error_kb())
         except ProviderError:
@@ -3754,6 +3760,8 @@ async def update_prompt_in_confirm(message: Message, state: FSMContext) -> None:
                 )
             except RateLimitError as e:
                 await waiting.edit_text(f"⏱ {e}", reply_markup=error_kb())
+            except ProviderInputError as e:
+                await waiting.edit_text(str(e), reply_markup=error_kb())
             except ProviderContentPolicyError:
                 await waiting.edit_text("❌ Запрос не прошёл проверку безопасности — попробуй изменить описание или использовать другое изображение.", reply_markup=error_kb())
             except ProviderError:
@@ -5024,6 +5032,8 @@ async def start_generation(callback: CallbackQuery, state: FSMContext) -> None:
         )
     except RateLimitError as e:
         await callback.message.edit_text(f"⏱ {e}", reply_markup=error_kb())
+    except ProviderInputError as e:
+        await callback.message.edit_text(str(e), reply_markup=error_kb())
     except ProviderContentPolicyError:
         await callback.message.edit_text(
             "❌ Запрос не прошёл проверку безопасности — попробуй изменить описание или использовать другое изображение.",
@@ -5061,6 +5071,8 @@ async def resume_generation_after_topup(message: Message, state: FSMContext) -> 
         await waiting.edit_text(f"❌ {e}\n\nПополни баланс в разделе «Мой баланс».")
     except RateLimitError as e:
         await waiting.edit_text(f"⏱ {e}", reply_markup=error_kb())
+    except ProviderInputError as e:
+        await waiting.edit_text(str(e), reply_markup=error_kb())
     except ProviderContentPolicyError:
         await waiting.edit_text("❌ Запрос не прошёл проверку безопасности — попробуй изменить описание или использовать другое изображение.", reply_markup=error_kb())
     except ProviderError:

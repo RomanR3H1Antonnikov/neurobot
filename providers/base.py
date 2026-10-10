@@ -25,6 +25,10 @@ class ProviderContentPolicyError(ProviderError):
     """Контент не прошёл проверку политики безопасности агрегатора."""
 
 
+class ProviderInputError(ProviderError):
+    """Ошибка входных данных пользователя — пользователь может исправить сам."""
+
+
 @dataclass
 class GenerationResult:
     data: bytes          # бинарные данные (изображение, видео, аудио)

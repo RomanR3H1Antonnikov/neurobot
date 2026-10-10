@@ -9,7 +9,7 @@ import uuid
 import aiohttp
 from contextvars import ContextVar
 from providers.openai_compat import OpenAICompatProvider
-from providers.base import GenerationResult, ChatResult, ProviderUnavailableError, ProviderContentPolicyError
+from providers.base import GenerationResult, ChatResult, ProviderUnavailableError, ProviderContentPolicyError, ProviderInputError
 from services.kie_webhook import register_pending, unregister_pending
 
 # Устанавливается в _run_generation перед вызовом generate_*; читается в _create_job
@@ -1022,6 +1022,11 @@ class KieProvider(OpenAICompatProvider):
                 raise ProviderContentPolicyError("Изображение не прошло проверку безопасности — попробуйте другое фото")
             if "character" in _fail_msg and ("not" in _fail_msg or "no valid" in _fail_msg or "detect" in _fail_msg):
                 raise ProviderContentPolicyError("Персонаж не распознан. Пришлите новое видео")
+            if any(k in _fail_msg for k in ("fps", "frame rate", "framerate")):
+                raise ProviderInputError(
+                    "❌ Видео-референс не принят: слишком мало кадров в секунду (FPS).\n"
+                    "Нейросеть требует минимум 23 FPS. Замени видео на другое с более высокой частотой кадров."
+                )
             raise ProviderUnavailableError("KIE: генерация видео завершилась с ошибкой")
 
         url = _extract_url(callback_body)
