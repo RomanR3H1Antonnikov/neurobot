@@ -201,16 +201,16 @@ def _kling3_request(
 
 def _kling3_motion_request(
     prompt: str, resolution: str | None, image_url: str | None, video_url: str | None,
-    character_orientation: str | None,
+    character_orientation: str | None, aspect_ratio: str | None,
 ) -> dict:
-    """Kling 3.0 Motion Control: одно фото (image_urls) + одно видео с движением (video_urls).
-    Длительность берётся из видео; duration/aspect_ratio/audio/mode модель не принимает."""
+    """Kling 3.0 Motion Control: одно фото (image_urls) + одно видео с движением (video_urls)."""
     if not image_url or not video_url:
         raise ProviderUnavailableError("Kling Motion Control: нужны и фото, и видео")
     return {
         "prompt": prompt,
         "image_urls": [image_url],
         "video_urls": [video_url],
+        "aspect_ratio": _kie_ratio(aspect_ratio or "16:9"),
         "character_orientation": character_orientation or "video",
         "background_source": "input_video" if (character_orientation or "video") == "video" else "input_image",
     }
@@ -952,7 +952,7 @@ class KieProvider(OpenAICompatProvider):
         if actual_model == KLING3_MOTION_ALIAS:
             # В Motion Control фото лежит в слоте «первый кадр», видео движения — в слоте «последний кадр»
             input_data = _kling3_motion_request(
-                prompt, resolution, first_frame_url, last_frame_url, character_orientation,
+                prompt, resolution, first_frame_url, last_frame_url, character_orientation, aspect_ratio,
             )
 
         if actual_model.startswith(SEEDANCE2_PREFIX):
