@@ -644,21 +644,23 @@ def video_confirm_kb(
         if row_btns:
             builder.row(*row_btns)
     if show_first_frame_slot:
+        _first_label = "📎 Фото" if motion_orientation else "📎 Начало видео"
         if has_first_frame:
             builder.row(
-                InlineKeyboardButton(text="📎 Начало видео ✅", callback_data="media:add_first_frame"),
+                InlineKeyboardButton(text=f"{_first_label} ✅", callback_data="media:add_first_frame"),
                 InlineKeyboardButton(text="🗑", callback_data="media:delete_first_frame"),
             )
         else:
-            builder.row(InlineKeyboardButton(text="📎 Начало видео", callback_data="media:add_first_frame"))
+            builder.row(InlineKeyboardButton(text=_first_label, callback_data="media:add_first_frame"))
     if show_last_frame_slot:
+        _last_label = "📎 Видео" if motion_orientation else "📎 Конец видео"
         if has_last_frame:
             builder.row(
-                InlineKeyboardButton(text="📎 Конец видео ✅", callback_data="media:add_last_frame"),
+                InlineKeyboardButton(text=f"{_last_label} ✅", callback_data="media:add_last_frame"),
                 InlineKeyboardButton(text="🗑", callback_data="media:delete_last_frame"),
             )
         else:
-            builder.row(InlineKeyboardButton(text="📎 Конец видео", callback_data="media:add_last_frame"))
+            builder.row(InlineKeyboardButton(text=_last_label, callback_data="media:add_last_frame"))
     if max_audio_refs > 0:
         if show_audio_toggle and not audio_enabled:
             # Звук выключен — аудио-ориентир не имеет смысла: кнопка неактивна (крестик)
