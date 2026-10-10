@@ -1088,10 +1088,10 @@ class KieProvider(OpenAICompatProvider):
                 "image_urls": [image_url] + _srefs,
                 "aspect_ratio": aspect_ratio or "auto",
             }
-        elif actual_model == "nano-banana-pro":
+        elif actual_model in ("nano-banana-pro", "nano-banana-2-1"):
             if not image_url:
                 raise ProviderUnavailableError("KIE edit_image: не передан URL изображения")
-            # nano-banana-pro использует image_input (массив URL), а не image_urls
+            # nano-banana-pro и nano-banana-2-1 используют image_input (массив URL), а не image_urls
             input_data = {
                 "prompt": prompt,
                 "image_input": [image_url] + _srefs,

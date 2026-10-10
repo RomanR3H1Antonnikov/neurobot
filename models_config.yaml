@@ -69,6 +69,24 @@ tasks:
         cost_usd: 0.005
         enabled: true
 
+      - id: nano-banana-2-1
+        label: "2.1"
+        group: nano-banana-ai
+        group_label: "Nano Banana AI"
+        description: ""
+        variant_description: >-
+          Обновлённая версия с расширенным набором соотношений сторон, поддержкой 1K, 2K и 4K
+          и до 10 фото-ориентиров.
+        aspect_ratios: ["1:1", "2:3", "3:2", "4:1", "1:4", "3:4", "4:3", "4:5", "5:4", "1:8", "8:1", "9:16", "16:9", "21:9"]
+        model_id: nano-banana-2-1
+        provider: kie
+        max_style_refs: 10
+        resolutions: ["1K", "2K", "4K"]
+        cost_credits: 4
+        cost_by_resolution: {"1K": 4, "2K": 5, "4K": 7}
+        cost_usd: 0.01
+        enabled: true
+
       - id: seedream-5-pro
         label: "Pro"
         group: seedream-5
@@ -925,6 +943,23 @@ tasks:
         resolutions: ["1K"]
         cost_credits: 4
         cost_usd: 0.005
+        enabled: true
+
+      - id: nano-banana-2-1-edit
+        label: "2.1"
+        group: nano-banana-ai-edit
+        group_label: "Nano Banana AI"
+        description: ""
+        variant_description: >-
+          Обновлённая версия редактирования с поддержкой 1K, 2K и 4K и до 10 фото-ориентиров.
+        aspect_ratios: ["1:1", "2:3", "3:2", "4:1", "1:4", "3:4", "4:3", "4:5", "5:4", "1:8", "8:1", "9:16", "16:9", "21:9"]
+        model_id: nano-banana-2-1
+        provider: kie
+        max_style_refs: 10
+        resolutions: ["1K", "2K", "4K"]
+        cost_credits: 4
+        cost_by_resolution: {"1K": 4, "2K": 5, "4K": 7}
+        cost_usd: 0.01
         enabled: true
 
       - id: grok-image-2-0-edit
