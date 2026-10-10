@@ -203,13 +203,13 @@ def _kling3_motion_request(
     prompt: str, resolution: str | None, image_url: str | None, video_url: str | None,
     character_orientation: str | None,
 ) -> dict:
-    """Kling 3.0 Motion Control: одно фото (input_urls) + одно видео с движением (video_urls).
+    """Kling 3.0 Motion Control: одно фото (image_urls) + одно видео с движением (video_urls).
     Длительность берётся из видео; duration/aspect_ratio/audio/mode модель не принимает."""
     if not image_url or not video_url:
         raise ProviderUnavailableError("Kling Motion Control: нужны и фото, и видео")
     return {
         "prompt": prompt,
-        "input_urls": [image_url],
+        "image_urls": [image_url],
         "video_urls": [video_url],
         "character_orientation": character_orientation or "video",
         "background_source": "input_video" if (character_orientation or "video") == "video" else "input_image",
