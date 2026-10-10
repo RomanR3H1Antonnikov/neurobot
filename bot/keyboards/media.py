@@ -723,7 +723,7 @@ def video_frames_menu_kb(
                 InlineKeyboardButton(text=first_text, callback_data="media:add_first_frame"),
                 InlineKeyboardButton(text="🗑", callback_data="media:delete_first_frame"),
             )
-            builder.row(InlineKeyboardButton(text="🔄 Заменить начало", callback_data="media:add_first_frame"))
+            builder.row(InlineKeyboardButton(text="🔄 Заменить фото", callback_data="media:add_first_frame"))
         else:
             builder.row(InlineKeyboardButton(text=first_text, callback_data="media:add_first_frame"))
     if show_last_frame:
@@ -732,7 +732,7 @@ def video_frames_menu_kb(
                 InlineKeyboardButton(text=last_text, callback_data="media:add_last_frame"),
                 InlineKeyboardButton(text="🗑", callback_data="media:delete_last_frame"),
             )
-            builder.row(InlineKeyboardButton(text="🔄 Заменить конец", callback_data="media:add_last_frame"))
+            builder.row(InlineKeyboardButton(text="🔄 Заменить видео", callback_data="media:add_last_frame"))
         else:
             builder.row(InlineKeyboardButton(text=last_text, callback_data="media:add_last_frame"))
     if not motion_control and max_extra_refs > 0:
