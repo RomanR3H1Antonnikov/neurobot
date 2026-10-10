@@ -403,7 +403,7 @@ def _confirm_card_text(data: dict) -> str:
             lines.append(f"<b>Качество:</b> {_v_res}")
         _first_frame = data.get("video_first_frame_file_id")
         _last_frame = data.get("video_last_frame_file_id")
-        if _first_frame or _last_frame:
+        if (_first_frame or _last_frame) and not data.get("motion_orientation"):
             _frame_parts = []
             if _first_frame:
                 _frame_parts.append("первый ✅")
