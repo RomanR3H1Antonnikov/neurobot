@@ -4800,12 +4800,19 @@ async def _run_generation(send_msg: Message, tg_user, state: FSMContext, data: d
                                         kie_gen_task_id=result.provider_image_url)
         else:
             file = BufferedInputFile(result.data, filename=result.filename)
-            sent = await send_msg.answer_photo(file, caption=_cost_caption(result), reply_markup=await _result_markup(is_image=True))
+            _markup = await _result_markup(is_image=True)
+            _caption = _cost_caption(result)
+            if len(result.data) > 10 * 1024 * 1024:
+                sent = await send_msg.answer_document(file, caption=_caption, reply_markup=_markup)
+                _file_id = sent.document.file_id
+            else:
+                sent = await send_msg.answer_photo(file, caption=_caption, reply_markup=_markup)
+                _file_id = sent.photo[-1].file_id
             await _track_msg(state, sent.message_id)
-            await save_generation(tg_user.id, "photo", sent.photo[-1].file_id, prompt=prompt, model_label=data.get("model_label"))
+            await save_generation(tg_user.id, "photo", _file_id, prompt=prompt, model_label=data.get("model_label"))
             current = await state.get_data()
             if current.get("_gen_nonce") == gen_nonce:
-                await state.update_data(generated_file_id=sent.photo[-1].file_id,
+                await state.update_data(generated_file_id=_file_id,
                                         kie_gen_task_id=result.provider_image_url)
 
     elif media_type == "video":
@@ -4915,9 +4922,15 @@ async def _run_generation(send_msg: Message, tg_user, state: FSMContext, data: d
             aspect_ratio=data.get("aspect_ratio"),
         )
         file = BufferedInputFile(result.data, filename=result.filename)
-        sent = await send_msg.answer_photo(file, caption=_cost_caption(result), reply_markup=await _result_markup(is_image=True, edit=True))
+        _markup = await _result_markup(is_image=True, edit=True)
+        _caption = _cost_caption(result)
+        if len(result.data) > 10 * 1024 * 1024:
+            sent = await send_msg.answer_document(file, caption=_caption, reply_markup=_markup)
+            new_file_id = sent.document.file_id
+        else:
+            sent = await send_msg.answer_photo(file, caption=_caption, reply_markup=_markup)
+            new_file_id = sent.photo[-1].file_id
         await _track_msg(state, sent.message_id)
-        new_file_id = sent.photo[-1].file_id
         await save_generation(tg_user.id, "photo", new_file_id, prompt=prompt, model_label=data.get("model_label"))
         # Сохраняем file_id результата, чтобы пользователь мог сразу редактировать снова
         await state.update_data(generated_file_id=new_file_id, reference_file_id=new_file_id)
