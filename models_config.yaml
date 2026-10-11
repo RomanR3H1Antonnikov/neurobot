@@ -1185,6 +1185,7 @@ tasks:
         model_id: kling-3.0-omni/transformation
         provider: kie
         max_style_refs: 4
+        characters: kling_omni
         # Ограничения KIE на исходное видео (сек) — проверяется при загрузке и запуске
         min_input_video_seconds: 3
         max_input_video_seconds: 15.5

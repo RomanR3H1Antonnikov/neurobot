@@ -315,6 +315,7 @@ async def edit_video(
     audio_url: str | None = None,
     style_reference_urls: list[str] | None = None,
     mute: bool | None = None,
+    characters: list[dict] | None = None,
 ) -> GenerationResult:
     # mute — вырезать звук из готового результата. По умолчанию (None) = not audio;
     # Wan-режим «Оригинальный звук» передаёт audio=False, но звук вырезать НЕ должен.
@@ -337,6 +338,7 @@ async def edit_video(
                 audio=audio,
                 audio_url=audio_url,
                 style_reference_urls=style_reference_urls,
+                characters=characters,
             )
             break
         except ProviderUnavailableError as e:

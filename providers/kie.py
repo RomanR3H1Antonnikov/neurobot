@@ -248,6 +248,7 @@ KLING_OMNI_TRANSFORM = "kling-3.0-omni/transformation"
 def _kling_omni_transformation_request(
     prompt: str, duration: int, aspect_ratio: str | None, resolution: str | None, audio: bool,
     style_reference_urls: list[str] | None, video_url: str,
+    characters: list[dict] | None = None,
 ) -> dict:
     """Kling 3.0 Omni Transformation (редактирование видео): длительность берётся из исходного видео,
     поле duration с одним видео KIE отклоняет (422), aspect_ratio — только auto. С фото-ориентирами
@@ -265,6 +266,8 @@ def _kling_omni_transformation_request(
         input_data["aspect_ratio"] = aspect_ratio if aspect_ratio in ("16:9", "9:16", "1:1") else "16:9"
     else:
         input_data["aspect_ratio"] = "auto"
+    if characters:
+        input_data["elements"] = list(characters)
     return input_data
 
 
@@ -914,6 +917,7 @@ class KieProvider(OpenAICompatProvider):
         if actual_model == KLING_OMNI_TRANSFORM and video_reference_urls:
             input_data = _kling_omni_transformation_request(
                 prompt, duration, aspect_ratio, resolution, audio, style_reference_urls, video_reference_urls[0],
+                characters,
             )
 
         if is_pixverse and characters:
@@ -1168,6 +1172,7 @@ class KieProvider(OpenAICompatProvider):
         audio: bool = True,
         audio_url: str | None = None,
         style_reference_urls: list[str] | None = None,
+        characters: list[dict] | None = None,
     ) -> GenerationResult:
         if not video_url:
             raise ProviderUnavailableError("KIE edit_video: не передан URL видео")
@@ -1181,4 +1186,5 @@ class KieProvider(OpenAICompatProvider):
             audio=audio,
             audio_reference_urls=[audio_url] if audio_url else None,
             style_reference_urls=style_reference_urls,
+            characters=characters,
         )

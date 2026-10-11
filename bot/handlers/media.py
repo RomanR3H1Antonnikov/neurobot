@@ -655,6 +655,8 @@ def _confirm_kb(data: dict):
             has_resolutions=bool(data.get("model_resolutions")),
             quality=data.get("quality"),
             quality_options=data.get("model_quality_options"),
+            show_constructor_btn=bool(data.get("model_characters")),
+            has_constructor_files=bool(data.get("style_reference_file_ids")) or bool(data.get("characters")),
         )
 
 
@@ -4954,6 +4956,8 @@ async def _run_generation(send_msg: Message, tg_user, state: FSMContext, data: d
         else:
             _audio_bool = (_edit_audio_mode != "remove")
             _mute = (_edit_audio_mode == "remove")
+        from bot.handlers.characters import build_character_payload
+        _edit_characters = await build_character_payload(send_msg.bot, data)
         result = await media_service.edit_video(
             tg_user.id, tg_user.username, media_bytes, prompt, model_slug,
             video_url=video_url,
@@ -4964,6 +4968,7 @@ async def _run_generation(send_msg: Message, tg_user, state: FSMContext, data: d
             audio_url=_edit_audio_url,
             style_reference_urls=style_reference_urls,
             mute=_mute,
+            characters=_edit_characters,
         )
         file = BufferedInputFile(result.data, filename=result.filename)
         sent = await send_msg.answer_video(file, caption=_cost_caption(result), reply_markup=await _result_markup(edit=True))
