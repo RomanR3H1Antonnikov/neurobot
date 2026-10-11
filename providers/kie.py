@@ -508,11 +508,15 @@ class KieProvider(OpenAICompatProvider):
                 data = await resp.json()
 
         if data.get("code") != 200:
+            msg = data.get("msg", "неизвестная ошибка")
             logger.error(
                 "KIE createTask failed: code=%s msg=%s model=%s input=%s",
-                data.get("code"), data.get("msg"), model, input_data,
+                data.get("code"), msg, model, input_data,
             )
-            raise ProviderUnavailableError(f"KIE: {data.get('msg', 'неизвестная ошибка')}")
+            _msg_lower = msg.lower()
+            if "duration" in _msg_lower and ("second" in _msg_lower or "between" in _msg_lower):
+                raise ProviderInputError(f"⏱ Видео слишком короткое или длинное. {msg.rstrip('.')}.")
+            raise ProviderUnavailableError(f"KIE: {msg}")
         task_id = data["data"]["taskId"]
         logger.info("KIE task created: model=%s taskId=%s", model, task_id)
         ctx = _pending_job_ctx.get()

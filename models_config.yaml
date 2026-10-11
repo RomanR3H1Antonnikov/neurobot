@@ -447,6 +447,8 @@ tasks:
         motion_control: true
         audio: false
         max_style_refs: 0
+        min_input_video_seconds: 3
+        max_input_video_seconds: 30
         model_id: kling-3.0/motion-control
         provider: kie
         cost_credits: 12
