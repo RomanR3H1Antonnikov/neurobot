@@ -203,19 +203,16 @@ def _kling3_motion_request(
     prompt: str, duration: int, resolution: str | None, image_url: str | None, video_url: str | None,
     character_orientation: str | None, aspect_ratio: str | None, audio: bool = True,
 ) -> dict:
-    """Kling 3.0 Motion Control: одно фото (image_urls) + одно видео с движением (video_urls)."""
+    """Kling 3.0 Motion Control: одно фото (input_urls) + одно видео с движением (video_urls).
+    KIE отклоняет mode/duration/sound/multi_shots для этого эндпоинта — не передаём."""
     if not image_url or not video_url:
         raise ProviderUnavailableError("Kling Motion Control: нужны и фото, и видео")
     ratio = aspect_ratio if aspect_ratio in ("16:9", "9:16", "1:1") else "16:9"
     orientation = character_orientation or "video"
     return {
         "prompt": prompt,
-        "duration": str(duration),
         "aspect_ratio": ratio,
-        "mode": _KLING3_MODE.get(resolution or "720p", "std"),
-        "sound": bool(audio),
-        "multi_shots": False,
-        "image_urls": [image_url],
+        "input_urls": [image_url],
         "video_urls": [video_url],
         "character_orientation": orientation,
         "background_source": "input_video" if orientation == "video" else "input_image",
