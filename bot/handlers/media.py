@@ -4803,7 +4803,8 @@ async def _run_generation(send_msg: Message, tg_user, state: FSMContext, data: d
             _markup = await _result_markup(is_image=True)
             _caption = _cost_caption(result)
             if len(result.data) > 10 * 1024 * 1024:
-                sent = await send_msg.answer_document(file, caption=_caption, reply_markup=_markup)
+                _doc_caption = (_caption or "") + ("\n\n" if _caption else "") + "📎 Изображение отправлено файлом — его размер превышает ограничение Telegram для фото."
+                sent = await send_msg.answer_document(file, caption=_doc_caption, reply_markup=_markup)
                 _file_id = sent.document.file_id
             else:
                 sent = await send_msg.answer_photo(file, caption=_caption, reply_markup=_markup)
@@ -4925,7 +4926,8 @@ async def _run_generation(send_msg: Message, tg_user, state: FSMContext, data: d
         _markup = await _result_markup(is_image=True, edit=True)
         _caption = _cost_caption(result)
         if len(result.data) > 10 * 1024 * 1024:
-            sent = await send_msg.answer_document(file, caption=_caption, reply_markup=_markup)
+            _doc_caption = (_caption or "") + ("\n\n" if _caption else "") + "📎 Изображение отправлено файлом — его размер превышает ограничение Telegram для фото."
+            sent = await send_msg.answer_document(file, caption=_doc_caption, reply_markup=_markup)
             new_file_id = sent.document.file_id
         else:
             sent = await send_msg.answer_photo(file, caption=_caption, reply_markup=_markup)
