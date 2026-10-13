@@ -882,7 +882,7 @@ def voice_confirm_kb(data: dict, cost_credits: int | None = None) -> InlineKeybo
         InlineKeyboardButton(text=edit_text, callback_data="media:edit_prompt"),
         InlineKeyboardButton(text="◀️ Назад", callback_data="media:back:model"),
     )
-    start_text = f"🚀 Начать генерацию — {cost_credits} ₽" if cost_credits else "🚀 Начать генерацию"
+    start_text = f"🚀 Озвучить текст — {cost_credits} ₽" if cost_credits else "🚀 Озвучить текст"
     builder.row(InlineKeyboardButton(text=start_text, callback_data="media:start"))
     return builder.as_markup()
 
@@ -1156,7 +1156,7 @@ def edit_confirm_kb(
         InlineKeyboardButton(text=prompt_text, callback_data="media:edit_prompt"),
         InlineKeyboardButton(text="◀️ Назад", callback_data="media:back:model"),
     )
-    start_text = f"🚀 Начать обработку — {cost_credits} ₽" if cost_credits else "🚀 Начать обработку"
+    start_text = f"🚀 Начать редактирование — {cost_credits} ₽" if cost_credits else "🚀 Начать редактирование"
     builder.row(InlineKeyboardButton(text=start_text, callback_data="media:start"))
     return builder.as_markup()
 

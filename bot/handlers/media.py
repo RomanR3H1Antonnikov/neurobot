@@ -4898,12 +4898,13 @@ async def _run_generation(send_msg: Message, tg_user, state: FSMContext, data: d
         else:
             file = BufferedInputFile(result.data, filename=result.filename)
             _markup = await _result_markup(is_image=True)
-            _caption = (_cost_caption(result) or "") + "\n\nЕсли нужно отредактировать это фото, напишите в чат, что необходимо изменить на фото."
+            _base_caption = _cost_caption(result) or ""
             if len(result.data) > 10 * 1024 * 1024:
-                _doc_caption = _caption + "\n\n📎 Изображение отправлено файлом — его размер превышает ограничение Telegram для фото."
+                _doc_caption = _base_caption + "\n\n📎 Изображение отправлено файлом — его размер превышает ограничение Telegram для фото.\n\nЧтобы отредактировать фото, скачай его и перейди в раздел редактирования фотографий."
                 sent = await send_msg.answer_document(file, caption=_doc_caption, reply_markup=_markup)
                 _file_id = sent.document.file_id
             else:
+                _caption = _base_caption + "\n\nЕсли нужно отредактировать это фото, напишите в чат, что необходимо изменить на фото."
                 sent = await send_msg.answer_photo(file, caption=_caption, reply_markup=_markup)
                 _file_id = sent.photo[-1].file_id
             await _track_msg(state, sent.message_id)
@@ -5032,12 +5033,13 @@ async def _run_generation(send_msg: Message, tg_user, state: FSMContext, data: d
         )
         file = BufferedInputFile(result.data, filename=result.filename)
         _markup = await _result_markup(is_image=True, edit=True)
-        _caption = (_cost_caption(result) or "") + "\n\nЕсли нужно отредактировать это фото, напишите в чат, что необходимо изменить на фото."
+        _base_caption = _cost_caption(result) or ""
         if len(result.data) > 10 * 1024 * 1024:
-            _doc_caption = _caption + "\n\n📎 Изображение отправлено файлом — его размер превышает ограничение Telegram для фото."
+            _doc_caption = _base_caption + "\n\n📎 Изображение отправлено файлом — его размер превышает ограничение Telegram для фото.\n\nЧтобы отредактировать фото, скачай его и перейди в раздел редактирования фотографий."
             sent = await send_msg.answer_document(file, caption=_doc_caption, reply_markup=_markup)
             new_file_id = sent.document.file_id
         else:
+            _caption = _base_caption + "\n\nЕсли нужно отредактировать это фото, напишите в чат, что необходимо изменить на фото."
             sent = await send_msg.answer_photo(file, caption=_caption, reply_markup=_markup)
             new_file_id = sent.photo[-1].file_id
         await _track_msg(state, sent.message_id)
