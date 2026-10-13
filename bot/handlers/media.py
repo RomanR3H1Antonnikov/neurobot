@@ -38,7 +38,7 @@ from bot.keyboards.media import (
     music_confirm_kb, music_format_kb,
     udio_confirm_kb, udio_lyrics_type_kb, udio_model_type_kb,
     voice_picker_kb, voice_confirm_kb, voice_language_kb,
-    style_ref_collecting_kb, style_ref_delete_kb, video_ref_delete_kb, audio_ref_delete_kb, video_extra_frames_delete_kb, after_generation_kb, after_orphaned_photo_kb, gen_waiting_kb, error_kb,
+    style_ref_collecting_kb, style_ref_delete_kb, video_ref_delete_kb, audio_ref_delete_kb, video_extra_frames_delete_kb, after_generation_kb, after_orphaned_photo_kb, after_orphaned_video_kb, gen_waiting_kb, error_kb,
 )
 from providers.base import ProviderError, ProviderUnavailableError, ProviderContentPolicyError, ProviderInputError, TaskType
 from providers.router import get_models_for_task
@@ -2012,6 +2012,33 @@ async def edit_orphaned_photo(callback: CallbackQuery, state: FSMContext) -> Non
         model_select_text("Изменить фото", models),
         parse_mode="HTML",
         reply_markup=model_top_kb(models),
+    )
+    await state.update_data(_tracked_msg_ids=[sent.message_id])
+    await state.set_state(MediaStates.select_model)
+    await callback.answer()
+
+
+@router.callback_query(F.data == "media:edit_orphaned_video")
+async def edit_orphaned_video(callback: CallbackQuery, state: FSMContext) -> None:
+    """Редактировать видео, доставленное через orphaned delivery.
+    file_id берётся прямо из сообщения, FSM-снапшот генерации недоступен."""
+    if not callback.message or not callback.message.video:
+        await callback.answer("Не удалось получить видео.", show_alert=True)
+        return
+    file_id = callback.message.video.file_id
+    models = get_models_for_task(TaskType.VIDEO_EDIT)
+    if not models:
+        await callback.answer("Нет доступных моделей для редактирования.", show_alert=True)
+        return
+    await state.set_data({
+        "media_type": "video_edit",
+        "reference_file_id": file_id,
+        "reference_type": "video",
+    })
+    sent = await callback.message.answer(
+        model_select_text("Изменить видео", models),
+        parse_mode="HTML",
+        reply_markup=model_top_kb(models, back_callback="media:back:video_gen_models"),
     )
     await state.update_data(_tracked_msg_ids=[sent.message_id])
     await state.set_state(MediaStates.select_model)

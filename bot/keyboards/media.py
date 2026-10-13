@@ -1287,6 +1287,14 @@ def after_orphaned_photo_kb() -> InlineKeyboardMarkup:
     ])
 
 
+def after_orphaned_video_kb() -> InlineKeyboardMarkup:
+    """Клавиатура под видео, доставленным через orphaned delivery (после перезапуска бота)."""
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="✏️ Редактировать", callback_data="media:edit_orphaned_video")],
+        [InlineKeyboardButton(text="🏠 Главное меню", callback_data="media:back:menu")],
+    ])
+
+
 def after_generation_kb(is_image: bool = False, is_video: bool = False, edit: bool = False) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     if is_video:

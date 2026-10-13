@@ -12,7 +12,7 @@ import logging
 import aiohttp
 from aiohttp import web
 from aiogram.types import BufferedInputFile
-from bot.keyboards.media import after_orphaned_photo_kb
+from bot.keyboards.media import after_orphaned_photo_kb, after_orphaned_video_kb
 from services import file_proxy
 
 logger = logging.getLogger(__name__)
@@ -115,7 +115,8 @@ async def _deliver_orphaned(corr_id: str, body: dict) -> None:
     try:
         file = BufferedInputFile(media_data, filename=_media_filename(media_type))
         if media_type == "video":
-            sent = await _bot.send_video(chat_id, file, caption=caption, parse_mode="HTML")
+            sent = await _bot.send_video(chat_id, file, caption=caption, parse_mode="HTML",
+                                         reply_markup=after_orphaned_video_kb())
             file_id = sent.video.file_id
         elif media_type == "audio":
             sent = await _bot.send_audio(chat_id, file, caption=caption, parse_mode="HTML")
@@ -224,7 +225,8 @@ async def _deliver_genapi_orphaned(corr_id: str, body: dict) -> None:
     try:
         file = BufferedInputFile(media_data, filename=_media_filename(media_type))
         if media_type == "video":
-            sent = await _bot.send_video(chat_id, file, caption=caption, parse_mode="HTML")
+            sent = await _bot.send_video(chat_id, file, caption=caption, parse_mode="HTML",
+                                         reply_markup=after_orphaned_video_kb())
             file_id = sent.video.file_id
         elif media_type == "audio":
             sent = await _bot.send_audio(chat_id, file, caption=caption, parse_mode="HTML")
