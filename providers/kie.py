@@ -100,6 +100,7 @@ def _image_input(
         "aspect_ratio": _kie_ratio(aspect_ratio),
         "resolution": resolution,
         "output_format": "png",
+        "mode": "normal",
     }
     return result
 
@@ -1160,7 +1161,8 @@ class KieProvider(OpenAICompatProvider):
             raise ProviderUnavailableError("KIE: не получен URL результата редактирования")
 
         image_out = await self._download(result_url)
-        return GenerationResult(data=image_out, mime_type="image/png", filename="edited.png")
+        return GenerationResult(data=image_out, mime_type="image/png", filename="edited.png",
+                                provider_image_url=result_url)
 
     # ─── Редактирование видео ─────────────────────────────────────────────────
 

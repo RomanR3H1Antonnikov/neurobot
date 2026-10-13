@@ -4997,8 +4997,14 @@ async def _run_generation(send_msg: Message, tg_user, state: FSMContext, data: d
         await save_generation(tg_user.id, "audio", sent.audio.file_id, prompt=prompt, model_label=data.get("model_label"))
 
     elif media_type == "photo_edit":
-        _ref_path, media_bytes = await _load_tg_file(send_msg.bot, data["reference_file_id"])
-        image_url = file_proxy.url_for_path(_ref_path)
+        _kie_url = data.get("kie_gen_task_id")
+        if _kie_url:
+            # Используем CDN-ссылку напрямую — обходим ограничение Telegram на скачивание файлов >20 МБ
+            image_url = _kie_url
+            media_bytes = b""
+        else:
+            _ref_path, media_bytes = await _load_tg_file(send_msg.bot, data["reference_file_id"])
+            image_url = file_proxy.url_for_path(_ref_path)
         result = await media_service.edit_image(
             tg_user.id, tg_user.username, media_bytes, prompt, model_slug,
             image_url=image_url, style_reference_urls=style_reference_urls,
@@ -5019,8 +5025,9 @@ async def _run_generation(send_msg: Message, tg_user, state: FSMContext, data: d
             new_file_id = sent.photo[-1].file_id
         await _track_msg(state, sent.message_id)
         await save_generation(tg_user.id, "photo", new_file_id, prompt=prompt, model_label=data.get("model_label"))
-        # Сохраняем file_id результата, чтобы пользователь мог сразу редактировать снова
-        await state.update_data(generated_file_id=new_file_id, reference_file_id=new_file_id)
+        # Сохраняем file_id и CDN-URL результата для цепочки редактирований
+        await state.update_data(generated_file_id=new_file_id, reference_file_id=new_file_id,
+                                kie_gen_task_id=result.provider_image_url)
 
     elif media_type == "video_edit":
         _ref_path, media_bytes = await _load_tg_file(send_msg.bot, data["reference_file_id"])
