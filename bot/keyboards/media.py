@@ -91,7 +91,7 @@ def guide_photo_edit_card_kb() -> InlineKeyboardMarkup:
         InlineKeyboardButton(text="✏️ Ввести описание", callback_data="media:guide:param:prompt"),
         InlineKeyboardButton(text="◀️ Назад", callback_data="media:guide"),
     )
-    builder.row(InlineKeyboardButton(text="🚀 Начать генерацию", callback_data="media:guide:param:start"))
+    builder.row(InlineKeyboardButton(text="🚀 Начать редактирование", callback_data="media:guide:param:start"))
     return builder.as_markup()
 
 
@@ -221,7 +221,7 @@ def guide_video_edit_card_kb() -> InlineKeyboardMarkup:
         InlineKeyboardButton(text="✏️ Ввести описание", callback_data="media:guide:param:video_edit_prompt"),
         InlineKeyboardButton(text="◀️ Назад", callback_data="media:guide"),
     )
-    builder.row(InlineKeyboardButton(text="🚀 Начать генерацию", callback_data="media:guide:param:start"))
+    builder.row(InlineKeyboardButton(text="🚀 Начать редактирование", callback_data="media:guide:param:start"))
     return builder.as_markup()
 
 
