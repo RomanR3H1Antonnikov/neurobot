@@ -120,7 +120,7 @@ def guide_audio_voice_card_kb() -> InlineKeyboardMarkup:
         InlineKeyboardButton(text="✏️ Ввести текст", callback_data="media:guide:param:voice_prompt"),
         InlineKeyboardButton(text="◀️ Назад", callback_data="media:guide:audio_gen"),
     )
-    builder.row(InlineKeyboardButton(text="🚀 Начать генерацию", callback_data="media:guide:param:start"))
+    builder.row(InlineKeyboardButton(text="🚀 Озвучить текст", callback_data="media:guide:param:start"))
     return builder.as_markup()
 
 
