@@ -286,88 +286,48 @@ tasks:
   video_generation:
     rate_limit_per_hour: 20
     models:
-      - id: seedance-2-5
-        label: "Seedance 2.5"
+      - id: pixverse-6
+        label: "Pixverse 6.0"
         description: >-
-          Создаёт до 30 секунд ролика за один проход в 4K, поддерживает до 50 референсов
-          (изображения, видео, аудио), синхронную генерацию звука и локальное редактирование сцен.
-        duration_options: [5, 10, 20, 30]
-        min_duration: 4
-        max_duration: 30
-        aspect_ratios: ["16:9", "4:3", "1:1", "3:4", "9:16", "21:9"]
-        resolutions: ["480p", "720p", "1080p"]
-        max_style_refs: 30
-        max_video_refs: 10
-        max_audio_refs: 10
-        constructor_includes_video: true
-        output_formats: ["mp4", "mov"]
-        model_id: bytedance/seedance-2-5
+          Нейросеть для генерации и редактирования видео (до 15 сек, 4K) по тексту, изображениям
+          и референсам: поддерживает точную проработку движений, сохранение идентичности персонажей,
+          мультисценные переходы и локальную корректировку кадров.
+        duration_options: [5, 10, 15]
+        min_duration: 1
+        max_duration: 15
+        aspect_ratios: ["16:9", "4:3", "1:1", "3:4", "9:16", "2:3", "3:2", "21:9"]
+        resolutions: ["360p", "540p", "720p", "1080p"]
+        max_style_refs: 0
+        # Именованные референсы Subject/Background (кнопка в Конструкторе видео)
+        characters: pixverse
+        model_id: pixverse-v6/text-to-video
         provider: kie
-        cost_credits: 55
-        cost_per_second: 11.0
-        cost_per_second_by_resolution: {"480p": 11.0, "720p": 22.0, "1080p": 50.0}
-        cost_per_second_by_resolution_no_video: {"480p": 17.0, "720p": 34.0, "1080p": 81.0}
-        cost_usd: 0.085
+        cost_credits: 25
+        cost_per_second_by_resolution: {"360p": 5.0, "540p": 6.0, "720p": 7.0, "1080p": 12.0}
+        cost_per_second_by_resolution_no_audio: {"360p": 4.0, "540p": 5.0, "720p": 6.0, "1080p": 9.0}
+        cost_usd: 0.028
         enabled: true
 
-      - id: seedance-2
-        label: "Seedance 2.0"
-        group: seedance-2
-        group_label: "Seedance 2"
+      - id: grok-video-1-5
+        label: "Grok Video 1.5"
         description: >-
-          Нейросеть для генерации кинематографических видео (до 15 секунд, до 4K) по тексту,
-          изображениями, видео- и аудиореференсам с синхронизированным звуком, контролем камеры
-          и сохранением консистентности персонажей.
-        variant_description: >-
-          Seedance 2.0 — полная версия модели. Поддерживает разрешения вплоть до 4K,
-          все типы референсов (фото, видео, аудио), первый и последний кадр.
-          Оптимальный выбор для финального качества.
+          Grok Video 1.5 создаёт короткие ролики по текстовому описанию, из загруженного
+          изображения или с использованием нескольких визуальных референсов.
+          Ключевая особенность — генерация синхронизированной звуковой дорожки
+          (речь, эффекты, музыка) в одном процессе.
         duration_options: [5, 10, 15]
-        min_duration: 4
+        min_duration: 1
         max_duration: 15
-        aspect_ratios: ["16:9", "4:3", "1:1", "3:4", "9:16", "21:9"]
-        resolutions: ["480p", "720p", "1080p", "4K"]
-        max_style_refs: 9
-        max_video_refs: 3
-        max_audio_refs: 3
-        constructor_includes_video: true
-        model_id: bytedance/seedance-2
-        provider: kie
-        cost_credits: 34
-        cost_per_second: 7.0
-        cost_per_second_by_resolution: {"480p": 7.0, "720p": 14.0, "1080p": 34.0, "4K": 66.0}
-        cost_per_second_by_resolution_no_video: {"480p": 12.0, "720p": 24.0, "1080p": 53.0, "4K": 108.0}
-        cost_usd: 0.0575
-        enabled: true
-
-      - id: seedance-2-mini
-        label: "Seedance 2.0 Mini"
-        group: seedance-2
-        group_label: "Seedance 2"
-        description: >-
-          Нейросеть для генерации кинематографических видео (до 35 секунд, до 4K) по тексту,
-          изображениями, видео- и аудиореференсам с синхронизированным звуком, контролем камеры
-          и сохранением консистентности персонажей.
-        variant_description: >-
-          Seedance 2.0 Mini — облегчённая версия модели. Поддерживает разрешения 480p и 720p,
-          все типы референсов (фото, видео, аудио), первый и последний кадр.
-          Подходит для черновиков и быстрой проверки идей.
-        duration_options: [5, 10, 15]
-        min_duration: 4
-        max_duration: 15
-        aspect_ratios: ["16:9", "4:3", "1:1", "3:4", "9:16", "21:9"]
+        aspect_ratios: ["1:1", "9:16", "16:9", "2:3", "3:2"]
         resolutions: ["480p", "720p"]
-        max_style_refs: 9
-        max_video_refs: 3
-        max_audio_refs: 3
-        constructor_includes_video: true
-        model_id: bytedance/seedance-2-mini
+        first_frame: false
+        last_frame: false
+        max_style_refs: 7
+        model_id: grok-imagine-video-1-5-preview
         provider: kie
-        cost_credits: 4
-        cost_per_second: 3.0
-        cost_per_second_by_resolution: {"480p": 3.0, "720p": 4.0}
-        cost_per_second_by_resolution_no_video: {"480p": 3.0, "720p": 6.0}
-        cost_usd: 0.012
+        cost_credits: 13
+        cost_per_second_by_resolution: {"480p": 2.5, "720p": 3.5}
+        cost_usd: 0.023
         enabled: true
 
       - id: kling-3
@@ -586,26 +546,88 @@ tasks:
         cost_usd: 0.1125
         enabled: true
 
-      - id: pixverse-6
-        label: "Pixverse 6.0"
+      - id: seedance-2-5
+        label: "Seedance 2.5"
         description: >-
-          Нейросеть для генерации и редактирования видео (до 15 сек, 4K) по тексту, изображениям
-          и референсам: поддерживает точную проработку движений, сохранение идентичности персонажей,
-          мультисценные переходы и локальную корректировку кадров.
-        duration_options: [5, 10, 15]
-        min_duration: 1
-        max_duration: 15
-        aspect_ratios: ["16:9", "4:3", "1:1", "3:4", "9:16", "2:3", "3:2", "21:9"]
-        resolutions: ["360p", "540p", "720p", "1080p"]
-        max_style_refs: 0
-        # Именованные референсы Subject/Background (кнопка в Конструкторе видео)
-        characters: pixverse
-        model_id: pixverse-v6/text-to-video
+          Создаёт до 30 секунд ролика за один проход в 4K, поддерживает до 50 референсов
+          (изображения, видео, аудио), синхронную генерацию звука и локальное редактирование сцен.
+        duration_options: [5, 10, 20, 30]
+        min_duration: 4
+        max_duration: 30
+        aspect_ratios: ["16:9", "4:3", "1:1", "3:4", "9:16", "21:9"]
+        resolutions: ["480p", "720p", "1080p"]
+        max_style_refs: 30
+        max_video_refs: 10
+        max_audio_refs: 10
+        constructor_includes_video: true
+        output_formats: ["mp4", "mov"]
+        model_id: bytedance/seedance-2-5
         provider: kie
-        cost_credits: 25
-        cost_per_second_by_resolution: {"360p": 5.0, "540p": 6.0, "720p": 7.0, "1080p": 12.0}
-        cost_per_second_by_resolution_no_audio: {"360p": 4.0, "540p": 5.0, "720p": 6.0, "1080p": 9.0}
-        cost_usd: 0.028
+        cost_credits: 55
+        cost_per_second: 11.0
+        cost_per_second_by_resolution: {"480p": 11.0, "720p": 22.0, "1080p": 50.0}
+        cost_per_second_by_resolution_no_video: {"480p": 17.0, "720p": 34.0, "1080p": 81.0}
+        cost_usd: 0.085
+        enabled: true
+
+      - id: seedance-2
+        label: "Seedance 2.0"
+        group: seedance-2
+        group_label: "Seedance 2"
+        description: >-
+          Нейросеть для генерации кинематографических видео (до 15 секунд, до 4K) по тексту,
+          изображениями, видео- и аудиореференсам с синхронизированным звуком, контролем камеры
+          и сохранением консистентности персонажей.
+        variant_description: >-
+          Seedance 2.0 — полная версия модели. Поддерживает разрешения вплоть до 4K,
+          все типы референсов (фото, видео, аудио), первый и последний кадр.
+          Оптимальный выбор для финального качества.
+        duration_options: [5, 10, 15]
+        min_duration: 4
+        max_duration: 15
+        aspect_ratios: ["16:9", "4:3", "1:1", "3:4", "9:16", "21:9"]
+        resolutions: ["480p", "720p", "1080p", "4K"]
+        max_style_refs: 9
+        max_video_refs: 3
+        max_audio_refs: 3
+        constructor_includes_video: true
+        model_id: bytedance/seedance-2
+        provider: kie
+        cost_credits: 34
+        cost_per_second: 7.0
+        cost_per_second_by_resolution: {"480p": 7.0, "720p": 14.0, "1080p": 34.0, "4K": 66.0}
+        cost_per_second_by_resolution_no_video: {"480p": 12.0, "720p": 24.0, "1080p": 53.0, "4K": 108.0}
+        cost_usd: 0.0575
+        enabled: true
+
+      - id: seedance-2-mini
+        label: "Seedance 2.0 Mini"
+        group: seedance-2
+        group_label: "Seedance 2"
+        description: >-
+          Нейросеть для генерации кинематографических видео (до 35 секунд, до 4K) по тексту,
+          изображениями, видео- и аудиореференсам с синхронизированным звуком, контролем камеры
+          и сохранением консистентности персонажей.
+        variant_description: >-
+          Seedance 2.0 Mini — облегчённая версия модели. Поддерживает разрешения 480p и 720p,
+          все типы референсов (фото, видео, аудио), первый и последний кадр.
+          Подходит для черновиков и быстрой проверки идей.
+        duration_options: [5, 10, 15]
+        min_duration: 4
+        max_duration: 15
+        aspect_ratios: ["16:9", "4:3", "1:1", "3:4", "9:16", "21:9"]
+        resolutions: ["480p", "720p"]
+        max_style_refs: 9
+        max_video_refs: 3
+        max_audio_refs: 3
+        constructor_includes_video: true
+        model_id: bytedance/seedance-2-mini
+        provider: kie
+        cost_credits: 4
+        cost_per_second: 3.0
+        cost_per_second_by_resolution: {"480p": 3.0, "720p": 4.0}
+        cost_per_second_by_resolution_no_video: {"480p": 3.0, "720p": 6.0}
+        cost_usd: 0.012
         enabled: true
 
       - id: veo-3-1-lite
@@ -744,28 +766,6 @@ tasks:
           default: 88
           "4K": 130
         cost_usd: 0.315
-        enabled: true
-
-      - id: grok-video-1-5
-        label: "Grok Video 1.5"
-        description: >-
-          Grok Video 1.5 создаёт короткие ролики по текстовому описанию, из загруженного
-          изображения или с использованием нескольких визуальных референсов.
-          Ключевая особенность — генерация синхронизированной звуковой дорожки
-          (речь, эффекты, музыка) в одном процессе.
-        duration_options: [5, 10, 15]
-        min_duration: 1
-        max_duration: 15
-        aspect_ratios: ["1:1", "9:16", "16:9", "2:3", "3:2"]
-        resolutions: ["480p", "720p"]
-        first_frame: false
-        last_frame: false
-        max_style_refs: 7
-        model_id: grok-imagine-video-1-5-preview
-        provider: kie
-        cost_credits: 13
-        cost_per_second_by_resolution: {"480p": 2.5, "720p": 3.5}
-        cost_usd: 0.023
         enabled: true
 
       - id: kling-3-omni
