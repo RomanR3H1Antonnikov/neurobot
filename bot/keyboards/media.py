@@ -372,7 +372,7 @@ def _cost_label(model: dict) -> str:
     return f"{model['cost_credits']} ₽"
 
 
-def model_top_kb(models: list[dict]) -> InlineKeyboardMarkup:
+def model_top_kb(models: list[dict], back_callback: str = "media:back:type") -> InlineKeyboardMarkup:
     """Первый уровень выбора: группы со стрелкой + одиночные модели."""
     builder = InlineKeyboardBuilder()
     for item in _top_level_items(models):
@@ -386,7 +386,7 @@ def model_top_kb(models: list[dict]) -> InlineKeyboardMarkup:
                 text=item['label'],
                 callback_data=f"media:model:{item['id']}",
             ))
-    builder.row(InlineKeyboardButton(text="◀️ Назад", callback_data="media:back:type"))
+    builder.row(InlineKeyboardButton(text="◀️ Назад", callback_data=back_callback))
     return builder.as_markup()
 
 
@@ -1265,12 +1265,15 @@ def after_orphaned_photo_kb() -> InlineKeyboardMarkup:
     ])
 
 
-def after_generation_kb(is_image: bool = False, edit: bool = False) -> InlineKeyboardMarkup:
+def after_generation_kb(is_image: bool = False, is_video: bool = False, edit: bool = False) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     if is_image:
         builder.row(InlineKeyboardButton(text="✏️ Редактировать", callback_data="media:edit_generated"))
+    if is_video:
+        edit_label = "✏️ Редактировать ещё" if edit else "✏️ Редактировать"
+        builder.row(InlineKeyboardButton(text=edit_label, callback_data="media:edit_generated_video"))
     if edit:
-        # После редактирования: вместо «Главное меню» — «К моделям». «Назад» не нужен: ведёт туда же.
+        # После редактирования: вместо «Главное меню» — «К моделям».
         builder.row(
             InlineKeyboardButton(text="🔄 Сгенерировать ещё", callback_data="media:again"),
             InlineKeyboardButton(text="📋 К моделям", callback_data="media:back:model"),

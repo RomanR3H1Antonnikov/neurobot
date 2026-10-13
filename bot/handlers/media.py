@@ -1362,6 +1362,15 @@ async def select_model(callback: CallbackQuery, state: FSMContext) -> None:
     await state.update_data(**update)
     data = await state.get_data()
 
+    # Для перехода из видео-результата: автоматически подставляем видео как объект редактирования
+    if media_type == "video_edit" and data.get("_autofill_video_file_id") and not data.get("reference_file_id"):
+        await state.update_data(
+            reference_file_id=data["_autofill_video_file_id"],
+            reference_type="video",
+            _autofill_video_file_id=None,
+        )
+        data = await state.get_data()
+
     if media_type in ("photo_edit", "video_edit"):
         await state.set_state(MediaStates.confirm)
         await state.update_data(confirm_msg_id=callback.message.message_id)
@@ -1859,6 +1868,57 @@ async def edit_generated_image(callback: CallbackQuery, state: FSMContext) -> No
         reply_markup=back_to_confirm_kb(),
     )
     await _track_msg(state, sent.message_id)
+    await callback.answer()
+
+
+@router.callback_query(F.data == "media:edit_generated_video")
+async def edit_generated_video(callback: CallbackQuery, state: FSMContext) -> None:
+    """Редактировать сгенерированное или отредактированное видео — подставляет его как объект редактирования."""
+    data = await state.get_data()
+    video_fid = data.get("generated_file_id")
+    if not video_fid:
+        await callback.answer("Видео не найдено, попробуй снова.", show_alert=True)
+        return
+
+    models = get_models_for_task(TaskType.VIDEO_EDIT)
+    if not models:
+        await callback.answer("Нет доступных моделей для редактирования.", show_alert=True)
+        return
+
+    # Сохраняем file_id видео для автоподстановки в select_model, сбрасываем контекст предыдущей генерации
+    await state.set_data({
+        "_tracked_msg_ids": data.get("_tracked_msg_ids"),
+        "media_type": "video_edit",
+        "_autofill_video_file_id": video_fid,
+    })
+    await state.set_state(MediaStates.select_model)
+
+    sent = await callback.message.answer(
+        model_select_text("Изменить видео", models),
+        parse_mode="HTML",
+        reply_markup=model_top_kb(models, back_callback="media:back:video_gen_models"),
+    )
+    await _track_msg(state, sent.message_id)
+    await callback.answer()
+
+
+@router.callback_query(F.data == "media:back:video_gen_models")
+async def back_to_video_gen_models(callback: CallbackQuery, state: FSMContext) -> None:
+    """Возврат к списку моделей генерации видео (из пикера редактирования видео)."""
+    await _delete_msgs_below(callback.bot, callback.message.chat.id, state, callback.message.message_id)
+    models = get_models_for_task(TaskType.VIDEO_GENERATION)
+    _curr = await state.get_data()
+    await state.set_data({
+        "_tracked_msg_ids": _curr.get("_tracked_msg_ids"),
+        "media_type": "video",
+        "duration": 5,
+    })
+    await state.set_state(MediaStates.select_model)
+    await callback.message.edit_text(
+        model_select_text("Видео", models),
+        parse_mode="HTML",
+        reply_markup=model_top_kb(models),
+    )
     await callback.answer()
 
 
@@ -4867,15 +4927,20 @@ async def _run_generation(send_msg: Message, tg_user, state: FSMContext, data: d
             characters=_characters,
         )
         file = BufferedInputFile(result.data, filename=result.filename)
-        _video_kb = await _result_markup()
+        _video_kb = await _result_markup(is_video=True)
         if result.mime_type == "video/quicktime":
             sent = await send_msg.answer_document(file, caption=_cost_caption(result), reply_markup=_video_kb)
             await _track_msg(state, sent.message_id)
-            await save_generation(tg_user.id, "video", sent.document.file_id, prompt=prompt, model_label=data.get("model_label"))
+            _video_fid = sent.document.file_id
+            await save_generation(tg_user.id, "video", _video_fid, prompt=prompt, model_label=data.get("model_label"))
         else:
             sent = await send_msg.answer_video(file, caption=_cost_caption(result), reply_markup=_video_kb)
             await _track_msg(state, sent.message_id)
-            await save_generation(tg_user.id, "video", sent.video.file_id, prompt=prompt, model_label=data.get("model_label"))
+            _video_fid = sent.video.file_id
+            await save_generation(tg_user.id, "video", _video_fid, prompt=prompt, model_label=data.get("model_label"))
+        current = await state.get_data()
+        if current.get("_gen_nonce") == gen_nonce:
+            await state.update_data(generated_file_id=_video_fid)
 
     elif media_type == "audio":
         music_params: dict | None = None
@@ -4989,7 +5054,7 @@ async def _run_generation(send_msg: Message, tg_user, state: FSMContext, data: d
             characters=_edit_characters,
         )
         file = BufferedInputFile(result.data, filename=result.filename)
-        sent = await send_msg.answer_video(file, caption=_cost_caption(result), reply_markup=await _result_markup(edit=True))
+        sent = await send_msg.answer_video(file, caption=_cost_caption(result), reply_markup=await _result_markup(is_video=True, edit=True))
         await _track_msg(state, sent.message_id)
         await save_generation(tg_user.id, "video", sent.video.file_id, prompt=prompt, model_label=data.get("model_label"))
         # Сохраняем file_id результата, чтобы пользователь мог сразу редактировать снова текстом
