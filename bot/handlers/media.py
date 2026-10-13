@@ -33,6 +33,7 @@ from bot.keyboards.media import (
     model_top_kb, model_variant_kb,
     model_select_text, model_variant_text, back_to_model_kb, back_to_confirm_kb, back_to_frames_kb,
     image_confirm_kb, image_ratio_kb, image_resolution_kb, image_quality_kb,
+    motion_orientation_kb,
     video_confirm_kb, video_format_kb, video_frames_menu_kb, video_duration_picker_kb, audio_confirm_kb, edit_confirm_kb, edit_sound_kb,
     music_confirm_kb, music_format_kb,
     udio_confirm_kb, udio_lyrics_type_kb, udio_model_type_kb,
@@ -2188,12 +2189,28 @@ async def toggle_audio(callback: CallbackQuery, state: FSMContext) -> None:
     await callback.answer()
 
 
-@router.callback_query(MediaStates.confirm, F.data == "media:toggle_orientation")
-async def toggle_motion_orientation(callback: CallbackQuery, state: FSMContext) -> None:
-    """Переключение ориентации персонажа для Kling Motion Control."""
+@router.callback_query(MediaStates.confirm, F.data == "media:pick_orientation")
+async def pick_orientation_screen(callback: CallbackQuery, state: FSMContext) -> None:
+    """Открывает экран выбора ориентации персонажа для Kling Motion Control."""
     data = await state.get_data()
-    new_orient = "video" if data.get("motion_orientation") == "image" else "image"
-    # Корректируем ограничения длительности
+    await callback.message.edit_text(
+        "<b>Ориентация персонажа</b>\n\n"
+        "Motion Control «оживляет» персонажа с опорного фото, используя движения из видео-референса. "
+        "Параметр <i>Ориентация</i> определяет, откуда берётся направление взгляда и поза персонажа "
+        "в итоговом видео:\n\n"
+        "📸 <b>Фото</b> — персонаж сохраняет положение и ориентацию, как на опорном фото.\n"
+        "🎬 <b>Видео</b> — персонаж принимает ориентацию из видео-референса.",
+        parse_mode="HTML",
+        reply_markup=motion_orientation_kb(data.get("motion_orientation", "image")),
+    )
+    await callback.answer()
+
+
+@router.callback_query(MediaStates.confirm, F.data.startswith("media:set_orient:"))
+async def set_orientation(callback: CallbackQuery, state: FSMContext) -> None:
+    """Устанавливает ориентацию персонажа и возвращает к карточке подтверждения."""
+    new_orient = callback.data.split(":")[2]  # "image" or "video"
+    data = await state.get_data()
     if new_orient == "image":
         new_max = 10
         new_opts = [s for s in (data.get("model_duration_options") or [5, 10]) if s <= 10] or [5, 10]
@@ -2208,7 +2225,8 @@ async def toggle_motion_orientation(callback: CallbackQuery, state: FSMContext) 
         duration=min(cur_dur, new_max),
     )
     data = await state.get_data()
-    await callback.message.edit_reply_markup(reply_markup=_confirm_kb(data))
+    await callback.message.edit_text(_confirm_card_text(data), parse_mode="HTML", reply_markup=_confirm_kb(data))
+    await _delete_msgs_below(callback.bot, callback.message.chat.id, state, callback.message.message_id)
     await callback.answer()
 
 

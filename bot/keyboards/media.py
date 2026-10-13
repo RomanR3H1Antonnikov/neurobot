@@ -670,7 +670,7 @@ def video_confirm_kb(
         orient_label = "Фото" if motion_orientation == "image" else "Видео"
         builder.row(InlineKeyboardButton(
             text=f"🎯 Ориентация: {orient_label}",
-            callback_data="media:toggle_orientation",
+            callback_data="media:pick_orientation",
         ))
     if show_audio_toggle:
         audio_toggle_text = "🔊 Звуковое сопровождение: вкл" if audio_enabled else "🔇 Звуковое сопровождение: выкл"
@@ -1184,6 +1184,18 @@ def edit_sound_kb(audio_mode: str | None, audio_file_name: str | None = None, wa
             builder.row(InlineKeyboardButton(text=f"✅ Заменить: {short_name}", callback_data="media:edit_sound:replace"))
         else:
             builder.row(InlineKeyboardButton(text="🔊 Заменить звук", callback_data="media:edit_sound:replace"))
+    builder.row(InlineKeyboardButton(text="◀️ Назад", callback_data="media:back:confirm"))
+    return builder.as_markup()
+
+
+def motion_orientation_kb(current: str) -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    for val, label in [("image", "📸 Фото"), ("video", "🎬 Видео")]:
+        prefix = "✅ " if val == current else ""
+        builder.row(InlineKeyboardButton(
+            text=f"{prefix}{label}",
+            callback_data=f"media:set_orient:{val}",
+        ))
     builder.row(InlineKeyboardButton(text="◀️ Назад", callback_data="media:back:confirm"))
     return builder.as_markup()
 
