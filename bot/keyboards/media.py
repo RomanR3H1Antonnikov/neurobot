@@ -1267,8 +1267,6 @@ def after_orphaned_photo_kb() -> InlineKeyboardMarkup:
 
 def after_generation_kb(is_image: bool = False, is_video: bool = False, edit: bool = False) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
-    if is_image:
-        builder.row(InlineKeyboardButton(text="✏️ Редактировать", callback_data="media:edit_generated"))
     if is_video:
         edit_label = "✏️ Редактировать ещё" if edit else "✏️ Редактировать"
         builder.row(InlineKeyboardButton(text=edit_label, callback_data="media:edit_generated_video"))

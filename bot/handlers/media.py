@@ -4883,9 +4883,9 @@ async def _run_generation(send_msg: Message, tg_user, state: FSMContext, data: d
         else:
             file = BufferedInputFile(result.data, filename=result.filename)
             _markup = await _result_markup(is_image=True)
-            _caption = _cost_caption(result)
+            _caption = (_cost_caption(result) or "") + "\n\nЕсли нужно отредактировать это фото, напишите в чат, что необходимо изменить на фото."
             if len(result.data) > 10 * 1024 * 1024:
-                _doc_caption = (_caption or "") + ("\n\n" if _caption else "") + "📎 Изображение отправлено файлом — его размер превышает ограничение Telegram для фото."
+                _doc_caption = _caption + "\n\n📎 Изображение отправлено файлом — его размер превышает ограничение Telegram для фото."
                 sent = await send_msg.answer_document(file, caption=_doc_caption, reply_markup=_markup)
                 _file_id = sent.document.file_id
             else:
@@ -5017,9 +5017,9 @@ async def _run_generation(send_msg: Message, tg_user, state: FSMContext, data: d
         )
         file = BufferedInputFile(result.data, filename=result.filename)
         _markup = await _result_markup(is_image=True, edit=True)
-        _caption = _cost_caption(result)
+        _caption = (_cost_caption(result) or "") + "\n\nЕсли нужно отредактировать это фото, напишите в чат, что необходимо изменить на фото."
         if len(result.data) > 10 * 1024 * 1024:
-            _doc_caption = (_caption or "") + ("\n\n" if _caption else "") + "📎 Изображение отправлено файлом — его размер превышает ограничение Telegram для фото."
+            _doc_caption = _caption + "\n\n📎 Изображение отправлено файлом — его размер превышает ограничение Telegram для фото."
             sent = await send_msg.answer_document(file, caption=_doc_caption, reply_markup=_markup)
             new_file_id = sent.document.file_id
         else:
