@@ -71,7 +71,8 @@ async def add_credits(user_id: int, amount: int, description: str = "Попол�
 
 # ─── История чата ─────────────────────────────────────────────────────────────
 
-CHAT_HISTORY_LIMIT = 20  # последних сообщений в контексте
+CHAT_HISTORY_LIMIT = 20   # максимум сообщений в контексте
+CHAT_HISTORY_HOURS = 24   # сообщения старше N часов в контекст не попадают
 
 
 async def get_chat_history(user_id: int) -> list[dict]:
@@ -79,8 +80,9 @@ async def get_chat_history(user_id: int) -> list[dict]:
     async with db.execute(
         """SELECT role, content FROM chat_history
            WHERE user_id = ?
+             AND created_at >= datetime('now', ? || ' hours')
            ORDER BY created_at DESC LIMIT ?""",
-        (user_id, CHAT_HISTORY_LIMIT),
+        (user_id, f"-{CHAT_HISTORY_HOURS}", CHAT_HISTORY_LIMIT),
     ) as cur:
         rows = await cur.fetchall()
     return [{"role": r["role"], "content": r["content"]} for r in reversed(rows)]
