@@ -542,6 +542,12 @@ def _confirm_card_text(data: dict) -> str:
             elif _edit_audio_mode == "replace":
                 _edit_audio_name = data.get("video_edit_audio_file_name", "аудиофайл")
                 lines.append(f"<b>Звук:</b> заменить ✅ ({_edit_audio_name})")
+            lines.append(
+                "\n<i>Технически, ИИ принимает добавленное тобой видео как @video1. "
+                "Это значит, что если ты загружаешь видео-ориентиры, они будут приняты как @video2, @video3 и так далее. "
+                "Добавленное в этот раздел видео — ключевое, нейросеть сконцентрирована на нём, "
+                "поэтому необязательно прописывать @video1, если хочешь указать на него.</i>"
+            )
 
     if media_type == "audio":
         prompt_label = "Текст для озвучки" if data.get("audio_type", "voice") == "voice" else "Описание музыки"
