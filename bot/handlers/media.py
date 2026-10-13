@@ -433,6 +433,13 @@ def _confirm_card_text(data: dict) -> str:
         _video_refs = data.get("video_style_reference_file_ids") or []
         if _video_refs:
             lines.append(f"<b>Видео-реф:</b> {len(_video_refs)} файл(а) ✅")
+        _orient = data.get("motion_orientation")
+        if _orient is not None:
+            if _orient == "image":
+                _orient_hint = "📸 <b>Фото</b> — персонаж сохраняет положение и ориентацию, как на опорном фото."
+            else:
+                _orient_hint = "🎬 <b>Видео</b> — персонаж принимает ориентацию из видео-референса."
+            lines.append(f"\n<b>Ориентация персонажа:</b>\n{_orient_hint}")
     elif media_type == "audio":
         t = "Озвучка" if data.get("audio_type", "voice") == "voice" else "Музыка"
         lines.append(f"<b>Тип аудио:</b> {t}")
