@@ -24,7 +24,7 @@ def _has_yookassa() -> bool:
 from bot.keyboards.media import (
     media_type_kb, media_section_kb, MEDIA_SECTIONS, media_info_kb,
     guide_main_kb, guide_section_kb, guide_photo_gen_card_kb, guide_photo_edit_card_kb,
-    guide_audio_main_kb, guide_audio_voice_card_kb, guide_audio_voice_back_kb,
+    guide_audio_main_kb, guide_audio_voice_card_kb, guide_audio_voice_back_kb, guide_audio_music_card_kb,
     guide_param_back_kb, guide_photo_edit_back_kb, guide_ratio_kb, guide_resolution_kb,
     guide_video_gen_card_kb, guide_video_animate_kb, guide_video_constructor_kb, guide_video_audio_kb,
     guide_video_param_back_kb, guide_video_duration_kb, guide_video_ratio_kb, guide_video_resolution_kb,
@@ -777,6 +777,42 @@ _GUIDE_AUDIO_VOICE_TEXT = (
     "У меня есть только одна модель для озвучки — ElevenLabs V3."
 )
 
+_GUIDE_AUDIO_MUSIC_CARD_TEXT = (
+    "🎵 <b>Генерация аудио</b>\n\n"
+    "Здесь находятся основные и дополнительные настройки генерации музыки. "
+    "Бот имеет две модели, отвечающих за генерацию — Lyria 3 Pro и ElevenLabs Music. "
+    "Lyria имеет более скромный ассортимент настроек, а ElevenLabs более продвинутый."
+)
+
+_GUIDE_MUSIC_ALERTS = {
+    "music_duration": (
+        "Здесь вы указываете длительность музыкального произведения, она указывается в секундах. "
+        "Минимум — 5 секунд, максимум 600, цена фиксированная."
+    ),
+    "music_prompt": "Сюда вводится текстовое описание музыки: жанр, настроение, инструменты, вокал.",
+    "music_pos_styles": (
+        "В этом разделе вы перечисляете стили и направления, которые должны присутствовать во всей "
+        "композиции. Названия стилей пишутся по-английски."
+    ),
+    "music_neg_styles": (
+        "Напишите стили и направления, которых не должно быть во всей композиции. "
+        "Названия стилей пишите по-английски."
+    ),
+    "music_sections": (
+        "Секции композиций — это отдельные части музыкального произведения, которые имеют определённую "
+        "структуру и назначение (куплет, интро, проигрыш и т.д.).\n\n"
+        "При написании пишите название, локальные стили, длительность и текст."
+    ),
+    "music_instrumental": (
+        "Если включено — гарантированно инструментальный трек без вокала. Работает только с описанием."
+    ),
+    "music_section_dur": (
+        "Строго соблюдать длительность каждой секции. Если выключено — модель может чуть сдвинуть "
+        "длительности секций, сохраняя общую длительность трека."
+    ),
+    "music_format": "Формат сгенерированного аудио.",
+}
+
 _GUIDE_PHOTO_GEN_CARD_TEXT = (
     "🖼 <b>Как сгенерировать фото</b>\n\n"
     "Это — стандартные настройки генерации фото, они есть у каждой модели. Когда ты выберешь "
@@ -949,7 +985,10 @@ _GUIDE_PARAMS = {
     ),
 }
 
-_GUIDE_PARAM_CALLBACKS = {f"media:guide:param:{k}" for k in _GUIDE_PARAMS}
+_GUIDE_PARAM_CALLBACKS = (
+    {f"media:guide:param:{k}" for k in _GUIDE_PARAMS}
+    | {f"media:guide:param:{k}" for k in _GUIDE_MUSIC_ALERTS}
+)
 
 _GUIDE_VIDEO_GEN_CARD_TEXT = (
     "🎬 <b>Как сгенерировать видео</b>\n\n"
@@ -1080,8 +1119,12 @@ async def guide_audio_voice(callback: CallbackQuery) -> None:
 
 
 @router.callback_query(MediaStates.select_type, F.data == "media:guide:audio_music")
-async def guide_audio_music(callback: CallbackQuery) -> None:
-    await callback.answer("Раздел в разработке — скоро здесь будет подробное объяснение.", show_alert=True)
+async def guide_audio_music(callback: CallbackQuery, state: FSMContext) -> None:
+    await state.update_data(guide_section="audio_music")
+    await callback.message.edit_text(
+        _GUIDE_AUDIO_MUSIC_CARD_TEXT, parse_mode="HTML", reply_markup=guide_audio_music_card_kb(),
+    )
+    await callback.answer()
 
 
 @router.callback_query(MediaStates.select_type, F.data.in_(_GUIDE_PARAM_CALLBACKS))
@@ -1097,6 +1140,9 @@ async def guide_param(callback: CallbackQuery, state: FSMContext) -> None:
             "Если выключено — видео будет без музыки.",
             show_alert=True,
         )
+        return
+    if key in _GUIDE_MUSIC_ALERTS:
+        await callback.answer(_GUIDE_MUSIC_ALERTS[key], show_alert=True)
         return
     if key == "add_photo":
         await state.update_data(guide_section="add_photo")
@@ -1134,6 +1180,20 @@ async def guide_param(callback: CallbackQuery, state: FSMContext) -> None:
 @router.callback_query(MediaStates.select_type, F.data == "media:guide:noop")
 async def guide_noop(callback: CallbackQuery) -> None:
     await callback.answer()
+
+
+@router.message(MediaStates.select_type, F.text)
+async def guide_text_received(message: Message, state: FSMContext) -> None:
+    data = await state.get_data()
+    if not data.get("guide_section"):
+        return
+    await message.delete()
+    notice = await message.answer(
+        "Поскольку раздел представляет из себя шаблон для обучения, "
+        "введённые данные не отправляются нейросетям и ни на что не влияют."
+    )
+    await asyncio.sleep(5)
+    await notice.delete()
 
 
 @router.message(MediaStates.select_type, F.photo | F.video | F.document | F.audio | F.voice)
