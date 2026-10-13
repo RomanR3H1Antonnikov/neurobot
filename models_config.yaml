@@ -51,6 +51,9 @@ tasks:
         cost_credits: 10
         cost_usd: 0.01
         enabled: true
+        fallbacks:
+          - provider: kie
+            model_id: nano-banana-pro
 
       - id: nano-banana-2-lite
         label: "Lite"
@@ -931,6 +934,9 @@ tasks:
         cost_credits: 10
         cost_usd: 0.02
         enabled: true
+        fallbacks:
+          - provider: kie
+            model_id: nano-banana-pro
 
       - id: nano-banana-2-lite-edit
         label: "Lite"
