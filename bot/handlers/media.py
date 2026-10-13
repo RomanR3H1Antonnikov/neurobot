@@ -1470,6 +1470,8 @@ async def _restore_gen_snapshot(callback: CallbackQuery, state: FSMContext) -> b
         reference_file_id=None,
         reference_type=None,
         adding_style_ref=None,
+        generated_file_id=None,
+        kie_gen_task_id=None,
     )
     await state.set_state(MediaStates.confirm)
     data = await state.get_data()
