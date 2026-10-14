@@ -1197,6 +1197,7 @@ tasks:
         # Ограничения KIE на исходное видео (сек) — проверяется при загрузке и запуске
         min_input_video_seconds: 3
         max_input_video_seconds: 15.5
+        audio_accompaniment: true
         cost_credits: 12
         cost_per_second_by_resolution: {"720p": 12.0, "1080p": 16.0, "4K": 36.0}
         cost_usd: 0.10

@@ -1096,6 +1096,7 @@ def edit_confirm_kb(
     max_style_refs: int = 0,
     cost_credits: int | None = None,
     video_edit_audio_mode: str | None = None,
+    audio_accompaniment: bool = False,
     duration: int | None = None,
     duration_options: list[int] | None = None,
     aspect_ratio: str | None = None,
@@ -1162,7 +1163,12 @@ def edit_confirm_kb(
             builder.row(InlineKeyboardButton(text=f"📐 Масштаб: {aspect_ratio}", callback_data="media:pick_ratio"))
         elif has_resolutions and resolution:
             builder.row(InlineKeyboardButton(text=f"🖼 Качество: {resolution}", callback_data="media:pick_resolution"))
-        if video_edit_audio_mode == "remove":
+        if audio_accompaniment:
+            if video_edit_audio_mode == "remove":
+                sound_text = "🔇 Звуковое сопровождение: выкл ✅"
+            else:
+                sound_text = "🔊 Звуковое сопровождение ✅"
+        elif video_edit_audio_mode == "remove":
             sound_text = "🔕 Звук: убрать ✅"
         elif video_edit_audio_mode == "replace":
             sound_text = "🔊 Звук: заменить ✅"
@@ -1183,7 +1189,7 @@ def edit_confirm_kb(
     return builder.as_markup()
 
 
-def edit_sound_kb(audio_mode: str | None, audio_file_name: str | None = None, wan: bool = False) -> InlineKeyboardMarkup:
+def edit_sound_kb(audio_mode: str | None, audio_file_name: str | None = None, wan: bool = False, accompaniment: bool = False) -> InlineKeyboardMarkup:
     """Клавиатура выбора режима звука при редактировании видео."""
     builder = InlineKeyboardBuilder()
     if wan:
@@ -1193,6 +1199,11 @@ def edit_sound_kb(audio_mode: str | None, audio_file_name: str | None = None, wa
         builder.row(InlineKeyboardButton(text=auto_text, callback_data="media:edit_sound:auto"))
         builder.row(InlineKeyboardButton(text=origin_text, callback_data="media:edit_sound:origin"))
         builder.row(InlineKeyboardButton(text=mute_text, callback_data="media:edit_sound:mute"))
+    elif accompaniment:
+        on_text = "✅ Включить" if audio_mode != "remove" else "🔊 Включить"
+        off_text = "✅ Выключить" if audio_mode == "remove" else "🔇 Выключить"
+        builder.row(InlineKeyboardButton(text=on_text, callback_data="media:edit_sound:auto"))
+        builder.row(InlineKeyboardButton(text=off_text, callback_data="media:edit_sound:remove"))
     else:
         if audio_mode == "remove":
             remove_text = "✅ Убрать звук"

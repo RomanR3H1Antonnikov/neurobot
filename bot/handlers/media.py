@@ -537,6 +537,9 @@ def _confirm_card_text(data: dict) -> str:
                     lines.append("<b>Звук:</b> оригинальный ✅")
                 elif _edit_audio_mode == "mute":
                     lines.append("<b>Звук:</b> выключен ✅")
+            elif data.get("model_audio_accompaniment"):
+                if _edit_audio_mode == "remove":
+                    lines.append("<b>Звуковое сопровождение:</b> выкл ✅")
             elif _edit_audio_mode == "remove":
                 lines.append("<b>Звук:</b> убрать ✅")
             elif _edit_audio_mode == "replace":
@@ -661,6 +664,7 @@ def _confirm_kb(data: dict):
             max_style_refs=data.get("model_max_style_refs", 0),
             cost_credits=cost,
             video_edit_audio_mode=data.get("video_edit_audio_mode"),
+            audio_accompaniment=bool(data.get("model_audio_accompaniment")),
             duration=None if data.get("model_duration_from_input") else data.get("duration"),
             duration_options=data.get("model_duration_options"),
             aspect_ratio=data.get("aspect_ratio"),
@@ -1338,6 +1342,7 @@ async def select_model(callback: CallbackQuery, state: FSMContext) -> None:
         "model_output_formats": model_cfg.get("output_formats"),
         "model_constructor_video": model_cfg.get("constructor_includes_video", False),
         "model_wan_audio": model_cfg.get("wan_audio_setting", False),
+        "model_audio_accompaniment": model_cfg.get("audio_accompaniment", False),
         "model_duration_from_input": model_cfg.get("duration_from_input", False),
         "model_characters": model_cfg.get("characters"),
         "model_input_video_min": model_cfg.get("min_input_video_seconds"),
@@ -1693,7 +1698,7 @@ async def back_to_model(callback: CallbackQuery, state: FSMContext) -> None:
         video_first_frame_file_id=None, video_last_frame_file_id=None,
         video_frames_expanded=None,
         video_edit_audio_mode=None, video_edit_audio_file_id=None, video_edit_audio_file_name=None,
-        receiving_edit_audio=None, model_wan_audio=None,
+        receiving_edit_audio=None, model_wan_audio=None, model_audio_accompaniment=None,
     )
     await state.set_state(MediaStates.select_model)
     text = model_select_text(type_label, models)
@@ -2076,6 +2081,7 @@ async def edit_sound_menu(callback: CallbackQuery, state: FSMContext) -> None:
     audio_mode = data.get("video_edit_audio_mode")
     audio_name = data.get("video_edit_audio_file_name")
     wan = bool(data.get("model_wan_audio"))
+    accompaniment = bool(data.get("model_audio_accompaniment"))
     await callback.answer()
     if wan:
         await callback.message.edit_text(
@@ -2085,6 +2091,15 @@ async def edit_sound_menu(callback: CallbackQuery, state: FSMContext) -> None:
             "• <b>Выключить звук</b> — уберёт звуковую дорожку из результата",
             parse_mode="HTML",
             reply_markup=edit_sound_kb(audio_mode, wan=True),
+        )
+    elif accompaniment:
+        await callback.message.edit_text(
+            "🔊 <b>Звуковое сопровождение</b>\n\n"
+            "Модель не генерирует аудио из текста, но может добавить звуковое сопровождение к видео.\n\n"
+            "• <b>Включить</b> — модель сгенерирует фоновый звук\n"
+            "• <b>Выключить</b> — результат будет без звука",
+            parse_mode="HTML",
+            reply_markup=edit_sound_kb(audio_mode, accompaniment=True),
         )
     else:
         await callback.message.edit_text(
@@ -2098,10 +2113,14 @@ async def edit_sound_menu(callback: CallbackQuery, state: FSMContext) -> None:
 
 @router.callback_query(MediaStates.confirm, F.data == "media:edit_sound:auto")
 async def edit_sound_auto(callback: CallbackQuery, state: FSMContext) -> None:
-    """WAN: переключает режим звука на авто."""
+    """WAN / accompaniment: переключает режим звука на авто/включён."""
+    data = await state.get_data()
     await state.update_data(video_edit_audio_mode=None)
     await callback.answer()
-    await callback.message.edit_reply_markup(reply_markup=edit_sound_kb(None, wan=True))
+    if data.get("model_audio_accompaniment"):
+        await callback.message.edit_reply_markup(reply_markup=edit_sound_kb(None, accompaniment=True))
+    else:
+        await callback.message.edit_reply_markup(reply_markup=edit_sound_kb(None, wan=True))
 
 
 @router.callback_query(MediaStates.confirm, F.data == "media:edit_sound:origin")
@@ -2124,7 +2143,7 @@ async def edit_sound_mute(callback: CallbackQuery, state: FSMContext) -> None:
 
 @router.callback_query(MediaStates.confirm, F.data == "media:edit_sound:remove")
 async def edit_sound_remove(callback: CallbackQuery, state: FSMContext) -> None:
-    """Переключает режим 'убрать звук' (повторное нажатие сбрасывает)."""
+    """Переключает режим 'убрать звук' / 'выкл сопровождение' (повторное нажатие сбрасывает)."""
     data = await state.get_data()
     if data.get("video_edit_audio_mode") == "remove":
         new_mode = None
@@ -2136,7 +2155,8 @@ async def edit_sound_remove(callback: CallbackQuery, state: FSMContext) -> None:
         video_edit_audio_file_name=None,
     )
     await callback.answer()
-    await callback.message.edit_reply_markup(reply_markup=edit_sound_kb(new_mode))
+    accompaniment = bool(data.get("model_audio_accompaniment"))
+    await callback.message.edit_reply_markup(reply_markup=edit_sound_kb(new_mode, accompaniment=accompaniment))
 
 
 @router.callback_query(MediaStates.confirm, F.data == "media:edit_sound:replace_blocked")
