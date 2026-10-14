@@ -5016,6 +5016,12 @@ async def _run_generation(send_msg: Message, tg_user, state: FSMContext, data: d
         ] or None
         from bot.handlers.characters import build_character_payload
         _characters = await build_character_payload(send_msg.bot, data)
+        _audio_flag = data.get("video_audio_enabled", True)
+        logger.info(
+            "[VIDEO_GEN] user=%s model=%s audio=%s resolution=%s duration=%s",
+            tg_user.id, model_slug, _audio_flag,
+            data.get("resolution"), data.get("duration", 5),
+        )
         result = await media_service.generate_video(
             tg_user.id, tg_user.username, prompt, data.get("duration", 5), model_slug,
             first_frame_url=first_frame_url,
@@ -5026,7 +5032,7 @@ async def _run_generation(send_msg: Message, tg_user, state: FSMContext, data: d
             audio_reference_urls=audio_reference_urls,
             video_reference_urls=video_reference_urls,
             output_format=data.get("video_output_format"),
-            audio=data.get("video_audio_enabled", True),
+            audio=_audio_flag,
             character_orientation=data.get("motion_orientation"),
             characters=_characters,
         )
