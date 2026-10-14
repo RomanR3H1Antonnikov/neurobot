@@ -1115,6 +1115,7 @@ class KieProvider(OpenAICompatProvider):
                 "aspect_ratio": aspect_ratio or "1:1",
                 "resolution": resolution or "1K",
                 "output_format": "png",
+                "mode": "normal",
             }
         elif actual_model in ("gpt-image-2-image-to-image", "gpt-image-2-5-flare-image-to-image", "gpt-image-2-5-sunburst-image-to-image"):
             if not image_url:
