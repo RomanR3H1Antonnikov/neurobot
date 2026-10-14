@@ -1242,7 +1242,7 @@ tasks:
         enabled: false
 
       - id: happyhorse-1-1-edit
-        label: "HappyHorse"
+        label: "HappyHorse 1.1"
         description: >-
           HappyHorse от Alibaba редактирует загруженное видео (3–60 сек) по текстовому описанию:
           замена объектов и одежды, смена стиля, локальные правки. Поддерживает до 5 фото-ориентиров
