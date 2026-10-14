@@ -1,8 +1,25 @@
+import html as _html
 import logging
+import re
 from aiogram import Router, F
 from services import file_proxy
 
 logger = logging.getLogger(__name__)
+
+
+def _fmt(text: str) -> str:
+    """Strip LLM citations and convert Markdown to Telegram HTML."""
+    # Убираем цитаты Perplexity вида [1], [2][3] и т.п.
+    text = re.sub(r'\[\d+\]', '', text)
+    # Экранируем HTML-спецсимволы до того, как добавляем теги
+    text = _html.escape(text)
+    # **жирный** → <b>жирный</b>
+    text = re.sub(r'\*\*(.+?)\*\*', r'<b>\1</b>', text, flags=re.DOTALL)
+    # *курсив* → <i>курсив</i> (не затрагивает маркеры списков "* пункт")
+    text = re.sub(r'(?<!\*)\*([^*\n]+?)\*(?!\*)', r'<i>\1</i>', text)
+    # `код` → <code>код</code>
+    text = re.sub(r'`([^`\n]+)`', r'<code>\1</code>', text)
+    return text.strip()
 from aiogram.types import Message, CallbackQuery, ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.fsm.context import FSMContext
@@ -180,7 +197,7 @@ async def chat_message(message: Message, state: FSMContext) -> None:
             message.from_user.id, message.from_user.username, message.text, model_slug
         )
         await thinking.delete()
-        await message.answer(response)
+        await message.answer(_fmt(response), parse_mode="HTML")
 
     except InsufficientCreditsError as e:
         await thinking.delete()
@@ -219,7 +236,7 @@ async def chat_photo(message: Message, state: FSMContext) -> None:
             image_url=image_url,
         )
         await thinking.delete()
-        await message.answer(response)
+        await message.answer(_fmt(response), parse_mode="HTML")
 
     except InsufficientCreditsError as e:
         await thinking.delete()
@@ -259,7 +276,7 @@ async def resume_chat_after_topup(message: Message, state: FSMContext) -> None:
             message.from_user.id, message.from_user.username, pending_text, model_slug
         )
         await thinking.delete()
-        await message.answer(response)
+        await message.answer(_fmt(response), parse_mode="HTML")
     except InsufficientCreditsError as e:
         await thinking.delete()
         await message.answer(f"❌ {e}\n\nПополни баланс в разделе «Мой баланс».")
