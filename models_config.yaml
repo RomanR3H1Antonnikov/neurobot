@@ -447,7 +447,7 @@ tasks:
       - id: wan-3-0
         label: "Wan 3.0"
         group: wan
-        group_label: "Wan"
+        group_label: "Wan 3.0"
         description: "Wan 2.7 — для редактирования и коротких роликов.\nWan 3.0 — для длинных сцен, документов и гибкости.\nWan 3.0 Video Prime — это ускоренная версия Wan 3.0, идеальна, когда время — деньги."
         variant_description: >-
           Wan 3.0 — это мультимодальная модель генерации видео от Alibaba (лаборатория Tongyi Lab),
@@ -472,7 +472,7 @@ tasks:
       - id: wan-3-0-prime
         label: "Wan 3.0 Video Prime"
         group: wan
-        group_label: "Wan"
+        group_label: "Wan 3.0"
         description: ""
         variant_description: >-
           Wan 3.0 Video Prime — это ускоренная версия модели для генерации видео от Alibaba.
@@ -523,7 +523,7 @@ tasks:
         cost_credits: 10
         cost_per_second_by_resolution: {"720p": 10.0, "1080p": 15.0}
         cost_usd: 0.07
-        enabled: true
+        enabled: false
 
       - id: happyhorse-1-1
         label: "Happyhorse 1.1"
