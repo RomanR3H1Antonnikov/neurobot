@@ -1,11 +1,15 @@
-from providers.base import TaskType, ChatResult
-from providers.router import get_provider, get_provider_by_model_id, get_task_rate_limit
+import logging
+
+from providers.base import TaskType, ChatResult, ProviderUnavailableError
+from providers.router import get_provider, get_provider_chain_for_model, get_task_rate_limit
 from db.queries import (
     get_or_create_user, deduct_credits,
     get_chat_history, add_chat_message, clear_chat_history,
     check_and_increment_rate_limit,
 )
 from services.media_service import InsufficientCreditsError, RateLimitError, _try_provider
+
+logger = logging.getLogger(__name__)
 
 SYSTEM_PROMPT = (
     "Ты — умный и дружелюбный ИИ-ассистент. "
@@ -26,9 +30,11 @@ async def send_message(
         raise RateLimitError(f"Превышен лимит сообщений ({rate_limit} в час)")
 
     if model_slug:
-        provider, model_cfg = get_provider_by_model_id(TaskType.CHAT, model_slug)
+        chain = get_provider_chain_for_model(TaskType.CHAT, model_slug)
+        model_cfg = chain[0][1]
     else:
         provider, model_cfg = get_provider(TaskType.CHAT)
+        chain = [(provider, model_cfg)]
 
     cost = model_cfg["cost_credits"]
     if user["balance"] < cost:
@@ -55,9 +61,17 @@ async def send_message(
 
     history.append({"role": "user", "content": content})
 
-    result: ChatResult = await _try_provider(
-        provider.chat, history, system=SYSTEM_PROMPT, model=model_cfg["model_id"]
-    )
+    last_err: Exception = ProviderUnavailableError("Нет доступных провайдеров")
+    result: ChatResult | None = None
+    for prov, cfg in chain:
+        try:
+            result = await _try_provider(prov.chat, history, system=SYSTEM_PROMPT, model=cfg["model_id"])
+            break
+        except ProviderUnavailableError as e:
+            last_err = e
+            logger.warning("[CHAT_FALLBACK] provider=%s model=%s failed: %s", cfg["provider"], cfg["model_id"], e)
+    if result is None:
+        raise last_err
 
     await add_chat_message(user_id, "user", history_text)
     await add_chat_message(user_id, "assistant", result.text)

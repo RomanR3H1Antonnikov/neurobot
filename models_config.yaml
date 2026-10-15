@@ -1341,6 +1341,9 @@ tasks:
         cost_credits: 1
         cost_usd: 0.002
         enabled: true
+        fallbacks:
+          - provider: routerai
+            model_id: openai/gpt-5.5
 
       - id: claude-opus-4-8
         label: "Claude Opus 4.8"
@@ -1381,6 +1384,9 @@ tasks:
         cost_credits: 1
         cost_usd: 0.002
         enabled: true
+        fallbacks:
+          - provider: routerai
+            model_id: openai/gpt-5.5
 
       - id: deepseek-v4-docs
         label: "Deepseek V4"
