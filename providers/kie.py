@@ -897,11 +897,12 @@ class KieProvider(OpenAICompatProvider):
                     {"url": url, "start": 0, "ends": duration}
                     for url in video_reference_urls
                 ]
-            elif is_wan3:
-                # Wan 3.0 использует reference_video_urls
+            elif is_wan3 or is_wan_prime:
+                # Wan 3.0, включая Prime, использует reference_video_urls.
+                # Ранее Prime отправлял video_urls и получал 422 — это было неверное поле,
+                # а не отсутствие поддержки; Prime — та же модель, что и Wan 3.0, с тем же API.
                 input_data["reference_video_urls"] = list(video_reference_urls)
-            elif not is_wan_prime:
-                # wan/3-0-video-prime не принимает video_urls (422 "unsupported field")
+            else:
                 input_data["video_urls"] = list(video_reference_urls)
 
         if actual_model == KLING_OMNI_GEN_ALIAS:
