@@ -2932,12 +2932,15 @@ async def add_last_frame(callback: CallbackQuery, state: FSMContext) -> None:
 
 @router.callback_query(F.data == "media:back:confirm")
 async def back_to_confirm(callback: CallbackQuery, state: FSMContext) -> None:
-    """Возврат к карточке настроек — работает после генерации и из enter_reference."""
-    data = await state.get_data()
+    """Возврат к текущей карточке настроек из под-экрана (ориентиры, качество и т.п.).
 
-    # В режиме быстрого редактирования «Назад» возвращает к карточке генерации
-    if data.get("quick_edit") and await _restore_gen_snapshot(callback, state):
-        return
+    Не путать с «media:back:model» — той кнопкой, что выходит из редактирования обратно
+    к генерации в режиме quick_edit. Эта всегда возвращает к карточке ТЕКУЩЕГО режима:
+    если тут восстанавливать снапшот генерации, «Назад» из под-экрана (например, из
+    добавления ориентира) будет выкидывать из редактирования в генерацию, теряя
+    reference_file_id и кнопку «Добавить фото».
+    """
+    data = await state.get_data()
 
     await state.update_data(
         picking_duration=None,
