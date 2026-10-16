@@ -28,7 +28,7 @@ from bot.keyboards.media import (
     guide_param_back_kb, guide_photo_edit_back_kb, guide_ratio_kb, guide_resolution_kb,
     guide_video_gen_card_kb, guide_video_animate_kb, guide_video_constructor_kb, guide_video_audio_kb,
     guide_video_param_back_kb, guide_video_duration_kb, guide_video_ratio_kb, guide_video_resolution_kb,
-    guide_video_edit_card_kb, guide_video_edit_param_back_kb,
+    guide_video_edit_card_kb, guide_video_edit_param_back_kb, guide_video_edit_constructor_kb,
     guide_video_edit_duration_kb, guide_video_edit_ratio_kb, guide_video_edit_resolution_kb,
     model_top_kb, model_variant_kb,
     model_select_text, model_variant_text, back_to_model_kb, back_to_confirm_kb, back_to_frames_kb,
@@ -1073,15 +1073,22 @@ _GUIDE_PARAMS = {
         "🖼 <b>Качество</b>\n\n"
         "Здесь ты выбираешь качество твоего видео."
     ),
-    "video_edit_style": (
-        "📎 <b>Ориентиры</b>\n\n"
-        "Ориентиры, они же референсы — это визуальный образец (пример), который вы предоставляете нейросети. "
-        "На него модель должна ориентироваться при создании нового изображения, видео или другого контента. "
-        "Они позволяют задать атмосферу или стиль, воплотить конкретные детали.\n\n"
-        "Каждое загруженное фото принимается как @image(номер фото), например @image1, если фото загружено первым. "
-        "Максимально возможное количество ориентиров у каждой модели разное.\n\n"
-        "Можете отправлять фотографии в общие настройки без нажатия на кнопку, бот примет их как ориентиры. "
-        "Рекомендуем перед выбором модели прочитать описание нюансов раздела, оно всегда на виду."
+    "video_edit_constructor": (
+        "🎬 <b>Конструктор видео</b>\n\n"
+        "Сюда загружаются ориентиры (референсы), которые будут помогать ИИ воплощать ваши идеи в ходе "
+        "редактирования видео. Я отобрал наиболее выгодные нейросети для редактирования видео — "
+        "Kling 3.0 Omni и HappyHorse 1.1.\n\n"
+        "Сразу отмечу, что HappyHorse 1.1 может работать только с фото-ориентирами. Kling 3.0 Omni, "
+        "помимо фото, принимает 1 видео-ориентир и позволяет создать персонажа.\n\n"
+        "Механика создания персонажа крайне проста, она описана в разделе «Как сгенерировать видео», "
+        "кнопка «Конструктор видео». В реальных моделях на каждом шаге создания персонажа присутствует "
+        "подробное описание.\n\n"
+        "ВАЖНО! ☝️☝️ Модель принимает исходное видео (которое редактирует) как @video1. Это чисто "
+        "технический момент, и нет необходимости явно указывать на главное видео, потому что нейросеть "
+        "в любом случае сосредоточена на нём и все изменения/добавления применяет к нему. Соответственно "
+        "ваш видео-ориентир ИИ принимает как @video2, учитывайте это при составлении описания.\n\n"
+        "Чтобы чётко указать боту на загруженный ориентир, при составлении описания пропиши "
+        "@image(порядковый номер) или @video2 (поскольку видео-ориентир можно загрузить только один)."
     ),
     "video_edit_prompt": (
         "✏️ <b>Ввести описание</b>\n\n"
@@ -1189,6 +1196,15 @@ async def guide_video_audio_sub(callback: CallbackQuery, state: FSMContext) -> N
     await callback.answer()
 
 
+@router.callback_query(MediaStates.select_type, F.data == "media:guide:video_edit_constructor")
+async def guide_video_edit_constructor(callback: CallbackQuery, state: FSMContext) -> None:
+    await state.update_data(guide_section="video_edit_constructor")
+    await callback.message.edit_text(
+        _GUIDE_PARAMS["video_edit_constructor"], parse_mode="HTML", reply_markup=guide_video_edit_constructor_kb(),
+    )
+    await callback.answer()
+
+
 @router.callback_query(MediaStates.select_type, F.data == "media:guide:photo_gen")
 async def guide_photo_gen(callback: CallbackQuery, state: FSMContext) -> None:
     await state.update_data(guide_section="photo_gen")
@@ -1283,7 +1299,7 @@ async def guide_param(callback: CallbackQuery, state: FSMContext) -> None:
         kb = guide_video_edit_ratio_kb()
     elif key == "video_edit_resolution":
         kb = guide_video_edit_resolution_kb()
-    elif key in ("add_video", "video_edit_style", "video_edit_prompt"):
+    elif key in ("add_video", "video_edit_prompt"):
         kb = guide_video_edit_param_back_kb()
     else:
         kb = guide_param_back_kb()

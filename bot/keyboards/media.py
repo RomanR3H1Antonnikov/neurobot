@@ -211,7 +211,7 @@ def guide_video_edit_card_kb() -> InlineKeyboardMarkup:
     """Макет карточки настроек редактирования видео (Kling 3.0 Omni, нефункциональный)."""
     builder = InlineKeyboardBuilder()
     builder.row(InlineKeyboardButton(text="📎 Добавить видео", callback_data="media:guide:param:add_video"))
-    builder.row(InlineKeyboardButton(text="📎 Добавить ориентир", callback_data="media:guide:param:video_edit_style"))
+    builder.row(InlineKeyboardButton(text="🎬 Конструктор видео", callback_data="media:guide:video_edit_constructor"))
     builder.row(InlineKeyboardButton(text="⏱ Длительность: 5 сек", callback_data="media:guide:param:video_edit_duration"))
     builder.row(
         InlineKeyboardButton(text="📐 Масштаб: 16:9", callback_data="media:guide:param:video_edit_ratio"),
@@ -223,6 +223,16 @@ def guide_video_edit_card_kb() -> InlineKeyboardMarkup:
         InlineKeyboardButton(text="◀️ Назад", callback_data="media:guide"),
     )
     builder.row(InlineKeyboardButton(text="🚀 Начать редактирование", callback_data="media:guide:param:start"))
+    return builder.as_markup()
+
+
+def guide_video_edit_constructor_kb() -> InlineKeyboardMarkup:
+    """Макет конструктора видео в руководстве по редактированию (нефункциональный)."""
+    builder = InlineKeyboardBuilder()
+    builder.row(InlineKeyboardButton(text="📷 Фото", callback_data="media:guide:noop"))
+    builder.row(InlineKeyboardButton(text="🎬 Видео", callback_data="media:guide:noop"))
+    builder.row(InlineKeyboardButton(text="👤 Создать персонажа", callback_data="media:guide:noop"))
+    builder.row(InlineKeyboardButton(text="◀️ Назад", callback_data="media:guide:video_edit"))
     return builder.as_markup()
 
 
