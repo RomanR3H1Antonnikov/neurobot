@@ -39,6 +39,7 @@ from bot.keyboards.media import (
     udio_confirm_kb, udio_lyrics_type_kb, udio_model_type_kb,
     voice_picker_kb, voice_confirm_kb, voice_language_kb,
     style_ref_collecting_kb, style_ref_delete_kb, video_ref_delete_kb, audio_ref_delete_kb, video_extra_frames_delete_kb, after_generation_kb, after_orphaned_photo_kb, after_orphaned_video_kb, gen_waiting_kb, error_kb,
+    character_ref_kb,
 )
 from providers.base import ProviderError, ProviderUnavailableError, ProviderContentPolicyError, ProviderInputError, TaskType
 from providers.router import get_models_for_task
@@ -284,6 +285,7 @@ class MediaStates(StatesGroup):
     select_model = State()
     enter_prompt = State()
     enter_reference = State()
+    enter_character_ref = State()
     confirm = State()
 
 
@@ -392,6 +394,8 @@ def _confirm_card_text(data: dict) -> str:
         _srefs = data.get("style_reference_file_ids") or []
         if _srefs:
             lines.append(f"<b>{'Ориентир' if len(_srefs) == 1 else 'Ориентиры'}:</b> {len(_srefs)} фото ✅")
+        if data.get("model_character_ref") and data.get("character_reference_file_id"):
+            lines.append("<b>Персонаж:</b> фото ✅")
     elif media_type == "video":
         lines.append(f"<b>Длительность:</b> {data.get('duration', 5)} сек")
         _v_ratio = data.get("aspect_ratio")
@@ -604,6 +608,8 @@ def _confirm_kb(data: dict):
             cost_credits=cost,
             quality=data.get("quality"),
             quality_options=data.get("model_quality_options"),
+            has_character_ref=bool(data.get("model_character_ref")),
+            character_ref_set=bool(data.get("character_reference_file_id")),
         )
     elif media_type == "video":
         _show_first = data.get("model_has_first_frame", True)
@@ -1334,6 +1340,7 @@ async def select_model(callback: CallbackQuery, state: FSMContext) -> None:
         "model_max_duration": max_duration,
         "duration": min_duration,
         "model_max_style_refs": model_cfg.get("max_style_refs", 14),
+        "model_character_ref": model_cfg.get("character_reference", False),
         "model_max_audio_refs": model_cfg.get("max_audio_refs", 0),
         "model_max_video_refs": model_cfg.get("max_video_refs", 0),
         "model_resolutions": model_cfg.get("resolutions"),
@@ -1546,6 +1553,7 @@ async def _restore_gen_snapshot(callback: CallbackQuery, state: FSMContext) -> b
         model_aspect_ratios=snapshot.get("model_aspect_ratios"),
         model_resolutions=snapshot.get("model_resolutions"),
         model_max_style_refs=snapshot.get("model_max_style_refs"),
+        model_character_ref=snapshot.get("model_character_ref"),
         prompt=snapshot.get("prompt"),
         reference_file_id=None,
         reference_type=None,
@@ -1646,6 +1654,7 @@ async def back_to_model(callback: CallbackQuery, state: FSMContext) -> None:
                     model_max_duration=None, model_max_style_refs=None,
                     model_resolutions=None, model_motion_control=None,
                     model_characters=None, characters=None,
+                    model_character_ref=None, character_reference_file_id=None,
                     entering_duration=None, confirm_msg_id=None,
                     prompt=None, reference_file_id=None, reference_type=None,
                     generated_file_id=None, style_reference_file_ids=None,
@@ -1686,6 +1695,7 @@ async def back_to_model(callback: CallbackQuery, state: FSMContext) -> None:
         model_duration_options=None, model_min_duration=None, model_max_duration=None,
         model_max_style_refs=None, model_resolutions=None, model_motion_control=None,
         model_characters=None, characters=None,
+        model_character_ref=None, character_reference_file_id=None,
         entering_duration=None, confirm_msg_id=None,
         reference_file_id=None, reference_type=None,
         generated_file_id=None,
@@ -1800,9 +1810,10 @@ async def generate_again(callback: CallbackQuery, state: FSMContext) -> None:
             model_aspect_ratios=snapshot.get("model_aspect_ratios"),
             model_resolutions=snapshot.get("model_resolutions"),
             model_max_style_refs=snapshot.get("model_max_style_refs"),
+            model_character_ref=snapshot.get("model_character_ref"),
             prompt=None,
             reference_file_id=None, reference_type=None,
-            style_reference_file_ids=None,
+            style_reference_file_ids=None, character_reference_file_id=None,
             generated_file_id=None, kie_gen_task_id=None,
             _gen_snapshot=None, quick_edit=None,
             _is_generating=None, _cleanup_warned_msg_id=None, confirm_msg_id=None,
@@ -1825,6 +1836,7 @@ async def generate_again(callback: CallbackQuery, state: FSMContext) -> None:
         reference_file_id=data.get("reference_file_id") if is_edit_mode else None,
         reference_type=data.get("reference_type") if is_edit_mode else None,
         style_reference_file_ids=data.get("style_reference_file_ids") if is_edit_mode else None,
+        character_reference_file_id=data.get("character_reference_file_id") if is_edit_mode else None,
         audio_reference_file_ids=None, audio_reference_file_names=None,
         generated_file_id=None,
         kie_gen_task_id=None,
@@ -1911,6 +1923,7 @@ async def _apply_edit_model_to_state(state: FSMContext, edit_prompt: str | None 
             "model_aspect_ratios": data.get("model_aspect_ratios"),
             "model_resolutions": data.get("model_resolutions"),
             "model_max_style_refs": data.get("model_max_style_refs"),
+            "model_character_ref": data.get("model_character_ref"),
             "prompt": data.get("prompt"),
             "confirm_msg_id": data.get("confirm_msg_id"),
         },
@@ -2211,6 +2224,52 @@ async def style_ref_done(callback: CallbackQuery, state: FSMContext) -> None:
     await state.update_data(confirm_msg_id=callback.message.message_id)
     await _delete_msgs_below(callback.bot, callback.message.chat.id, state, callback.message.message_id)
     await callback.answer()
+
+
+@router.callback_query(MediaStates.confirm, F.data == "media:add_character_ref")
+async def add_character_ref_prompt(callback: CallbackQuery, state: FSMContext) -> None:
+    """Кнопка 'Добавить персонажа' — референс внешности (Midjourney characterReference)."""
+    data = await state.get_data()
+    has = bool(data.get("character_reference_file_id"))
+    hint = (
+        "👤 Пришли новое фото персонажа — оно заменит текущее."
+        if has else
+        "👤 Прикрепи фото персонажа. Нейросеть использует его как референс внешности при генерации."
+    )
+    await callback.message.edit_text(hint, reply_markup=character_ref_kb(has))
+    await state.set_state(MediaStates.enter_character_ref)
+    await callback.answer()
+
+
+@router.callback_query(F.data == "media:character_ref_remove")
+async def character_ref_remove(callback: CallbackQuery, state: FSMContext) -> None:
+    """Убрать ранее добавленного персонажа."""
+    await state.update_data(character_reference_file_id=None)
+    await state.set_state(MediaStates.confirm)
+    data = await state.get_data()
+    await callback.message.edit_text(_confirm_card_text(data), parse_mode="HTML", reply_markup=_confirm_kb(data))
+    await state.update_data(confirm_msg_id=callback.message.message_id)
+    await callback.answer("Персонаж удалён", show_alert=False)
+
+
+@router.message(MediaStates.enter_character_ref, F.photo)
+async def receive_character_ref_photo(message: Message, state: FSMContext) -> None:
+    """Принимает фото персонажа и возвращает к карточке подтверждения."""
+    photo = message.photo[-1]
+    await state.update_data(character_reference_file_id=photo.file_id)
+    await state.set_state(MediaStates.confirm)
+    try:
+        await message.delete()
+    except Exception:
+        pass
+    await _update_confirm_card(message, state)
+
+
+@router.message(MediaStates.enter_character_ref)
+async def receive_character_ref_invalid(message: Message) -> None:
+    """Подсказка, если в режиме добавления персонажа прислали не фото."""
+    await message.delete()
+    asyncio.create_task(_toast(message, "⚠️ Здесь нужно прислать фото персонажа 👤."))
 
 
 @router.callback_query(F.data == "media:style_ref_clear")
@@ -4976,11 +5035,14 @@ async def _run_generation(send_msg: Message, tg_user, state: FSMContext, data: d
     ] or None
 
     if media_type == "image":
+        _char_ref_id = data.get("character_reference_file_id") if data.get("model_character_ref") else None
+        character_reference_url = await _tg_file_url(send_msg.bot, _char_ref_id) if _char_ref_id else None
         result = await media_service.generate_image(
             tg_user.id, tg_user.username, prompt,
             data.get("aspect_ratio", "1:1"), data.get("resolution", "1K"), model_slug,
             style_reference_urls=style_reference_urls,
             quality=data.get("quality"),
+            character_reference_url=character_reference_url,
         )
         if result.variants:
             all_images = [result.data] + result.variants

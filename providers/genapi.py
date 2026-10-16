@@ -142,7 +142,7 @@ class GenApiProvider(AbstractProvider):
     async def generate_image(
         self, prompt: str, aspect_ratio: str = "1:1", resolution: str = "1K",
         model: str | None = None, style_reference_urls: list[str] | None = None,
-        quality: str | None = None,
+        quality: str | None = None, character_reference_url: str | None = None,
     ) -> GenerationResult:
         actual_model = model or "midjourney"
         # model_id формата "network/version" → URL /networks/{network}, тело {"model": version}
@@ -151,6 +151,9 @@ class GenApiProvider(AbstractProvider):
             extra: dict | None = {"model": version}
         else:
             network, extra = actual_model, None
+        if character_reference_url:
+            # Midjourney characterReference — отдельное поле API, не смешивается с обычными ориентирами
+            extra = {**(extra or {}), "characterReference": character_reference_url}
         # Midjourney принимает URL ориентиров в начале промпта (пробел-разделитель)
         _refs_prefix = " ".join(style_reference_urls) + " " if style_reference_urls else ""
         effective_prompt = f"{_refs_prefix}{prompt}"

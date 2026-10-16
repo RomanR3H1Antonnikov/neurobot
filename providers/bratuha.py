@@ -148,6 +148,7 @@ class BratuhaProvider(AbstractProvider):
         model: str | None = None,
         style_reference_urls: list[str] | None = None,
         quality: str | None = None,
+        character_reference_url: str | None = None,
     ) -> GenerationResult:
         actual_model = model or "nano-banana-pro"
         tool = _MODEL_TOOLS.get(actual_model, actual_model)

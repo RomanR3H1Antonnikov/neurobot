@@ -67,7 +67,7 @@ class OpenAICompatProvider(AbstractProvider):
     async def generate_image(
         self, prompt: str, aspect_ratio: str = "1:1", resolution: str = "1K",
         model: str | None = None, style_reference_urls: list[str] | None = None,
-        quality: str | None = None,
+        quality: str | None = None, character_reference_url: str | None = None,
     ) -> GenerationResult:
         actual_model = model or self.image_model
         size = self._compute_size(aspect_ratio, resolution)

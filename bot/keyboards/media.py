@@ -517,6 +517,15 @@ def style_ref_collecting_kb(count: int, max_refs: int = 14) -> InlineKeyboardMar
     return builder.as_markup()
 
 
+def character_ref_kb(has: bool = False) -> InlineKeyboardMarkup:
+    """Клавиатура при добавлении референса персонажа (Midjourney characterReference)."""
+    builder = InlineKeyboardBuilder()
+    if has:
+        builder.row(InlineKeyboardButton(text="🗑 Убрать персонажа", callback_data="media:character_ref_remove"))
+    builder.row(InlineKeyboardButton(text="◀️ Назад", callback_data="media:back:confirm"))
+    return builder.as_markup()
+
+
 _QUALITY_LABELS = {"low": "Быстрый", "medium": "Стандарт", "high": "Высокий"}
 
 
@@ -526,6 +535,8 @@ def image_confirm_kb(
     cost_credits: int | None = None,
     quality: str | None = None,
     quality_options: list[str] | None = None,
+    has_character_ref: bool = False,
+    character_ref_set: bool = False,
 ) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     builder.row(
@@ -538,6 +549,9 @@ def image_confirm_kb(
     if max_style_refs > 0:
         ref_text = f"🖼 Ориентиры: {style_ref_count} фото ✅" if style_ref_count else "📎 Добавить ориентир"
         builder.row(InlineKeyboardButton(text=ref_text, callback_data="media:add_style_ref"))
+    if has_character_ref:
+        char_text = "👤 Персонаж: фото ✅" if character_ref_set else "👤 Добавить персонажа"
+        builder.row(InlineKeyboardButton(text=char_text, callback_data="media:add_character_ref"))
     edit_text = "✏️ Изменить описание" if has_prompt else "✏️ Ввести описание"
     builder.row(
         InlineKeyboardButton(text=edit_text, callback_data="media:edit_prompt"),

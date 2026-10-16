@@ -153,6 +153,7 @@ async def generate_image(
     telegram_id: int, username: str, prompt: str, aspect_ratio: str, resolution: str, model_slug: str,
     style_reference_urls: list[str] | None = None,
     quality: str | None = None,
+    character_reference_url: str | None = None,
 ) -> GenerationResult:
     task = TaskType.IMAGE_GENERATION
     chain = get_provider_chain_for_model(task, model_slug)
@@ -166,7 +167,7 @@ async def generate_image(
                 provider.generate_image,
                 prompt, aspect_ratio=aspect_ratio, resolution=resolution,
                 model=eff_cfg["model_id"], style_reference_urls=style_reference_urls,
-                quality=quality,
+                quality=quality, character_reference_url=character_reference_url,
             )
             break
         except ProviderUnavailableError as e:
