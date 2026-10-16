@@ -83,7 +83,14 @@ async def _deliver_orphaned(corr_id: str, body: dict) -> None:
     await delete_pending_job(corr_id)
 
     if _is_failed(body):
-        logger.info("KIE orphaned: job завершился с ошибкой, corr_id=%s — уведомление не отправляем", corr_id)
+        logger.info("KIE orphaned: job завершился с ошибкой, corr_id=%s — уведомляем пользователя", corr_id)
+        try:
+            await _bot.send_message(
+                job["chat_id"],
+                "⚠️ Генерация не удалась. Кредиты не списаны — попробуй ещё раз.",
+            )
+        except Exception as e:
+            logger.error("KIE orphaned: не удалось уведомить об ошибке telegram_id=%s: %s", job["telegram_id"], e)
         return
 
     url = _extract_url(body)
@@ -193,7 +200,14 @@ async def _deliver_genapi_orphaned(corr_id: str, body: dict) -> None:
     await delete_pending_job(corr_id)
 
     if _is_failed(body):
-        logger.info("GenAPI orphaned: job завершился с ошибкой, corr_id=%s — уведомление не отправляем", corr_id)
+        logger.info("GenAPI orphaned: job завершился с ошибкой, corr_id=%s — уведомляем пользователя", corr_id)
+        try:
+            await _bot.send_message(
+                job["chat_id"],
+                "⚠️ Генерация не удалась. Кредиты не списаны — попробуй ещё раз.",
+            )
+        except Exception as e:
+            logger.error("GenAPI orphaned: не удалось уведомить об ошибке telegram_id=%s: %s", job["telegram_id"], e)
         return
 
     url = _extract_url(body)
