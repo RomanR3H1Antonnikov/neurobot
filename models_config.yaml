@@ -139,6 +139,7 @@ tasks:
           художников и дизайнеров благодаря уникальному визуальному стилю и гибкости настроек.
         variant_description: ""
         aspect_ratios: ["1:1", "5:4", "3:2", "7:4", "16:9", "2:1", "9:16", "1:2", "2:3"]
+        resolutions: ["1K"]
         model_id: midjourney/7.0
         provider: genapi
         max_style_refs: 4
@@ -155,6 +156,7 @@ tasks:
         description: ""
         variant_description: ""
         aspect_ratios: ["1:1", "5:4", "3:2", "7:4", "16:9", "2:1", "9:16", "1:2", "2:3"]
+        resolutions: ["1K"]
         model_id: midjourney/8.1
         provider: genapi
         max_style_refs: 4
