@@ -149,6 +149,7 @@ class BratuhaProvider(AbstractProvider):
         style_reference_urls: list[str] | None = None,
         quality: str | None = None,
         character_reference_url: str | None = None,
+        mj_params: dict | None = None,
     ) -> GenerationResult:
         actual_model = model or "nano-banana-pro"
         tool = _MODEL_TOOLS.get(actual_model, actual_model)
@@ -185,7 +186,8 @@ class BratuhaProvider(AbstractProvider):
     async def edit_image(self, image_bytes: bytes, prompt: str, model: str | None = None,
                          image_url: str | None = None, style_reference_urls: list[str] | None = None,
                          provider_task_id: str | None = None, resolution: str | None = None,
-                         quality: str | None = None, aspect_ratio: str | None = None) -> GenerationResult:
+                         quality: str | None = None, aspect_ratio: str | None = None,
+                         mj_params: dict | None = None) -> GenerationResult:
         actual_model = model or "nano-banana-pro"
         tool = _MODEL_TOOLS.get(actual_model, actual_model)
 

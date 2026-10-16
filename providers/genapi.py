@@ -143,6 +143,7 @@ class GenApiProvider(AbstractProvider):
         self, prompt: str, aspect_ratio: str = "1:1", resolution: str = "1K",
         model: str | None = None, style_reference_urls: list[str] | None = None,
         quality: str | None = None, character_reference_url: str | None = None,
+        mj_params: dict | None = None,
     ) -> GenerationResult:
         actual_model = model or "midjourney"
         # model_id формата "network/version" → URL /networks/{network}, тело {"model": version}
@@ -154,6 +155,9 @@ class GenApiProvider(AbstractProvider):
         if character_reference_url:
             # Midjourney characterReference — отдельное поле API, не смешивается с обычными ориентирами
             extra = {**(extra or {}), "characterReference": character_reference_url}
+        if mj_params:
+            # Доп. параметры Midjourney: chaos/no/stop/stylize/tile/weird — отдельные поля API
+            extra = {**(extra or {}), **mj_params}
         # Midjourney принимает URL ориентиров в начале промпта (пробел-разделитель)
         _refs_prefix = " ".join(style_reference_urls) + " " if style_reference_urls else ""
         effective_prompt = f"{_refs_prefix}{prompt}"
@@ -270,6 +274,7 @@ class GenApiProvider(AbstractProvider):
         image_url: str | None = None, style_reference_urls: list[str] | None = None,
         provider_task_id: str | None = None, resolution: str | None = None,
         quality: str | None = None, aspect_ratio: str | None = None,
+        mj_params: dict | None = None,
     ) -> GenerationResult:
         """Редактирование через Midjourney: URL изображения передаётся в начале промпта."""
         if not image_url:
@@ -280,6 +285,9 @@ class GenApiProvider(AbstractProvider):
             extra: dict | None = {"model": version}
         else:
             network, extra = actual_model, None
+        if mj_params:
+            # Доп. параметры Midjourney: chaos/no/stop/stylize/tile/weird — отдельные поля API
+            extra = {**(extra or {}), **mj_params}
         # Основное фото + ориентиры + промпт
         _all_urls = [image_url] + (list(style_reference_urls) if style_reference_urls else [])
         full_prompt = " ".join(_all_urls) + " " + prompt

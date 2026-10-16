@@ -143,6 +143,7 @@ tasks:
         provider: genapi
         max_style_refs: 4
         character_reference: true
+        mj_advanced_params: true
         cost_credits: 12
         cost_usd: 0.04
         enabled: true
@@ -158,6 +159,7 @@ tasks:
         provider: genapi
         max_style_refs: 4
         character_reference: true
+        mj_advanced_params: true
         cost_credits: 12
         cost_usd: 0.04
         enabled: true
@@ -1143,6 +1145,7 @@ tasks:
         model_id: midjourney/7.0
         provider: genapi
         max_style_refs: 4
+        mj_advanced_params: true
         cost_credits: 12
         cost_usd: 0.04
         enabled: true
@@ -1157,6 +1160,7 @@ tasks:
         model_id: midjourney/8.1
         provider: genapi
         max_style_refs: 4
+        mj_advanced_params: true
         cost_credits: 12
         cost_usd: 0.04
         enabled: true

@@ -526,6 +526,33 @@ def character_ref_kb(has: bool = False) -> InlineKeyboardMarkup:
     return builder.as_markup()
 
 
+def mj_advanced_kb(data: dict) -> InlineKeyboardMarkup:
+    """Клавиатура раздела 'Дополнительные настройки' Midjourney (chaos/no/stop/stylize/tile/weird)."""
+    chaos = data.get("mj_chaos")
+    no = data.get("mj_no")
+    stop = data.get("mj_stop")
+    stylize = data.get("mj_stylize")
+    tile = data.get("mj_tile")
+    weird = data.get("mj_weird")
+    builder = InlineKeyboardBuilder()
+    builder.row(InlineKeyboardButton(text=f"🌀 Хаос: {chaos if chaos is not None else 0}", callback_data="media:mj_pick:chaos"))
+    builder.row(InlineKeyboardButton(text=f"🚫 Исключить: {no or '—'}", callback_data="media:mj_pick:no"))
+    builder.row(InlineKeyboardButton(text=f"⏸ Стоп: {stop if stop is not None else 100}%", callback_data="media:mj_pick:stop"))
+    builder.row(InlineKeyboardButton(text=f"🎨 Стилизация: {stylize if stylize is not None else 100}", callback_data="media:mj_pick:stylize"))
+    builder.row(InlineKeyboardButton(text=f"🧩 Плитка: {'Вкл ✅' if tile else 'Выкл'}", callback_data="media:mj_toggle_tile"))
+    builder.row(InlineKeyboardButton(text=f"🌪 Странность: {weird if weird is not None else 0}", callback_data="media:mj_pick:weird"))
+    builder.row(InlineKeyboardButton(text="🗑 Сбросить всё", callback_data="media:mj_reset"))
+    builder.row(InlineKeyboardButton(text="◀️ Назад", callback_data="media:back:confirm"))
+    return builder.as_markup()
+
+
+def mj_param_entry_kb() -> InlineKeyboardMarkup:
+    """Клавиатура при вводе значения одного из доп. параметров Midjourney."""
+    builder = InlineKeyboardBuilder()
+    builder.row(InlineKeyboardButton(text="◀️ Назад", callback_data="media:back:mj_advanced"))
+    return builder.as_markup()
+
+
 _QUALITY_LABELS = {"low": "Быстрый", "medium": "Стандарт", "high": "Высокий"}
 
 
@@ -537,6 +564,7 @@ def image_confirm_kb(
     quality_options: list[str] | None = None,
     has_character_ref: bool = False,
     character_ref_set: bool = False,
+    has_mj_advanced: bool = False,
 ) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     builder.row(
@@ -552,6 +580,8 @@ def image_confirm_kb(
     if has_character_ref:
         char_text = "👤 Персонаж: фото ✅" if character_ref_set else "👤 Добавить персонажа"
         builder.row(InlineKeyboardButton(text=char_text, callback_data="media:add_character_ref"))
+    if has_mj_advanced:
+        builder.row(InlineKeyboardButton(text="⚙️ Дополнительные настройки", callback_data="media:mj_advanced"))
     edit_text = "✏️ Изменить описание" if has_prompt else "✏️ Ввести описание"
     builder.row(
         InlineKeyboardButton(text=edit_text, callback_data="media:edit_prompt"),
@@ -1122,6 +1152,7 @@ def edit_confirm_kb(
     quality_options: list[str] | None = None,
     show_constructor_btn: bool = False,
     has_constructor_files: bool = False,
+    has_mj_advanced: bool = False,
 ) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     if media_type == "photo_edit":
@@ -1157,6 +1188,8 @@ def edit_confirm_kb(
         if quality_options:
             q_label = _QUALITY_LABELS.get(quality or "medium", quality or "medium")
             builder.row(InlineKeyboardButton(text=f"🎨 Детализация: {q_label}", callback_data="media:pick_quality"))
+        if has_mj_advanced:
+            builder.row(InlineKeyboardButton(text="⚙️ Дополнительные настройки", callback_data="media:mj_advanced"))
     if media_type == "video_edit" and show_constructor_btn:
         constr_text = "🎬 Конструктор видео ✅" if has_constructor_files else "🎬 Конструктор видео"
         builder.row(InlineKeyboardButton(text=constr_text, callback_data="media:toggle_frames"))

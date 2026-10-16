@@ -39,7 +39,7 @@ from bot.keyboards.media import (
     udio_confirm_kb, udio_lyrics_type_kb, udio_model_type_kb,
     voice_picker_kb, voice_confirm_kb, voice_language_kb,
     style_ref_collecting_kb, style_ref_delete_kb, video_ref_delete_kb, audio_ref_delete_kb, video_extra_frames_delete_kb, after_generation_kb, after_orphaned_photo_kb, after_orphaned_video_kb, gen_waiting_kb, error_kb,
-    character_ref_kb,
+    character_ref_kb, mj_advanced_kb, mj_param_entry_kb,
 )
 from providers.base import ProviderError, ProviderUnavailableError, ProviderContentPolicyError, ProviderInputError, TaskType
 from providers.router import get_models_for_task
@@ -368,6 +368,99 @@ def _ref_video_limit_error(data: dict, duration: int | float | None) -> str | No
     return None
 
 
+# ─── Дополнительные настройки Midjourney (chaos/no/stop/stylize/tile/weird) ──
+
+_MJ_PARAM_LABELS = {
+    "chaos": "Хаос",
+    "stop": "Стоп",
+    "stylize": "Стилизация",
+    "weird": "Странность",
+}
+_MJ_PARAM_RANGES = {
+    "chaos": (0, 100, 0),
+    "stop": (10, 100, 100),
+    "stylize": (0, 1000, 100),
+    "weird": (0, 3000, 0),
+}
+_MJ_PARAM_HINTS = {
+    "chaos": "Более высокий хаос означает более необычные и неожиданные результаты.",
+    "stop": "Остановка задания на более раннем проценте может привести к более размытым и менее подробным результатам.",
+    "stylize": (
+        "Низкие значения стилизации позволяют получить изображения, которые точно соответствуют "
+        "описанию, но менее художественны. Высокие значения создают очень художественные изображения, "
+        "но менее связанные с описанием."
+    ),
+    "weird": (
+        "Придаёт изображению причудливые и необычные качества. Если задана стилизация — этот параметр "
+        "игнорируется."
+    ),
+}
+
+
+def _mj_advanced_count(data: dict) -> int:
+    """Сколько доп. параметров Midjourney отличается от значения по умолчанию."""
+    n = 0
+    for field in ("chaos", "stop", "stylize", "weird"):
+        if data.get(f"mj_{field}") is not None:
+            n += 1
+    if data.get("mj_no"):
+        n += 1
+    if data.get("mj_tile"):
+        n += 1
+    return n
+
+
+def _mj_advanced_text(data: dict) -> str:
+    lines = ["⚙️ <b>Дополнительные настройки Midjourney</b>\n"]
+    for field in ("chaos", "stop", "stylize", "weird"):
+        lo, hi, default = _MJ_PARAM_RANGES[field]
+        val = data.get(f"mj_{field}")
+        lines.append(f"<b>{_MJ_PARAM_LABELS[field]}:</b> {val if val is not None else f'{default} (по умолчанию)'}")
+    lines.append(f"<b>Исключить:</b> {data.get('mj_no') or '—'}")
+    lines.append(f"<b>Плитка:</b> {'Вкл ✅' if data.get('mj_tile') else 'Выкл'}")
+    lines.append("\nНажми на параметр, чтобы изменить его.")
+    return "\n".join(lines)
+
+
+def _build_mj_params(data: dict) -> dict | None:
+    """Собирает доп. параметры Midjourney (chaos/no/stop/stylize/tile/weird) для запроса к GenAPI."""
+    if not data.get("model_mj_advanced"):
+        return None
+    params: dict = {}
+    if data.get("mj_chaos") is not None:
+        params["chaos"] = data["mj_chaos"]
+    if data.get("mj_no"):
+        params["no"] = data["mj_no"]
+    if data.get("mj_stop") is not None:
+        params["stop"] = data["mj_stop"]
+    if data.get("mj_stylize") is not None:
+        params["stylize"] = data["mj_stylize"]
+    if data.get("mj_tile"):
+        params["tile"] = True
+    if data.get("mj_weird") is not None:
+        params["weird"] = data["mj_weird"]
+    return params or None
+
+
+async def _update_mj_advanced_card(message: Message, state: FSMContext) -> None:
+    """Редактирует карточку 'Дополнительные настройки' на месте (аналог _update_confirm_card)."""
+    data = await state.get_data()
+    confirm_msg_id = data.get("confirm_msg_id")
+    text = _mj_advanced_text(data)
+    kb = mj_advanced_kb(data)
+    if confirm_msg_id:
+        try:
+            await message.bot.edit_message_text(
+                chat_id=message.chat.id, message_id=confirm_msg_id, text=text, parse_mode="HTML", reply_markup=kb,
+            )
+            return
+        except Exception:
+            pass
+    sent = await message.answer(text, parse_mode="HTML", reply_markup=kb)
+    await _track_msg(state, sent.message_id)
+    await state.update_data(confirm_msg_id=sent.message_id)
+
+
 def _confirm_card_text(data: dict) -> str:
     media_type = data.get("media_type", "")
     prompt = data.get("prompt") or "не задано"
@@ -396,6 +489,8 @@ def _confirm_card_text(data: dict) -> str:
             lines.append(f"<b>{'Ориентир' if len(_srefs) == 1 else 'Ориентиры'}:</b> {len(_srefs)} фото ✅")
         if data.get("model_character_ref") and data.get("character_reference_file_id"):
             lines.append("<b>Персонаж:</b> фото ✅")
+        if data.get("model_mj_advanced") and _mj_advanced_count(data):
+            lines.append(f"<b>Доп. настройки MJ:</b> {_mj_advanced_count(data)} изменено ✅")
     elif media_type == "video":
         lines.append(f"<b>Длительность:</b> {data.get('duration', 5)} сек")
         _v_ratio = data.get("aspect_ratio")
@@ -520,6 +615,8 @@ def _confirm_card_text(data: dict) -> str:
                 _q_labels = {"low": "Быстрый", "medium": "Стандарт", "high": "Высокий"}
                 _q = data.get("quality", "medium")
                 lines.append(f"<b>Детализация:</b> {_q_labels.get(_q, _q)}")
+            if data.get("model_mj_advanced") and _mj_advanced_count(data):
+                lines.append(f"<b>Доп. настройки MJ:</b> {_mj_advanced_count(data)} изменено ✅")
         elif media_type == "video_edit":
             _ve_srefs = data.get("style_reference_file_ids") or []
             if _ve_srefs:
@@ -610,6 +707,7 @@ def _confirm_kb(data: dict):
             quality_options=data.get("model_quality_options"),
             has_character_ref=bool(data.get("model_character_ref")),
             character_ref_set=bool(data.get("character_reference_file_id")),
+            has_mj_advanced=bool(data.get("model_mj_advanced")),
         )
     elif media_type == "video":
         _show_first = data.get("model_has_first_frame", True)
@@ -681,6 +779,7 @@ def _confirm_kb(data: dict):
             quality_options=data.get("model_quality_options"),
             show_constructor_btn=bool(data.get("model_characters")),
             has_constructor_files=bool(data.get("style_reference_file_ids")) or bool(data.get("characters")),
+            has_mj_advanced=bool(data.get("model_mj_advanced")),
         )
 
 
@@ -1341,6 +1440,7 @@ async def select_model(callback: CallbackQuery, state: FSMContext) -> None:
         "duration": min_duration,
         "model_max_style_refs": model_cfg.get("max_style_refs", 14),
         "model_character_ref": model_cfg.get("character_reference", False),
+        "model_mj_advanced": model_cfg.get("mj_advanced_params", False),
         "model_max_audio_refs": model_cfg.get("max_audio_refs", 0),
         "model_max_video_refs": model_cfg.get("max_video_refs", 0),
         "model_resolutions": model_cfg.get("resolutions"),
@@ -1655,6 +1755,8 @@ async def back_to_model(callback: CallbackQuery, state: FSMContext) -> None:
                     model_resolutions=None, model_motion_control=None,
                     model_characters=None, characters=None,
                     model_character_ref=None, character_reference_file_id=None,
+                    model_mj_advanced=None, mj_chaos=None, mj_no=None, mj_stop=None,
+                    mj_stylize=None, mj_tile=None, mj_weird=None,
                     entering_duration=None, confirm_msg_id=None,
                     prompt=None, reference_file_id=None, reference_type=None,
                     generated_file_id=None, style_reference_file_ids=None,
@@ -1696,6 +1798,8 @@ async def back_to_model(callback: CallbackQuery, state: FSMContext) -> None:
         model_max_style_refs=None, model_resolutions=None, model_motion_control=None,
         model_characters=None, characters=None,
         model_character_ref=None, character_reference_file_id=None,
+        model_mj_advanced=None, mj_chaos=None, mj_no=None, mj_stop=None,
+        mj_stylize=None, mj_tile=None, mj_weird=None,
         entering_duration=None, confirm_msg_id=None,
         reference_file_id=None, reference_type=None,
         generated_file_id=None,
@@ -2272,6 +2376,67 @@ async def receive_character_ref_invalid(message: Message) -> None:
     asyncio.create_task(_toast(message, "⚠️ Здесь нужно прислать фото персонажа 👤."))
 
 
+@router.callback_query(MediaStates.confirm, F.data == "media:mj_advanced")
+async def mj_advanced_open(callback: CallbackQuery, state: FSMContext) -> None:
+    """Кнопка 'Дополнительные настройки' — отдельный раздел параметров Midjourney."""
+    data = await state.get_data()
+    await callback.message.edit_text(_mj_advanced_text(data), parse_mode="HTML", reply_markup=mj_advanced_kb(data))
+    await callback.answer()
+
+
+@router.callback_query(F.data == "media:back:mj_advanced")
+async def mj_advanced_back(callback: CallbackQuery, state: FSMContext) -> None:
+    """Возврат из ввода значения параметра к разделу 'Дополнительные настройки'."""
+    await state.update_data(entering_mj_param=None)
+    data = await state.get_data()
+    await callback.message.edit_text(_mj_advanced_text(data), parse_mode="HTML", reply_markup=mj_advanced_kb(data))
+    await callback.answer()
+
+
+@router.callback_query(F.data == "media:mj_toggle_tile")
+async def mj_toggle_tile(callback: CallbackQuery, state: FSMContext) -> None:
+    data = await state.get_data()
+    await state.update_data(mj_tile=not data.get("mj_tile", False))
+    data = await state.get_data()
+    await callback.message.edit_text(_mj_advanced_text(data), parse_mode="HTML", reply_markup=mj_advanced_kb(data))
+    await callback.answer()
+
+
+@router.callback_query(F.data == "media:mj_reset")
+async def mj_reset(callback: CallbackQuery, state: FSMContext) -> None:
+    await state.update_data(mj_chaos=None, mj_no=None, mj_stop=None, mj_stylize=None, mj_tile=False, mj_weird=None)
+    data = await state.get_data()
+    await callback.message.edit_text(_mj_advanced_text(data), parse_mode="HTML", reply_markup=mj_advanced_kb(data))
+    await callback.answer("Сброшено", show_alert=False)
+
+
+@router.callback_query(F.data.startswith("media:mj_pick:"))
+async def mj_pick_param(callback: CallbackQuery, state: FSMContext) -> None:
+    field = callback.data.split(":")[2]
+    data = await state.get_data()
+    if field == "no":
+        current = data.get("mj_no")
+        hint = (
+            "🚫 <b>Исключить из изображения</b>\n\n"
+            "Параметр сообщает Midjourney, что не следует включать в изображение. "
+            "Напиши, что исключить (через запятую)."
+            + (f"\n\nТекущее значение: {current}" if current else "")
+            + "\n\nЧтобы очистить — напиши «нет»."
+        )
+    else:
+        lo, hi, default = _MJ_PARAM_RANGES[field]
+        current = data.get(f"mj_{field}")
+        hint = (
+            f"<b>{_MJ_PARAM_LABELS[field]}</b> [{lo}–{hi}, по умолчанию {default}]\n\n"
+            f"{_MJ_PARAM_HINTS[field]}\n\n"
+            f"Текущее значение: {current if current is not None else f'{default} (по умолчанию)'}.\n\n"
+            f"Введи целое число от {lo} до {hi}, либо «нет», чтобы сбросить."
+        )
+    await callback.message.edit_text(hint, parse_mode="HTML", reply_markup=mj_param_entry_kb())
+    await state.update_data(entering_mj_param=field)
+    await callback.answer()
+
+
 @router.callback_query(F.data == "media:style_ref_clear")
 async def style_ref_clear(callback: CallbackQuery, state: FSMContext) -> None:
     """Очистить все ориентиры и остаться в режиме сбора."""
@@ -2788,6 +2953,7 @@ async def back_to_confirm(callback: CallbackQuery, state: FSMContext) -> None:
         confirm_mode_switch=None,
         receiving_edit_audio=None,
         _char_menu_active=None,
+        entering_mj_param=None,
     )
     await state.set_state(MediaStates.confirm)
     data = await state.get_data()
@@ -3907,6 +4073,36 @@ async def update_prompt_in_confirm(message: Message, state: FSMContext) -> None:
         await state.update_data(udio_lyrics=lyrics, entering_udio_lyrics=False)
         await message.delete()
         await _update_confirm_card(message, state)
+        return
+
+    # Ввод доп. параметров Midjourney (chaos/no/stop/stylize/weird)
+    if data.get("entering_mj_param"):
+        field = data["entering_mj_param"]
+        raw = message.text.strip()
+        is_clear = raw.lower() in ("нет", "очистить", "-")
+        if field == "no":
+            await state.update_data(mj_no=None if is_clear else raw, entering_mj_param=None)
+            await message.delete()
+            await _update_mj_advanced_card(message, state)
+            return
+        lo, hi, _default = _MJ_PARAM_RANGES[field]
+        if is_clear:
+            await state.update_data(**{f"mj_{field}": None, "entering_mj_param": None})
+            await message.delete()
+            await _update_mj_advanced_card(message, state)
+            return
+        try:
+            val = int(raw)
+            if not (lo <= val <= hi):
+                sent = await message.answer(f"Введи целое число от {lo} до {hi} (или «нет», чтобы сбросить):")
+                await _track_msg(state, sent.message_id)
+                return
+            await state.update_data(**{f"mj_{field}": val, "entering_mj_param": None})
+            await message.delete()
+            await _update_mj_advanced_card(message, state)
+        except ValueError:
+            sent = await message.answer(f"Нужно целое число от {lo} до {hi} (или «нет», чтобы сбросить):")
+            await _track_msg(state, sent.message_id)
         return
 
     # Экран «Выбери длительность»: число без кнопки «Своя» → принимаем и возвращаемся к карточке
@@ -5043,6 +5239,7 @@ async def _run_generation(send_msg: Message, tg_user, state: FSMContext, data: d
             style_reference_urls=style_reference_urls,
             quality=data.get("quality"),
             character_reference_url=character_reference_url,
+            mj_params=_build_mj_params(data),
         )
         if result.variants:
             all_images = [result.data] + result.variants
@@ -5205,6 +5402,7 @@ async def _run_generation(send_msg: Message, tg_user, state: FSMContext, data: d
             resolution=data.get("resolution"),
             quality=data.get("quality"),
             aspect_ratio=data.get("aspect_ratio"),
+            mj_params=_build_mj_params(data),
         )
         file = BufferedInputFile(result.data, filename=result.filename)
         _markup = await _result_markup(is_image=True, edit=True)
