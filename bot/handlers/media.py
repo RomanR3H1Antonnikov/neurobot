@@ -986,6 +986,7 @@ _GUIDE_PARAMS = {
         "В случае, если ориентир загружен, ты можешь указать свою продолжительность видео, "
         "которое должно получиться в результате редактирования."
     ),
+    "video_edit_sound": None,  # показывается как алерт, текст задан в guide_param
 }
 
 _GUIDE_PARAM_CALLBACKS = (
@@ -1136,7 +1137,7 @@ async def guide_param(callback: CallbackQuery, state: FSMContext) -> None:
     if key == "start":
         await callback.answer("Здесь я ничего не генерирую, только объясняю.", show_alert=True)
         return
-    if key == "video_sound":
+    if key in ("video_sound", "video_edit_sound"):
         await callback.answer(
             "Если включено — ИИ добавит фоновую музыку на свой вкус. "
             "Если прикреплён свой аудио-файл, звучать будет он. "

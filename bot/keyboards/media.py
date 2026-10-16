@@ -217,6 +217,7 @@ def guide_video_edit_card_kb() -> InlineKeyboardMarkup:
         InlineKeyboardButton(text="📐 Масштаб: 16:9", callback_data="media:guide:param:video_edit_ratio"),
         InlineKeyboardButton(text="🖼 Качество: 720p", callback_data="media:guide:param:video_edit_resolution"),
     )
+    builder.row(InlineKeyboardButton(text="🔊 Звуковое сопровождение: ВКЛ", callback_data="media:guide:param:video_edit_sound"))
     builder.row(
         InlineKeyboardButton(text="✏️ Ввести описание", callback_data="media:guide:param:video_edit_prompt"),
         InlineKeyboardButton(text="◀️ Назад", callback_data="media:guide"),
