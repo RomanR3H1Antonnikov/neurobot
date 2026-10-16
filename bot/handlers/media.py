@@ -394,6 +394,10 @@ _MJ_PARAM_HINTS = {
         "Придаёт изображению причудливые и необычные качества. Если задана стилизация — этот параметр "
         "игнорируется."
     ),
+    "tile": (
+        "Повторяющиеся плитки. Создаёт изображения, которые можно использовать в качестве повторяющихся "
+        "плиток для создания бесшовных узоров на тканях, обоях и текстурах."
+    ),
 }
 
 
@@ -2420,7 +2424,7 @@ async def mj_toggle_tile(callback: CallbackQuery, state: FSMContext) -> None:
     await state.update_data(mj_tile=not data.get("mj_tile", False))
     data = await state.get_data()
     await callback.message.edit_text(_mj_advanced_text(data), parse_mode="HTML", reply_markup=mj_advanced_kb(data))
-    await callback.answer()
+    await callback.answer(_MJ_PARAM_HINTS["tile"], show_alert=True)
 
 
 @router.callback_query(F.data == "media:mj_reset")
