@@ -153,7 +153,7 @@ class BratuhaProvider(AbstractProvider):
         tool = _MODEL_TOOLS.get(actual_model, actual_model)
 
         op_id = await self._create_operation(tool, {
-            "mode": "cheap",
+            "mode": "normal",
             "prompt": prompt,
             "aspect_ratio": aspect_ratio,
             "image_size": resolution,
