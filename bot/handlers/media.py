@@ -2353,13 +2353,13 @@ async def style_ref_done(callback: CallbackQuery, state: FSMContext) -> None:
 
 @router.callback_query(MediaStates.confirm, F.data == "media:add_character_ref")
 async def add_character_ref_prompt(callback: CallbackQuery, state: FSMContext) -> None:
-    """Кнопка 'Добавить персонажа' — референс внешности (Midjourney characterReference)."""
+    """Кнопка 'Добавить персонажа' — ориентир внешности (Midjourney characterReference)."""
     data = await state.get_data()
     has = bool(data.get("character_reference_file_id"))
     hint = (
         "👤 Пришли новое фото персонажа — оно заменит текущее."
         if has else
-        "👤 Прикрепи фото персонажа. Нейросеть использует его как референс внешности при генерации."
+        "👤 Прикрепи фото персонажа. Нейросеть использует его как ориентир внешности при генерации."
     )
     await callback.message.edit_text(hint, reply_markup=character_ref_kb(has))
     await state.set_state(MediaStates.enter_character_ref)
