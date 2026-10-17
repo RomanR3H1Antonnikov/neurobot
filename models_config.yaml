@@ -463,7 +463,7 @@ tasks:
         min_duration: 2
         max_duration: 30
         aspect_ratios: ["16:9", "4:3", "1:1", "3:4", "9:16"]
-        resolutions: ["720p", "1080p"]
+        resolutions: ["480p", "720p", "1080p"]
         max_style_refs: 10
         max_video_refs: 5
         max_audio_refs: 5
@@ -471,7 +471,8 @@ tasks:
         model_id: wan/3-0-video
         provider: kie
         cost_credits: 7
-        cost_per_second_by_resolution: {"720p": 11.0, "1080p": 15.0}
+        # 480p = половина цены 720p — у KIE та же пропорция (kie.ai/wan-3-0-video: $0.04 vs $0.08/сек)
+        cost_per_second_by_resolution: {"480p": 5.5, "720p": 11.0, "1080p": 15.0}
         cost_usd: 0.08
         enabled: true
 
