@@ -1319,11 +1319,17 @@ async def guide_noop(callback: CallbackQuery) -> None:
     await callback.answer()
 
 
-@router.message(MediaStates.select_type, F.text)
-async def guide_text_received(message: Message, state: FSMContext) -> None:
+async def _in_guide_section(message: Message, state: FSMContext) -> bool:
+    """Фильтр: событие относится к активному разделу руководства.
+    Без него эти хендлеры ловят ЛЮБОЕ текстовое/медиа-сообщение в MediaStates.select_type —
+    включая нажатия кнопок главного меню ("Чат с ИИ", "Мои генерации" и т.д.), которые
+    должны обрабатываться другими роутерами, зарегистрированными после media.router."""
     data = await state.get_data()
-    if not data.get("guide_section"):
-        return
+    return bool(data.get("guide_section"))
+
+
+@router.message(MediaStates.select_type, F.text, _in_guide_section)
+async def guide_text_received(message: Message, state: FSMContext) -> None:
     await message.delete()
     notice = await message.answer(
         "Поскольку раздел представляет из себя шаблон для обучения, "
@@ -1333,7 +1339,7 @@ async def guide_text_received(message: Message, state: FSMContext) -> None:
     await notice.delete()
 
 
-@router.message(MediaStates.select_type, F.photo | F.video | F.document | F.audio | F.voice)
+@router.message(MediaStates.select_type, F.photo | F.video | F.document | F.audio | F.voice, _in_guide_section)
 async def guide_media_received(message: Message, state: FSMContext) -> None:
     data = await state.get_data()
     section = data.get("guide_section", "")
