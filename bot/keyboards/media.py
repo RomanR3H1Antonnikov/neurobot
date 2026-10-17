@@ -1203,9 +1203,6 @@ def edit_confirm_kb(
     if media_type == "video_edit" and show_constructor_btn:
         constr_text = "🎬 Конструктор видео ✅" if has_constructor_files else "🎬 Конструктор видео"
         builder.row(InlineKeyboardButton(text=constr_text, callback_data="media:toggle_frames"))
-    elif media_type == "video_edit" and max_style_refs > 0:
-        style_text = f"🎬 Конструктор видео: {style_ref_count} фото ✅" if style_ref_count else "🎬 Конструктор видео"
-        builder.row(InlineKeyboardButton(text=style_text, callback_data="media:add_style_ref"))
     if media_type == "video_edit":
         if duration is not None and duration_options and style_ref_count > 0:
             builder.row(InlineKeyboardButton(

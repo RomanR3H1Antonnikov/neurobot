@@ -781,7 +781,7 @@ def _confirm_kb(data: dict):
             has_resolutions=bool(data.get("model_resolutions")),
             quality=data.get("quality"),
             quality_options=data.get("model_quality_options"),
-            show_constructor_btn=bool(data.get("model_characters")),
+            show_constructor_btn=bool(data.get("model_characters")) or data.get("model_max_style_refs", 0) > 0,
             has_constructor_files=bool(data.get("style_reference_file_ids")) or bool(data.get("characters")),
             has_mj_advanced=bool(data.get("model_mj_advanced")),
         )
