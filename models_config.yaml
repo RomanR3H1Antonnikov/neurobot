@@ -1204,6 +1204,9 @@ tasks:
         provider: kie
         max_style_refs: 4
         characters: kling_omni
+        # Один видео-ориентир (доп. референс) в Конструкторе видео, помимо исходного видео
+        max_video_refs: 1
+        constructor_includes_video: true
         # Ограничения KIE на исходное видео (сек) — проверяется при загрузке и запуске
         min_input_video_seconds: 3
         max_input_video_seconds: 15.5

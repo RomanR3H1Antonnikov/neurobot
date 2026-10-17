@@ -625,6 +625,9 @@ def _confirm_card_text(data: dict) -> str:
             _ve_srefs = data.get("style_reference_file_ids") or []
             if _ve_srefs:
                 lines.append(f"<b>{'Ориентир' if len(_ve_srefs) == 1 else 'Ориентиры'}:</b> {len(_ve_srefs)} фото ✅")
+            _ve_vrefs = data.get("video_style_reference_file_ids") or []
+            if _ve_vrefs:
+                lines.append(f"<b>Видео-реф:</b> {len(_ve_vrefs)} файл(а) ✅")
             _ve_dur = None if data.get("model_duration_from_input") else data.get("duration")
             _ve_ratio = data.get("aspect_ratio")
             _ve_res = data.get("resolution")
@@ -5468,6 +5471,10 @@ async def _run_generation(send_msg: Message, tg_user, state: FSMContext, data: d
             _mute = (_edit_audio_mode == "remove")
         from bot.handlers.characters import build_character_payload
         _edit_characters = await build_character_payload(send_msg.bot, data)
+        _edit_video_ref_ids = data.get("video_style_reference_file_ids") or []
+        _edit_video_reference_urls = [
+            u for u in [await _tg_file_url(send_msg.bot, fid) for fid in _edit_video_ref_ids] if u
+        ] or None
         result = await media_service.edit_video(
             tg_user.id, tg_user.username, media_bytes, prompt, model_slug,
             video_url=video_url,
@@ -5479,6 +5486,7 @@ async def _run_generation(send_msg: Message, tg_user, state: FSMContext, data: d
             style_reference_urls=style_reference_urls,
             mute=_mute,
             characters=_edit_characters,
+            video_reference_urls=_edit_video_reference_urls,
         )
         file = BufferedInputFile(result.data, filename=result.filename)
         sent = await send_msg.answer_video(file, caption=_cost_caption(result), reply_markup=await _result_markup(is_video=True, edit=True))

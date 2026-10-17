@@ -318,6 +318,7 @@ class GenApiProvider(AbstractProvider):
         aspect_ratio: str | None = None, resolution: str | None = None,
         audio: bool = True, audio_url: str | None = None,
         style_reference_urls: list[str] | None = None,
+        video_reference_urls: list[str] | None = None,
     ) -> GenerationResult:
         raise ProviderUnavailableError("Редактирование видео через GenAPI не поддерживается")
 

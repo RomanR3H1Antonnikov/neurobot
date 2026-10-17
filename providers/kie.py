@@ -247,13 +247,18 @@ def _kling_omni_transformation_request(
     prompt: str, duration: int, aspect_ratio: str | None, resolution: str | None, audio: bool,
     style_reference_urls: list[str] | None, video_url: str,
     characters: list[dict] | None = None,
+    extra_video_reference_urls: list[str] | None = None,
 ) -> dict:
     """Kling 3.0 Omni Transformation (редактирование видео): длительность берётся из исходного видео,
     поле duration с одним видео KIE отклоняет (422), aspect_ratio — только auto. С фото-ориентирами
-    (до 4) duration и 16:9/9:16/1:1 уже допустимы."""
+    (до 4) duration и 16:9/9:16/1:1 уже допустимы.
+    video_url — исходное видео для трансформации, всегда первым в списке; extra_video_reference_urls —
+    опциональный доп. видео-ориентир (до 1), архитектура Omni One принимает его как ещё один элемент
+    того же списка video_urls."""
+    video_urls = [video_url] + list(extra_video_reference_urls or [])[:1]
     input_data: dict = {
         "prompt": prompt,
-        "video_urls": [video_url],
+        "video_urls": video_urls,
         "resolution": (resolution or "720p").lower(),
         "audio": bool(audio),
     }
@@ -921,7 +926,7 @@ class KieProvider(OpenAICompatProvider):
         if actual_model == KLING_OMNI_TRANSFORM and video_reference_urls:
             input_data = _kling_omni_transformation_request(
                 prompt, duration, aspect_ratio, resolution, audio, style_reference_urls, video_reference_urls[0],
-                characters,
+                characters, extra_video_reference_urls=video_reference_urls[1:],
             )
 
         if is_pixverse and characters:
@@ -1180,14 +1185,17 @@ class KieProvider(OpenAICompatProvider):
         audio_url: str | None = None,
         style_reference_urls: list[str] | None = None,
         characters: list[dict] | None = None,
+        video_reference_urls: list[str] | None = None,
     ) -> GenerationResult:
         if not video_url:
             raise ProviderUnavailableError("KIE edit_video: не передан URL видео")
+        # video_url — исходное видео (всегда первым); video_reference_urls — доп. видео-ориентир
+        # (пока используется только Kling 3.0 Omni Transformation, см. _kling_omni_transformation_request)
         return await self.generate_video(
             prompt=prompt,
             duration=duration,
             model=model,
-            video_reference_urls=[video_url],
+            video_reference_urls=[video_url] + list(video_reference_urls or []),
             aspect_ratio=aspect_ratio or "16:9",
             resolution=resolution,
             audio=audio,
