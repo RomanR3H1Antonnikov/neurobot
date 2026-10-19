@@ -115,7 +115,10 @@ def guide_audio_voice_card_kb() -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     builder.row(InlineKeyboardButton(text="💬 Диалог: ВЫКЛ", callback_data="media:guide:param:voice_dialogue"))
     builder.row(InlineKeyboardButton(text="🗣 Голос: Стандартный", callback_data="media:guide:param:voice_select"))
-    builder.row(InlineKeyboardButton(text="⚙️ Стандарт", callback_data="media:guide:param:voice_stability"))
+    builder.row(
+        InlineKeyboardButton(text="⚙️ Стандарт", callback_data="media:guide:param:voice_stability"),
+        InlineKeyboardButton(text="🌐 Язык: Авто", callback_data="media:guide:param:voice_language"),
+    )
     builder.row(
         InlineKeyboardButton(text="✏️ Ввести текст", callback_data="media:guide:param:voice_prompt"),
         InlineKeyboardButton(text="◀️ Назад", callback_data="media:guide:audio_gen"),

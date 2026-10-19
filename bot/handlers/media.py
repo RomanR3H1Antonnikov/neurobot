@@ -1002,6 +1002,10 @@ _GUIDE_PARAMS = {
     "voice_select": (
         "🗣 <b>Голос</b>\n\nЗдесь можно выбрать голос озвучки."
     ),
+    "voice_language": (
+        "🌐 <b>Язык озвучки</b>\n\nЗдесь можно выбрать язык, на котором ИИ озвучит текст. "
+        "Если оставить «Авто» — язык определится по тексту автоматически."
+    ),
     "add_photo": (
         "📎 <b>Добавить фото</b>\n\n"
         "Сюда вы загружаете фото, которое хотите отредактировать. При загрузке фото, оно становится для "
@@ -1296,7 +1300,7 @@ async def guide_param(callback: CallbackQuery, state: FSMContext) -> None:
         kb = guide_resolution_kb()
     elif key == "add_photo":
         kb = guide_photo_edit_back_kb()
-    elif key in ("voice_prompt", "voice_dialogue", "voice_stability", "voice_select"):
+    elif key in ("voice_prompt", "voice_dialogue", "voice_stability", "voice_select", "voice_language"):
         kb = guide_audio_voice_back_kb()
     elif key == "duration":
         kb = guide_video_duration_kb()
