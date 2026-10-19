@@ -642,7 +642,7 @@ def characters_start_error(data: dict, prompt: str) -> str | None:
     if _is_kling(kind):
         missing = [c["tag"] for c in chars if f"@{c['tag']}".lower() not in low]
         if missing:
-            return "Укажи персонажа в описании: " + ", ".join(f"@{t}" for t in missing)
+            return "Укажи персонажа в описании или в одной из сцен: " + ", ".join(f"@{t}" for t in missing)
         if kind == "kling_omni":
             limit = 4 if vids else 7
             if refs + len(chars) > limit:

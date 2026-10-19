@@ -1062,7 +1062,7 @@ _GUIDE_PARAMS = {
         "каким вы его записали, без «@».\n\n"
         "Чтобы указать на другие ориентиры, напиши @image(порядковый номер) или @video(порядковый номер), "
         "например @image3 или @video1.\n\n"
-        "Создать персонажа могут лишь две нейросети — Kling 3.0 omni и Gemini omni flash 1.1, "
+        "Создать персонажа можно у Kling 3.0, Kling 3.0 omni и Gemini omni flash 1.1, "
         "также Pixverse 6.0 имеет более подробные настройки фото-ориентира.\n\n"
         "Разделы «Оживить фото» и «Конструктор видео» взаимоисключающие: бот не даст одновременно загрузить "
         "фото, которое нужно оживить, и ориентиры. Это сделано для корректной работы нейросети.\n\n"
@@ -5551,7 +5551,9 @@ async def start_generation(callback: CallbackQuery, state: FSMContext) -> None:
 
     if media_type == "video" and data.get("characters"):
         from bot.handlers.characters import characters_start_error
-        _char_err = characters_start_error(data, prompt)
+        # @тег персонажа может быть упомянут в любой сцене, не обязательно в общем описании
+        _char_check_text = " ".join([prompt] + [s.get("prompt", "") for s in (data.get("shots") or [])])
+        _char_err = characters_start_error(data, _char_check_text)
         if _char_err:
             await callback.answer(_char_err, show_alert=True)
             return
