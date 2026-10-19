@@ -499,7 +499,7 @@ def _confirm_card_text(data: dict) -> str:
         lines.append(f"<b>Длительность:</b> {data.get('duration', 5)} сек")
         _shots = data.get("shots") or []
         if _shots:
-            lines.append(f"<b>Кадры:</b> {len(_shots)}/{data.get('model_max_shots', 0)} ✅")
+            lines.append(f"<b>Сцены:</b> {len(_shots)}/{data.get('model_max_shots', 0)} ✅")
         _v_ratio = data.get("aspect_ratio")
         _v_res = data.get("resolution")
         if data.get("model_aspect_ratios") and data.get("model_resolutions") and _v_ratio and _v_res:

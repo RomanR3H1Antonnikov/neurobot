@@ -1,7 +1,7 @@
-"""«Кадры» для Kling 3.0: до 5 кадров со своим текстом и длительностью (multi_prompt у KIE),
+"""«Несколько сцен» для Kling 3.0: до 5 сцен со своим текстом и длительностью (multi_prompt у KIE),
 суммарно не больше model_max_duration секунд. Переключатель живёт в FSM ("shots"), как и
 персонажи/фото-ориентиры в characters.py — тот же паттерн (меню остаётся в MediaStates.confirm,
-создание кадра — отдельное состояние с текстовым шагом и выбором длительности по кнопкам).
+создание сцены — отдельное состояние с текстовым шагом и выбором длительности по кнопкам).
 """
 import asyncio
 import logging
@@ -42,7 +42,7 @@ def _menu_text(data: dict) -> str:
     shots = data.get("shots") or []
     total = _total_duration(shots)
     max_total = data.get("model_max_duration", 15)
-    lines = [f"🎬 <b>Кадры</b> ({len(shots)}/{_max_shots(data)}, {total}/{max_total} сек)\n"]
+    lines = [f"🎬 <b>Несколько сцен</b> ({len(shots)}/{_max_shots(data)}, {total}/{max_total} сек)\n"]
     if shots:
         for i, s in enumerate(shots, 1):
             text = s.get("prompt", "")
@@ -50,10 +50,10 @@ def _menu_text(data: dict) -> str:
             lines.append(f"{i}. {short} — {s.get('duration')} сек")
         lines.append("")
     else:
-        lines.append("Раздели видео на отдельные кадры — у каждого свой текст и длительность.\n")
+        lines.append("Раздели видео на отдельные сцены — у каждой свой текст и длительность.\n")
     lines.append(
-        "Видео соберётся именно из этих кадров по порядку. Основной текст в карточке "
-        "остаётся как общее описание сцены — он отправляется вместе с кадрами."
+        "Видео соберётся именно из этих сцен по порядку. Основной текст в карточке "
+        "остаётся как общее описание — он отправляется вместе со сценами."
     )
     return "\n".join(lines)
 
@@ -62,7 +62,7 @@ def _menu_kb(data: dict) -> InlineKeyboardMarkup:
     shots = data.get("shots") or []
     b = InlineKeyboardBuilder()
     if len(shots) < _max_shots(data) and _remaining(data) > 0:
-        b.row(InlineKeyboardButton(text="➕ Добавить кадр", callback_data="shots:new"))
+        b.row(InlineKeyboardButton(text="➕ Добавить сцену", callback_data="shots:new"))
     if shots:
         b.row(InlineKeyboardButton(text="🗑 Удалить последний", callback_data="shots:del_last"))
     b.row(InlineKeyboardButton(text="◀️ Назад", callback_data="shots:back"))
@@ -80,7 +80,7 @@ def _duration_kb(remaining: int) -> InlineKeyboardMarkup:
 
 
 async def _edit(bot, chat_id: int, state: FSMContext, text: str, kb: InlineKeyboardMarkup) -> None:
-    """Редактирует экран «Кадры» (сообщение _sref_msg_id); если его нет — шлёт новое."""
+    """Редактирует экран «Несколько сцен» (сообщение _sref_msg_id); если его нет — шлёт новое."""
     data = await state.get_data()
     msg_id = data.get("_sref_msg_id")
     if msg_id:
@@ -110,7 +110,7 @@ async def _show_menu(bot, chat_id: int, state: FSMContext) -> None:
 async def open_menu(callback: CallbackQuery, state: FSMContext) -> None:
     data = await state.get_data()
     if not _max_shots(data):
-        await callback.answer("Эта модель не поддерживает кадры", show_alert=True)
+        await callback.answer("Эта модель не поддерживает сцены", show_alert=True)
         return
     await state.update_data(_sref_msg_id=callback.message.message_id)
     await _show_menu(callback.bot, callback.message.chat.id, state)
@@ -130,16 +130,16 @@ async def new_shot(callback: CallbackQuery, state: FSMContext) -> None:
     data = await state.get_data()
     shots = data.get("shots") or []
     if len(shots) >= _max_shots(data):
-        await callback.answer(f"Максимум {_max_shots(data)} кадров", show_alert=True)
+        await callback.answer(f"Максимум {_max_shots(data)} сцен", show_alert=True)
         return
     if _remaining(data) <= 0:
-        await callback.answer("Длительность кадров уже достигла лимита", show_alert=True)
+        await callback.answer("Длительность сцен уже достигла лимита", show_alert=True)
         return
     await state.update_data(_sref_msg_id=callback.message.message_id)
     await state.set_state(ShotStates.prompt)
     n = len(shots) + 1
     await callback.message.edit_text(
-        f"✏️ <b>Кадр {n}.</b> Опиши, что происходит в этом кадре (до {_PROMPT_MAX} символов).",
+        f"✏️ <b>Сцена {n}.</b> Опиши, что происходит в этой сцене (до {_PROMPT_MAX} символов).",
         parse_mode="HTML",
         reply_markup=InlineKeyboardMarkup(inline_keyboard=[
             [InlineKeyboardButton(text="◀️ Отмена", callback_data="shots:menu")],
@@ -156,14 +156,14 @@ async def enter_shot_prompt(message: Message, state: FSMContext) -> None:
     except Exception:
         pass
     if not text or len(text) > _PROMPT_MAX:
-        asyncio.create_task(_toast(message, f"⚠️ Текст кадра должен быть от 1 до {_PROMPT_MAX} символов."))
+        asyncio.create_task(_toast(message, f"⚠️ Текст сцены должен быть от 1 до {_PROMPT_MAX} символов."))
         return
     data = await state.get_data()
     await state.update_data(_shot_draft={"prompt": text})
     remaining = _remaining(data)
     await _edit(
         message.bot, message.chat.id, state,
-        f"⏱ Сколько секунд длится этот кадр? (осталось {remaining} сек из {data.get('model_max_duration', 15)})",
+        f"⏱ Сколько секунд длится эта сцена? (осталось {remaining} сек из {data.get('model_max_duration', 15)})",
         _duration_kb(remaining),
     )
 
@@ -209,4 +209,4 @@ async def delete_last(callback: CallbackQuery, state: FSMContext) -> None:
     new_duration = _total_duration(shots) if shots else data.get("model_min_duration", 5)
     await state.update_data(shots=shots, duration=new_duration)
     await _show_menu(callback.bot, callback.message.chat.id, state)
-    await callback.answer("Кадр удалён" if had else "")
+    await callback.answer("Сцена удалена" if had else "")
