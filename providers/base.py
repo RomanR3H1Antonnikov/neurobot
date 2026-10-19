@@ -72,6 +72,7 @@ class AbstractProvider(ABC):
         output_format: str | None = None,
         audio: bool = True,
         character_orientation: str | None = None,
+        shots: list[dict] | None = None,
     ) -> GenerationResult:
         ...
 

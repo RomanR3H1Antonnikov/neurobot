@@ -179,9 +179,12 @@ def _kling3_request(
     prompt: str, duration: int, aspect_ratio: str | None, resolution: str | None, audio: bool,
     first_frame_url: str | None, last_frame_url: str | None,
     characters: list[dict] | None = None,
+    shots: list[dict] | None = None,
 ) -> dict:
     """Kling 3.0 (kling-3.0/video) по документации KIE: mode вместо resolution (std=720p, pro=1080p),
-    sound вместо audio, обязательное multi_shots; aspect_ratio — только 16:9 / 9:16 / 1:1."""
+    sound вместо audio, обязательное multi_shots; aspect_ratio — только 16:9 / 9:16 / 1:1.
+    Кадры («Кадры» в боте) — отдельное поле multi_prompt (список {prompt, duration}), multi_shots
+    при этом остаётся false: подтверждено реальным примером запроса из документации KIE."""
     ratio = aspect_ratio if aspect_ratio in ("16:9", "9:16", "1:1") else "16:9"
     input_data: dict = {
         "prompt": prompt,
@@ -197,6 +200,12 @@ def _kling3_request(
     if characters:
         # Персонажи — «элементы» Kling; в промпте на них ссылаются как @name
         input_data["kling_elements"] = list(characters)
+    if shots:
+        total = sum(s.get("duration", 0) for s in shots)
+        input_data["duration"] = str(total)
+        input_data["multi_prompt"] = [
+            {"prompt": s["prompt"], "duration": s["duration"]} for s in shots
+        ]
     return input_data
 
 
@@ -774,6 +783,7 @@ class KieProvider(OpenAICompatProvider):
         audio: bool = True,
         character_orientation: str | None = None,
         characters: list[dict] | None = None,
+        shots: list[dict] | None = None,
     ) -> GenerationResult:
         actual_model = model or "kling-3.0/video"
         corr_id = uuid.uuid4().hex
@@ -965,7 +975,7 @@ class KieProvider(OpenAICompatProvider):
         if actual_model == KLING3_ALIAS:
             input_data = _kling3_request(
                 prompt, duration, aspect_ratio, resolution, audio, first_frame_url, last_frame_url,
-                characters,
+                characters, shots,
             )
 
         if actual_model == KLING3_MOTION_ALIAS:

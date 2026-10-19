@@ -99,6 +99,7 @@ class OpenAICompatProvider(AbstractProvider):
         video_reference_urls: list[str] | None = None,
         output_format: str | None = None,
         audio: bool = True,
+        shots: list[dict] | None = None,
     ) -> GenerationResult:
         actual_model = model or self.video_model
 

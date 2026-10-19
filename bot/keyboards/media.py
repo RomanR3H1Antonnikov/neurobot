@@ -667,12 +667,24 @@ def video_confirm_kb(
     show_audio_toggle: bool = True,
     motion_orientation: str | None = None,
     cost_credits: int | None = None,
+    max_shots: int = 0,
+    shot_count: int = 0,
 ) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
-    builder.row(InlineKeyboardButton(
-        text=f"⏱ Длительность: {duration} сек",
-        callback_data="media:pick_duration",
-    ))
+    if shot_count:
+        # Длительность теперь складывается из кадров — обычный пикер не имеет смысла
+        builder.row(InlineKeyboardButton(
+            text=f"⏱ Длительность: {duration} сек (по кадрам)",
+            callback_data="shots:menu",
+        ))
+    else:
+        builder.row(InlineKeyboardButton(
+            text=f"⏱ Длительность: {duration} сек",
+            callback_data="media:pick_duration",
+        ))
+    if max_shots:
+        shots_text = f"🎬 Кадры: {shot_count}/{max_shots} ✅" if shot_count else f"🎬 Кадры (до {max_shots})"
+        builder.row(InlineKeyboardButton(text=shots_text, callback_data="shots:menu"))
     if has_aspect_ratios and has_resolutions and aspect_ratio and resolution:
         builder.row(
             InlineKeyboardButton(text=f"📐 Масштаб: {aspect_ratio}", callback_data="media:pick_ratio"),

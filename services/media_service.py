@@ -197,6 +197,7 @@ async def generate_video(
     audio: bool = True,
     character_orientation: str | None = None,
     characters: list[dict] | None = None,
+    shots: list[dict] | None = None,
 ) -> GenerationResult:
     task = TaskType.VIDEO_GENERATION
     chain = get_provider_chain_for_model(task, model_slug)
@@ -223,6 +224,7 @@ async def generate_video(
                 audio=audio,
                 character_orientation=character_orientation,
                 **({"characters": characters} if characters else {}),
+                **({"shots": shots} if shots else {}),
             )
             break
         except ProviderUnavailableError as e:

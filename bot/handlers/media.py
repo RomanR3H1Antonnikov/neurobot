@@ -497,6 +497,9 @@ def _confirm_card_text(data: dict) -> str:
             lines.append(f"<b>Доп. настройки MJ:</b> {_mj_advanced_count(data)} изменено ✅")
     elif media_type == "video":
         lines.append(f"<b>Длительность:</b> {data.get('duration', 5)} сек")
+        _shots = data.get("shots") or []
+        if _shots:
+            lines.append(f"<b>Кадры:</b> {len(_shots)}/{data.get('model_max_shots', 0)} ✅")
         _v_ratio = data.get("aspect_ratio")
         _v_res = data.get("resolution")
         if data.get("model_aspect_ratios") and data.get("model_resolutions") and _v_ratio and _v_res:
@@ -750,6 +753,8 @@ def _confirm_kb(data: dict):
             show_audio_toggle=data.get("model_has_audio", True),
             motion_orientation=data.get("motion_orientation"),
             cost_credits=cost,
+            max_shots=data.get("model_max_shots", 0),
+            shot_count=len(data.get("shots") or []),
         )
     elif media_type == "audio":
         if data.get("has_music_settings"):
@@ -1488,6 +1493,8 @@ async def select_model(callback: CallbackQuery, state: FSMContext) -> None:
         "model_audio_accompaniment": model_cfg.get("audio_accompaniment", False),
         "model_duration_from_input": model_cfg.get("duration_from_input", False),
         "model_characters": model_cfg.get("characters"),
+        "model_max_shots": model_cfg.get("max_shots", 0),
+        "shots": None,
         "model_input_video_min": model_cfg.get("min_input_video_seconds"),
         "model_input_video_max": model_cfg.get("max_input_video_seconds"),
         "model_duration_custom": model_cfg.get("duration_custom", True),
@@ -1789,6 +1796,7 @@ async def back_to_model(callback: CallbackQuery, state: FSMContext) -> None:
                     model_max_duration=None, model_max_style_refs=None,
                     model_resolutions=None, model_motion_control=None,
                     model_characters=None, characters=None,
+                    model_max_shots=None, shots=None,
                     model_character_ref=None, character_reference_file_id=None,
                     model_mj_advanced=None, mj_chaos=None, mj_no=None, mj_stop=None,
                     mj_stylize=None, mj_tile=None, mj_weird=None,
@@ -1832,6 +1840,7 @@ async def back_to_model(callback: CallbackQuery, state: FSMContext) -> None:
         model_duration_options=None, model_min_duration=None, model_max_duration=None,
         model_max_style_refs=None, model_resolutions=None, model_motion_control=None,
         model_characters=None, characters=None,
+        model_max_shots=None, shots=None,
         model_character_ref=None, character_reference_file_id=None,
         model_mj_advanced=None, mj_chaos=None, mj_no=None, mj_stop=None,
         mj_stylize=None, mj_tile=None, mj_weird=None,
@@ -5334,6 +5343,7 @@ async def _run_generation(send_msg: Message, tg_user, state: FSMContext, data: d
         ] or None
         from bot.handlers.characters import build_character_payload
         _characters = await build_character_payload(send_msg.bot, data)
+        _shots = data.get("shots") or None
         _audio_flag = data.get("video_audio_enabled", True)
         logger.info(
             "[VIDEO_GEN] user=%s model=%s audio=%s resolution=%s duration=%s",
@@ -5353,6 +5363,7 @@ async def _run_generation(send_msg: Message, tg_user, state: FSMContext, data: d
             audio=_audio_flag,
             character_orientation=data.get("motion_orientation"),
             characters=_characters,
+            shots=_shots,
         )
         file = BufferedInputFile(result.data, filename=result.filename)
         _video_kb = await _result_markup(is_video=True)
@@ -5513,6 +5524,17 @@ async def start_generation(callback: CallbackQuery, state: FSMContext) -> None:
     if not prompt:
         await callback.answer("Сначала введи описание ✏️", show_alert=True)
         return
+
+    _shots = data.get("shots") or []
+    if _shots:
+        _min_total = data.get("model_min_duration", 3)
+        _total = sum(s.get("duration", 0) for s in _shots)
+        if _total < _min_total:
+            await callback.answer(
+                f"Суммарная длительность кадров ({_total} сек) меньше минимума ({_min_total} сек) — добавь ещё кадр.",
+                show_alert=True,
+            )
+            return
 
     if media_type in ("photo_edit", "video_edit") and not data.get("reference_file_id"):
         label = "фото" if media_type == "photo_edit" else "видео"
