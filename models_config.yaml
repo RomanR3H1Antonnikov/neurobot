@@ -197,6 +197,21 @@ tasks:
           - provider: routerai
             model_id: black-forest-labs/flux.2-pro
 
+      - id: flux-3-klein
+        label: "Flux 3 Klein"
+        description: >-
+          Flux 3 Klein — новая модель генерации изображений от Black Forest Labs. Точно следует
+          описанию, поддерживает широкий набор соотношений сторон и разрешение до 4K.
+        aspect_ratios: ["1:1", "4:3", "3:4", "3:2", "2:3", "16:9", "9:16", "21:9", "9:21"]
+        model_id: flux-3/klein-text-to-image
+        provider: kie
+        max_style_refs: 0
+        resolutions: ["1K", "2K", "4K"]
+        output_formats: ["png", "jpeg", "webp"]
+        cost_credits: 2
+        cost_by_resolution: {"1K": 2, "2K": 3, "4K": 5}
+        enabled: true
+
       - id: grok-image-2-0
         label: "Image 2.0"
         group: grok-image-ai
@@ -1103,6 +1118,22 @@ tasks:
         fallbacks:
           - provider: routerai
             model_id: black-forest-labs/flux.2-pro
+
+      - id: flux-3-klein-edit
+        label: "Flux 3 Klein"
+        description: >-
+          Flux 3 Klein — редактирование изображений от Black Forest Labs: точечные правки
+          (цвет, объекты, фон) с сохранением остальной композиции. Принимает до 10 фото-ориентиров.
+        model_id: flux-3/klein-edit-image
+        provider: kie
+        # KIE принимает до 10 изображений всего, а базовое фото уже входит в image_urls —
+        # значит дополнительных ориентиров не больше 9.
+        max_style_refs: 9
+        resolutions: ["1K", "2K", "4K"]
+        output_formats: ["png", "jpeg", "webp"]
+        cost_credits: 2
+        cost_by_resolution: {"1K": 2, "2K": 3, "4K": 5}
+        enabled: true
 
       - id: seedream-5-pro-edit
         label: "Pro"

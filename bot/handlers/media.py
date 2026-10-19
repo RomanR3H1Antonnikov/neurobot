@@ -718,6 +718,8 @@ def _confirm_kb(data: dict):
             has_character_ref=bool(data.get("model_character_ref")),
             character_ref_set=bool(data.get("character_reference_file_id")),
             has_mj_advanced=bool(data.get("model_mj_advanced")),
+            output_format=data.get("video_output_format"),
+            output_formats=data.get("model_output_formats"),
         )
     elif media_type == "video":
         _show_first = data.get("model_has_first_frame", True)
@@ -792,6 +794,8 @@ def _confirm_kb(data: dict):
             show_constructor_btn=bool(data.get("model_characters")) or data.get("model_max_style_refs", 0) > 0,
             has_constructor_files=bool(data.get("style_reference_file_ids")) or bool(data.get("characters")),
             has_mj_advanced=bool(data.get("model_mj_advanced")),
+            output_format=data.get("video_output_format"),
+            output_formats=data.get("model_output_formats"),
         )
 
 
@@ -2089,6 +2093,9 @@ async def _apply_edit_model_to_state(state: FSMContext, edit_prompt: str | None 
         model_has_group=bool(edit_model.get("group")),
         model_actual_id=edit_model["model_id"],
         model_aspect_ratios=None,
+        model_max_style_refs=edit_model.get("max_style_refs", 14),
+        model_resolutions=edit_model.get("resolutions"),
+        model_output_formats=edit_model.get("output_formats"),
         **({"prompt": edit_prompt} if edit_prompt is not None else {}),
     )
     return edit_model
@@ -4762,15 +4769,23 @@ async def set_quality(callback: CallbackQuery, state: FSMContext) -> None:
 @router.callback_query(MediaStates.confirm, F.data == "media:pick_format")
 async def pick_format(callback: CallbackQuery, state: FSMContext) -> None:
     data = await state.get_data()
-    formats = data.get("model_output_formats") or ["mp4"]
+    is_image = data.get("media_type") in ("image", "photo_edit")
+    formats = data.get("model_output_formats") or (["png"] if is_image else ["mp4"])
     current = data.get("video_output_format") or formats[0]
-    await callback.message.edit_text(
-        "<b>Выбери формат видео:</b>\n\n"
-        "MP4 — универсальный формат, подходит для большинства платформ.\n"
-        "MOV — высокое цветовое качество для профессионального монтажа.",
-        parse_mode="HTML",
-        reply_markup=video_format_kb(current, formats),
-    )
+    if is_image:
+        text = (
+            "<b>Выбери формат изображения:</b>\n\n"
+            "PNG — без потерь в качестве, подходит для текста и графики.\n"
+            "JPEG — компактный размер, подходит для фото.\n"
+            "WEBP — современный формат с хорошим сжатием при высоком качестве."
+        )
+    else:
+        text = (
+            "<b>Выбери формат видео:</b>\n\n"
+            "MP4 — универсальный формат, подходит для большинства платформ.\n"
+            "MOV — высокое цветовое качество для профессионального монтажа."
+        )
+    await callback.message.edit_text(text, parse_mode="HTML", reply_markup=video_format_kb(current, formats))
     await callback.answer()
 
 
@@ -5291,6 +5306,7 @@ async def _run_generation(send_msg: Message, tg_user, state: FSMContext, data: d
             quality=data.get("quality"),
             character_reference_url=character_reference_url,
             mj_params=_build_mj_params(data),
+            output_format=data.get("video_output_format"),
         )
         if result.variants:
             all_images = [result.data] + result.variants
@@ -5316,8 +5332,19 @@ async def _run_generation(send_msg: Message, tg_user, state: FSMContext, data: d
             file = BufferedInputFile(result.data, filename=result.filename)
             _markup = await _result_markup(is_image=True)
             _base_caption = _cost_caption(result) or ""
+            # У моделей с выбором формата (jpeg/webp) Telegram пережимает answer_photo в JPEG —
+            # отправляем файлом, чтобы сохранить выбранный формат.
+            _keep_format = len(data.get("model_output_formats") or []) > 1 and result.mime_type != "image/jpeg"
             if len(result.data) > 10 * 1024 * 1024:
                 _doc_caption = _base_caption + "\n\n📎 Изображение отправлено файлом — его размер превышает ограничение Telegram для фото.\n\nЧтобы отредактировать фото, скачай его и перейди в раздел редактирования фотографий."
+                sent = await send_msg.answer_document(file, caption=_doc_caption, reply_markup=_markup)
+                _file_id = sent.document.file_id
+            elif _keep_format:
+                _doc_caption = (
+                    _base_caption
+                    + f"\n\n📎 Отправлено файлом, чтобы сохранить выбранный формат ({result.mime_type.split('/')[-1].upper()})."
+                    + "\n\nЕсли нужно отредактировать это фото, напишите в чат, что необходимо изменить на фото."
+                )
                 sent = await send_msg.answer_document(file, caption=_doc_caption, reply_markup=_markup)
                 _file_id = sent.document.file_id
             else:
@@ -5456,12 +5483,22 @@ async def _run_generation(send_msg: Message, tg_user, state: FSMContext, data: d
             quality=data.get("quality"),
             aspect_ratio=data.get("aspect_ratio"),
             mj_params=_build_mj_params(data),
+            output_format=data.get("video_output_format"),
         )
         file = BufferedInputFile(result.data, filename=result.filename)
         _markup = await _result_markup(is_image=True, edit=True)
         _base_caption = _cost_caption(result) or ""
+        _keep_format = len(data.get("model_output_formats") or []) > 1 and result.mime_type != "image/jpeg"
         if len(result.data) > 10 * 1024 * 1024:
             _doc_caption = _base_caption + "\n\n📎 Изображение отправлено файлом — его размер превышает ограничение Telegram для фото.\n\nЧтобы отредактировать фото, скачай его и перейди в раздел редактирования фотографий."
+            sent = await send_msg.answer_document(file, caption=_doc_caption, reply_markup=_markup)
+            new_file_id = sent.document.file_id
+        elif _keep_format:
+            _doc_caption = (
+                _base_caption
+                + f"\n\n📎 Отправлено файлом, чтобы сохранить выбранный формат ({result.mime_type.split('/')[-1].upper()})."
+                + "\n\nЕсли нужно отредактировать это фото, напишите в чат, что необходимо изменить на фото."
+            )
             sent = await send_msg.answer_document(file, caption=_doc_caption, reply_markup=_markup)
             new_file_id = sent.document.file_id
         else:

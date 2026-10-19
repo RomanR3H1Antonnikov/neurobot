@@ -134,6 +134,16 @@ async def mygen_show_type(callback: CallbackQuery) -> None:
         await _send_audios(callback.message, items, label)
 
 
+async def _send_one_photo(message: Message, item: dict, caption: str | None, kb) -> None:
+    try:
+        await message.answer_photo(item["file_id"], caption=caption, reply_markup=kb)
+    except Exception:
+        # Некоторые фото сохраняются как документ (например, формат не JPEG
+        # или размер больше лимита Telegram для фото) — их file_id нельзя
+        # переслать через answer_photo.
+        await message.answer_document(item["file_id"], caption=caption, reply_markup=kb)
+
+
 async def _send_photos(message: Message, items: list[dict], label: str) -> None:
     # Группируем по ALBUM_SIZE, подпись только на последней группе
     chunks = [items[i:i + _ALBUM_SIZE] for i in range(0, len(items), _ALBUM_SIZE)]
@@ -142,13 +152,21 @@ async def _send_photos(message: Message, items: list[dict], label: str) -> None:
         if len(chunk) == 1:
             caption = _item_caption(chunk[0])
             kb = _back_kb() if is_last_chunk else None
-            await message.answer_photo(chunk[0]["file_id"], caption=caption, reply_markup=kb)
+            await _send_one_photo(message, chunk[0], caption, kb)
         else:
             media = []
             for i, item in enumerate(chunk):
                 cap = _item_caption(item) if i == 0 else None
                 media.append(InputMediaPhoto(media=item["file_id"], caption=cap))
-            await message.answer_media_group(media)
+            try:
+                await message.answer_media_group(media)
+            except Exception:
+                # Альбом не может смешивать фото и документы (например, один из них —
+                # не-JPEG формат) — шлём каждый элемент отдельно с тем же фолбэком.
+                logger.warning("mygen: answer_media_group не удалась, шлём по одному")
+                for i, item in enumerate(chunk):
+                    cap = _item_caption(item) if i == 0 else None
+                    await _send_one_photo(message, item, cap, None)
             if is_last_chunk:
                 await message.answer(
                     f"{label}: показано {len(items)} за последние {_HOURS} ч",

@@ -155,6 +155,7 @@ async def generate_image(
     quality: str | None = None,
     character_reference_url: str | None = None,
     mj_params: dict | None = None,
+    output_format: str | None = None,
 ) -> GenerationResult:
     task = TaskType.IMAGE_GENERATION
     chain = get_provider_chain_for_model(task, model_slug)
@@ -169,7 +170,7 @@ async def generate_image(
                 prompt, aspect_ratio=aspect_ratio, resolution=resolution,
                 model=eff_cfg["model_id"], style_reference_urls=style_reference_urls,
                 quality=quality, character_reference_url=character_reference_url,
-                mj_params=mj_params,
+                mj_params=mj_params, output_format=output_format,
             )
             break
         except ProviderUnavailableError as e:
@@ -279,7 +280,7 @@ async def edit_image(
     image_url: str | None = None, style_reference_urls: list[str] | None = None,
     provider_task_id: str | None = None, resolution: str | None = None,
     quality: str | None = None, aspect_ratio: str | None = None,
-    mj_params: dict | None = None,
+    mj_params: dict | None = None, output_format: str | None = None,
 ) -> GenerationResult:
     task = TaskType.IMAGE_EDIT
     chain = get_provider_chain_for_model(task, model_slug)
@@ -297,7 +298,7 @@ async def edit_image(
                 resolution=resolution,
                 quality=quality,
                 aspect_ratio=aspect_ratio,
-                mj_params=mj_params,
+                mj_params=mj_params, output_format=output_format,
             )
             break
         except ProviderUnavailableError as e:

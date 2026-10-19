@@ -46,9 +46,20 @@ def _kie_ratio(aspect_ratio: str) -> str:
     return _RATIO_MAP.get(aspect_ratio, aspect_ratio)
 
 
+_IMAGE_MIME = {"png": "image/png", "jpeg": "image/jpeg", "webp": "image/webp"}
+
+
+def _image_mime_filename(output_format: str | None) -> tuple[str, str]:
+    fmt = (output_format or "png").lower()
+    if fmt not in _IMAGE_MIME:
+        fmt = "png"
+    return _IMAGE_MIME[fmt], f"image.{fmt}"
+
+
 def _image_input(
     model: str, prompt: str, aspect_ratio: str, resolution: str,
     style_reference_urls: list[str] | None = None,
+    output_format: str | None = None,
 ) -> dict:
     """Формирует поле input для createTask в зависимости от семейства модели."""
     if model.startswith("seedream/"):
@@ -57,6 +68,15 @@ def _image_input(
             "aspect_ratio": _kie_ratio(aspect_ratio),
             "quality": _SEEDREAM_QUALITY.get(resolution, "basic"),
             "output_format": "png",
+        }
+    if model.startswith("flux-3/"):
+        return {
+            "prompt": prompt,
+            "aspect_ratio": _kie_ratio(aspect_ratio),
+            "resolution": resolution,
+            "output_format": output_format or "png",
+            "num_images": 1,
+            "enhance_prompt": True,
         }
     if model.startswith("flux-2/"):
         # KIE docs: flux-2 text-to-image принимает только prompt/aspect_ratio/resolution.
@@ -729,7 +749,7 @@ class KieProvider(OpenAICompatProvider):
         self, prompt: str, aspect_ratio: str = "1:1", resolution: str = "1K",
         model: str | None = None, style_reference_urls: list[str] | None = None,
         quality: str | None = None, character_reference_url: str | None = None,
-        mj_params: dict | None = None,
+        mj_params: dict | None = None, output_format: str | None = None,
     ) -> GenerationResult:
         actual_model = model or "nano-banana-2"
         corr_id = uuid.uuid4().hex
@@ -738,7 +758,7 @@ class KieProvider(OpenAICompatProvider):
         try:
             task_id = await self._create_job(
                 actual_model,
-                _image_input(actual_model, prompt, aspect_ratio, resolution, style_reference_urls),
+                _image_input(actual_model, prompt, aspect_ratio, resolution, style_reference_urls, output_format),
                 corr_id,
             )
 
@@ -765,7 +785,8 @@ class KieProvider(OpenAICompatProvider):
         image_bytes = await self._download(url)
         # Grok не принимает TG-URL при редактировании — сохраняем оригинальный CDN URL
         gen_image_url = url if actual_model.startswith("grok-imagine") else None
-        return GenerationResult(data=image_bytes, mime_type="image/png", filename="image.png",
+        mime_type, filename = _image_mime_filename(output_format)
+        return GenerationResult(data=image_bytes, mime_type=mime_type, filename=filename,
                                 provider_image_url=gen_image_url)
 
     # ─── Генерация видео ──────────────────────────────────────────────────────
@@ -1075,7 +1096,7 @@ class KieProvider(OpenAICompatProvider):
         image_url: str | None = None, style_reference_urls: list[str] | None = None,
         provider_task_id: str | None = None, resolution: str | None = None,
         quality: str | None = None, aspect_ratio: str | None = None,
-        mj_params: dict | None = None,
+        mj_params: dict | None = None, output_format: str | None = None,
     ) -> GenerationResult:
         """Job-based редактирование через KIE createTask."""
         actual_model = model or "google/nano-banana-edit"
@@ -1095,6 +1116,20 @@ class KieProvider(OpenAICompatProvider):
                 "prompt": prompt,
                 "aspect_ratio": aspect_ratio or "1:1",
                 "image_urls": [src_url] + _srefs,
+            }
+        elif actual_model.startswith("flux-3/"):
+            if not image_url:
+                raise ProviderUnavailableError("KIE edit_image: не передан URL изображения")
+            input_data = {
+                "prompt": prompt,
+                "image_urls": [image_url] + _srefs,
+                # Нет пикера соотношения у этой модели редактирования — всегда "auto",
+                # чтобы сохранить исходные пропорции (как в документированном примере KIE).
+                "aspect_ratio": "auto",
+                "resolution": resolution or "1K",
+                "output_format": output_format or "png",
+                "num_images": 1,
+                "enhance_prompt": False,
             }
         elif actual_model.startswith("flux-2/"):
             if not image_url:
@@ -1180,7 +1215,9 @@ class KieProvider(OpenAICompatProvider):
             raise ProviderUnavailableError("KIE: не получен URL результата редактирования")
 
         image_out = await self._download(result_url)
-        return GenerationResult(data=image_out, mime_type="image/png", filename="edited.png",
+        mime_type, _image_filename = _image_mime_filename(output_format)
+        filename = "edited." + _image_filename.split(".", 1)[1]
+        return GenerationResult(data=image_out, mime_type=mime_type, filename=filename,
                                 provider_image_url=result_url)
 
     # ─── Редактирование видео ─────────────────────────────────────────────────

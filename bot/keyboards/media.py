@@ -578,12 +578,19 @@ def image_confirm_kb(
     has_character_ref: bool = False,
     character_ref_set: bool = False,
     has_mj_advanced: bool = False,
+    output_format: str | None = None,
+    output_formats: list[str] | None = None,
 ) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     builder.row(
         InlineKeyboardButton(text=f"📐 Масштаб: {aspect_ratio}", callback_data="media:pick_ratio"),
         InlineKeyboardButton(text=f"🖼 Качество: {resolution}", callback_data="media:pick_resolution"),
     )
+    if output_formats and len(output_formats) > 1 and output_format:
+        builder.row(InlineKeyboardButton(
+            text=f"📁 Формат: {output_format.upper()}",
+            callback_data="media:pick_format",
+        ))
     if quality_options:
         q_label = _QUALITY_LABELS.get(quality or "medium", quality or "medium")
         builder.row(InlineKeyboardButton(text=f"🎨 Детализация: {q_label}", callback_data="media:pick_quality"))
@@ -1178,6 +1185,8 @@ def edit_confirm_kb(
     show_constructor_btn: bool = False,
     has_constructor_files: bool = False,
     has_mj_advanced: bool = False,
+    output_format: str | None = None,
+    output_formats: list[str] | None = None,
 ) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     if media_type == "photo_edit":
@@ -1213,6 +1222,11 @@ def edit_confirm_kb(
         if quality_options:
             q_label = _QUALITY_LABELS.get(quality or "medium", quality or "medium")
             builder.row(InlineKeyboardButton(text=f"🎨 Детализация: {q_label}", callback_data="media:pick_quality"))
+        if output_formats and len(output_formats) > 1 and output_format:
+            builder.row(InlineKeyboardButton(
+                text=f"📁 Формат: {output_format.upper()}",
+                callback_data="media:pick_format",
+            ))
         if has_mj_advanced:
             builder.row(InlineKeyboardButton(text="⚙️ Дополнительные настройки", callback_data="media:mj_advanced"))
     if media_type == "video_edit" and show_constructor_btn:

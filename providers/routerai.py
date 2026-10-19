@@ -30,7 +30,7 @@ class RouteraiProvider(OpenAICompatProvider):
         self, prompt: str, aspect_ratio: str = "1:1", resolution: str = "1K",
         model: str | None = None, style_reference_urls: list[str] | None = None,
         quality: str | None = None, character_reference_url: str | None = None,
-        mj_params: dict | None = None,
+        mj_params: dict | None = None, output_format: str | None = None,
     ) -> GenerationResult:
         actual_model = model or self.image_model
 
@@ -167,7 +167,7 @@ class RouteraiProvider(OpenAICompatProvider):
         image_url: str | None = None, style_reference_urls: list[str] | None = None,
         provider_task_id: str | None = None, resolution: str | None = None,
         quality: str | None = None, aspect_ratio: str | None = None,
-        mj_params: dict | None = None,
+        mj_params: dict | None = None, output_format: str | None = None,
     ) -> GenerationResult:
         actual_model = model or self.image_edit_model
 
