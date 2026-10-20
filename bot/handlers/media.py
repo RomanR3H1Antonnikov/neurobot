@@ -5345,7 +5345,12 @@ async def _run_generation(send_msg: Message, tg_user, state: FSMContext, data: d
                     + f"\n\n📎 Отправлено файлом, чтобы сохранить выбранный формат ({result.mime_type.split('/')[-1].upper()})."
                     + "\n\nЕсли нужно отредактировать это фото, напишите в чат, что необходимо изменить на фото."
                 )
-                sent = await send_msg.answer_document(file, caption=_doc_caption, reply_markup=_markup)
+                # disable_content_type_detection: без этого Telegram сам распознаёт WEBP
+                # и превращает документ в стикер (sent.document становится None).
+                sent = await send_msg.answer_document(
+                    file, caption=_doc_caption, reply_markup=_markup,
+                    disable_content_type_detection=True,
+                )
                 _file_id = sent.document.file_id
             else:
                 _caption = _base_caption + "\n\nЕсли нужно отредактировать это фото, напишите в чат, что необходимо изменить на фото."
@@ -5499,7 +5504,12 @@ async def _run_generation(send_msg: Message, tg_user, state: FSMContext, data: d
                 + f"\n\n📎 Отправлено файлом, чтобы сохранить выбранный формат ({result.mime_type.split('/')[-1].upper()})."
                 + "\n\nЕсли нужно отредактировать это фото, напишите в чат, что необходимо изменить на фото."
             )
-            sent = await send_msg.answer_document(file, caption=_doc_caption, reply_markup=_markup)
+            # disable_content_type_detection: без этого Telegram сам распознаёт WEBP
+            # и превращает документ в стикер (sent.document становится None).
+            sent = await send_msg.answer_document(
+                file, caption=_doc_caption, reply_markup=_markup,
+                disable_content_type_detection=True,
+            )
             new_file_id = sent.document.file_id
         else:
             _caption = _base_caption + "\n\nЕсли нужно отредактировать это фото, напишите в чат, что необходимо изменить на фото."
