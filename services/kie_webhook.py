@@ -280,10 +280,42 @@ async def _handle_genapi_callback(request: web.Request) -> web.Response:
     return web.json_response({"ok": True})
 
 
+async def _handle_yookassa_webhook(request: web.Request) -> web.Response:
+    """ЮKassa шлёт сюда уведомления о статусе платежа (оплата по ссылке).
+
+    Телу уведомления не доверяем — статус перепроверяем напрямую у ЮKassa
+    (см. yookassa_service.confirm_and_credit), иначе уведомление можно подделать.
+    """
+    try:
+        body = await request.json()
+    except Exception:
+        return web.json_response({}, status=400)
+
+    payment_id = ((body.get("object") or {}).get("id"))
+    if not payment_id:
+        return web.json_response({}, status=400)
+
+    logger.info("YooKassa webhook: event=%s payment_id=%s", body.get("event"), payment_id)
+
+    try:
+        from services.yookassa_service import confirm_and_credit
+        status, _ = await confirm_and_credit(payment_id, bot=_bot)
+        logger.info("YooKassa webhook: payment_id=%s result=%s", payment_id, status)
+    except Exception as e:
+        # 500 здесь — специально: ЮKassa повторит уведомление позже (до ~24ч),
+        # а при временном сбое (например, таймаут при перезапросе статуса) это
+        # единственный способ не потерять зачисление молча.
+        logger.error("YooKassa webhook: ошибка обработки payment_id=%s: %s", payment_id, e)
+        return web.json_response({}, status=500)
+
+    return web.json_response({})
+
+
 def create_app() -> web.Application:
     app = web.Application()
     app.router.add_post("/kie/callback/{corr_id}", _handle_callback)
     app.router.add_post("/genapi/callback/{corr_id}", _handle_genapi_callback)
+    app.router.add_post("/yookassa/webhook", _handle_yookassa_webhook)
     # Файлы пользователя для нейросетей — ссылки без токена бота (см. services/file_proxy.py)
     app.router.add_get(file_proxy.ROUTE_PREFIX + "/{secret}/{name}", file_proxy.handle_file)
 

@@ -95,6 +95,15 @@ async def _create_tables(db: aiosqlite.Connection) -> None:
             data     TEXT NOT NULL DEFAULT '{}',
             PRIMARY KEY (chat_id, user_id, destiny)
         );
+
+        CREATE TABLE IF NOT EXISTS yookassa_payments (
+            payment_id  TEXT PRIMARY KEY,
+            telegram_id INTEGER NOT NULL,
+            chat_id     INTEGER NOT NULL,
+            amount      INTEGER NOT NULL,
+            status      TEXT NOT NULL DEFAULT 'pending',  -- pending | succeeded
+            created_at  INTEGER NOT NULL DEFAULT (strftime('%s', 'now'))
+        );
     """)
     # Миграция: taskId KIE нужен, чтобы после перезапуска бота забрать готовый результат
     try:

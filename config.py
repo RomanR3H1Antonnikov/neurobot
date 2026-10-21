@@ -21,7 +21,9 @@ class Config:
     bratuha_api_key: str
     ranvikapi_api_key: str
 
-    yookassa_provider_token: str  # токен провайдера из BotFather → Payments
+    yookassa_provider_token: str  # токен провайдера из BotFather → Payments (окно оплаты Telegram)
+    yookassa_shop_id: str         # прямой API ЮKassa (оплата по ссылке: карта, СБП и др.)
+    yookassa_secret_key: str
 
     models: dict = field(default_factory=dict)
 
@@ -50,6 +52,8 @@ def load_config() -> Config:
         bratuha_api_key=os.getenv("BRATUHA_API_KEY", ""),
         ranvikapi_api_key=os.getenv("RANVIKAPI_API_KEY", ""),
         yookassa_provider_token=os.getenv("YOOKASSA_PROVIDER_TOKEN", ""),
+        yookassa_shop_id=os.getenv("YOOKASSA_SHOP_ID", ""),
+        yookassa_secret_key=os.getenv("YOOKASSA_SECRET_KEY", ""),
         models=models.get("tasks", {}),
     )
 

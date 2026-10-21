@@ -19,13 +19,22 @@ TOPUP_PACKAGES_RUB = [
     (1000, 1000),
 ]
 
+# Пакеты пополнения по прямой ссылке ЮKassa (карта, СБП и др. — выбирает сам пользователь на странице оплаты)
+TOPUP_PACKAGES_LINK = [
+    (100,  100),
+    (300,  300),
+    (1000, 1000),
+]
 
-def payment_method_kb(has_yookassa: bool = True) -> InlineKeyboardMarkup:
+
+def payment_method_kb(has_yookassa: bool = True, has_yookassa_link: bool = False) -> InlineKeyboardMarkup:
     """Выбор способа оплаты."""
     builder = InlineKeyboardBuilder()
     builder.row(InlineKeyboardButton(text="⭐ Telegram Stars", callback_data="billing:method:stars"))
     if has_yookassa:
         builder.row(InlineKeyboardButton(text="💳 Банковская карта", callback_data="billing:method:rub"))
+    if has_yookassa_link:
+        builder.row(InlineKeyboardButton(text="🔗 Оплата по ссылке (карта, СБП)", callback_data="billing:method:link"))
     builder.row(InlineKeyboardButton(text="🏠 Главное меню", callback_data="billing:menu"))
     return builder.as_markup()
 
@@ -54,6 +63,26 @@ def rub_packages_kb() -> InlineKeyboardMarkup:
     return builder.as_markup()
 
 
+def link_packages_kb() -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    for credits, rub in TOPUP_PACKAGES_LINK:
+        builder.row(InlineKeyboardButton(
+            text=f"{rub} ₽",
+            callback_data=f"billing:topup:{credits}:{rub}:link",
+        ))
+    builder.row(InlineKeyboardButton(text="✏️ Своя сумма", callback_data="billing:custom:link"))
+    builder.row(InlineKeyboardButton(text="◀️ Назад", callback_data="billing:method_back"))
+    return builder.as_markup()
+
+
+def yookassa_link_kb(confirmation_url: str, payment_id: str) -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    builder.row(InlineKeyboardButton(text="🔗 Перейти к оплате", url=confirmation_url))
+    builder.row(InlineKeyboardButton(text="🔄 Проверить оплату", callback_data=f"billing:yk_check:{payment_id}"))
+    builder.row(InlineKeyboardButton(text="🏠 Главное меню", callback_data="billing:menu"))
+    return builder.as_markup()
+
+
 def cancel_custom_kb(method: str) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     builder.row(InlineKeyboardButton(text="◀️ Отмена", callback_data=f"billing:custom_cancel:{method}"))
@@ -65,11 +94,13 @@ def balance_kb(has_yookassa: bool = True) -> InlineKeyboardMarkup:
     return payment_method_kb(has_yookassa)
 
 
-def quick_topup_kb(has_yookassa: bool = True) -> InlineKeyboardMarkup:
+def quick_topup_kb(has_yookassa: bool = True, has_yookassa_link: bool = False) -> InlineKeyboardMarkup:
     """Пополнение прямо из потока (без выхода в меню)."""
     builder = InlineKeyboardBuilder()
     builder.row(InlineKeyboardButton(text="⭐ Telegram Stars", callback_data="billing:method:stars"))
     if has_yookassa:
         builder.row(InlineKeyboardButton(text="💳 Банковская карта", callback_data="billing:method:rub"))
+    if has_yookassa_link:
+        builder.row(InlineKeyboardButton(text="🔗 Оплата по ссылке (карта, СБП)", callback_data="billing:method:link"))
     builder.row(InlineKeyboardButton(text="❌ Отмена", callback_data="billing:cancel_topup"))
     return builder.as_markup()

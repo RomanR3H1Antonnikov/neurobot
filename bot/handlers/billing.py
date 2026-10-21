@@ -7,12 +7,12 @@ from aiogram.fsm.state import State, StatesGroup
 
 from bot.keyboards.main_menu import BTN_BALANCE, main_menu_kb
 from bot.keyboards.billing import (
-    payment_method_kb, stars_packages_kb, rub_packages_kb, quick_topup_kb,
-    cancel_custom_kb, TOPUP_PACKAGES_STARS, TOPUP_PACKAGES_RUB, MIN_RUB, MAX_RUB, MIN_STARS,
+    payment_method_kb, stars_packages_kb, rub_packages_kb, link_packages_kb, quick_topup_kb,
+    yookassa_link_kb, cancel_custom_kb, TOPUP_PACKAGES_STARS, TOPUP_PACKAGES_RUB, MIN_RUB, MAX_RUB, MIN_STARS,
 )
 from bot.utils import cleanup_tracked_messages, safe_delete
 from config import config, reload_models
-from db.queries import get_or_create_user, add_credits
+from db.queries import get_or_create_user, add_credits, save_yookassa_payment
 
 
 class BillingStates(StatesGroup):
@@ -24,6 +24,10 @@ router = Router()
 
 def _has_yookassa() -> bool:
     return bool(config.yookassa_provider_token)
+
+
+def _has_yookassa_link() -> bool:
+    return bool(config.yookassa_shop_id and config.yookassa_secret_key)
 
 
 def _balance_text(balance: int) -> str:
@@ -42,7 +46,7 @@ async def show_balance(message: Message, state: FSMContext, db_user: dict) -> No
     sent = await message.answer(
         _balance_text(db_user["balance"]),
         parse_mode="HTML",
-        reply_markup=payment_method_kb(_has_yookassa()),
+        reply_markup=payment_method_kb(_has_yookassa(), _has_yookassa_link()),
     )
     await state.update_data(_tracked_msg_ids=[sent.message_id])
 
@@ -55,7 +59,7 @@ async def menu_to_balance(callback: CallbackQuery, state: FSMContext, db_user: d
     await callback.message.answer(
         _balance_text(db_user["balance"]),
         parse_mode="HTML",
-        reply_markup=payment_method_kb(_has_yookassa()),
+        reply_markup=payment_method_kb(_has_yookassa(), _has_yookassa_link()),
     )
 
 
@@ -84,19 +88,34 @@ async def choose_rub(callback: CallbackQuery) -> None:
     )
 
 
+@router.callback_query(F.data == "billing:method:link")
+async def choose_link(callback: CallbackQuery) -> None:
+    if not _has_yookassa_link():
+        await callback.answer("Оплата по ссылке временно недоступна", show_alert=True)
+        return
+    await callback.answer()
+    await callback.message.edit_text(
+        "🔗 <b>Оплата по ссылке</b>\n\n"
+        "Способ оплаты (карта, СБП и др.) выбирается на странице ЮKassa.\n\n"
+        "Выбери пакет:",
+        parse_mode="HTML",
+        reply_markup=link_packages_kb(),
+    )
+
+
 @router.callback_query(F.data == "billing:method_back")
 async def method_back(callback: CallbackQuery, state: FSMContext, db_user: dict) -> None:
     await callback.answer()
     await callback.message.edit_text(
         _balance_text(db_user["balance"]),
         parse_mode="HTML",
-        reply_markup=payment_method_kb(_has_yookassa()),
+        reply_markup=payment_method_kb(_has_yookassa(), _has_yookassa_link()),
     )
 
 
 # ─── Своя сумма ──────────────────────────────────────────────────────────────
 
-@router.callback_query(F.data.in_({"billing:custom:stars", "billing:custom:rub"}))
+@router.callback_query(F.data.in_({"billing:custom:stars", "billing:custom:rub", "billing:custom:link"}))
 async def custom_amount_start(callback: CallbackQuery, state: FSMContext) -> None:
     method = callback.data.split(":")[2]
     await state.set_state(BillingStates.awaiting_custom_amount)
@@ -108,6 +127,8 @@ async def custom_amount_start(callback: CallbackQuery, state: FSMContext) -> Non
             f"Введи сумму пополнения в рублях.\n"
             f"Минимум — <b>{MIN_RUB} ₽</b> (ограничение Telegram)."
         )
+    elif method == "link":
+        text = f"🔗 <b>Своя сумма</b>\n\nВведи сумму пополнения в рублях.\nМинимум — <b>{MIN_RUB} ₽</b>."
     else:
         text = "⭐ <b>Своя сумма</b>\n\nВведи количество Telegram Stars для оплаты:"
     await callback.message.edit_text(text, parse_mode="HTML", reply_markup=cancel_custom_kb(method))
@@ -123,6 +144,12 @@ async def custom_amount_cancel(callback: CallbackQuery, state: FSMContext) -> No
             "💳 <b>Оплата банковской картой</b>\n\nВыбери пакет:",
             parse_mode="HTML",
             reply_markup=rub_packages_kb(),
+        )
+    elif method == "link":
+        await callback.message.edit_text(
+            "🔗 <b>Оплата по ссылке</b>\n\nВыбери пакет:",
+            parse_mode="HTML",
+            reply_markup=link_packages_kb(),
         )
     else:
         await callback.message.edit_text(
@@ -172,6 +199,17 @@ async def custom_amount_input(message: Message, state: FSMContext) -> None:
         except Exception as e:
             logger.error("answer_invoice RUB failed: value=%s err=%s", value, e)
             await message.answer("Не удалось выставить счёт. Попробуй другую сумму или обратись в поддержку.")
+    elif method == "link":
+        if value < MIN_RUB:
+            await _reprompt(message.bot, message.chat.id, prompt_id, method,
+                            f"Минимум — <b>{MIN_RUB} ₽</b>. Введи другую сумму:")
+            return
+        if value > MAX_RUB:
+            await _reprompt(message.bot, message.chat.id, prompt_id, method,
+                            f"Максимальная сумма — <b>{MAX_RUB:,} ₽</b>. Введи другую сумму:")
+            return
+        await state.clear()
+        await _send_link_payment(message, message.from_user.id, message.chat.id, value)
     else:
         if value < MIN_STARS:
             await _reprompt(message.bot, message.chat.id, prompt_id, method,
@@ -192,10 +230,36 @@ async def custom_amount_input(message: Message, state: FSMContext) -> None:
             await message.answer("Не удалось выставить счёт. Попробуй другое количество Stars.")
 
 
+async def _send_link_payment(target: Message, telegram_id: int, chat_id: int, amount: int) -> None:
+    """Создаёт платёж в ЮKassa и присылает пользователю ссылку на оплату (карта, СБП и др.)."""
+    from services.yookassa_service import create_payment
+    try:
+        bot_user = await target.bot.get_me()
+        return_url = f"https://t.me/{bot_user.username}"
+        payment = await create_payment(
+            amount, f"Пополнение баланса на {amount} ₽", telegram_id, chat_id, return_url,
+        )
+        payment_id = payment["id"]
+        confirmation_url = payment["confirmation"]["confirmation_url"]
+        await save_yookassa_payment(payment_id, telegram_id, chat_id, amount)
+        await target.answer(
+            f"🔗 <b>Счёт на {amount} ₽ создан</b>\n\n"
+            "Способ оплаты (карта, СБП и др.) выбираешь на странице ЮKassa.\n"
+            "После оплаты баланс пополнится автоматически — обычно в течение минуты.",
+            parse_mode="HTML",
+            reply_markup=yookassa_link_kb(confirmation_url, payment_id),
+        )
+    except Exception as e:
+        logger.error("YooKassa create_payment failed: amount=%s err=%s", amount, e)
+        await target.answer("Не удалось создать счёт на оплату. Попробуй ещё раз или обратись в поддержку.")
+
+
 async def _reprompt(bot, chat_id: int, prompt_id: int | None, method: str, error_text: str) -> None:
     """Обновляет сообщение-промпт с текстом ошибки, не меняя кнопку Отмена."""
     if method == "rub":
         base = f"💳 <b>Своя сумма</b>\n\n{error_text}"
+    elif method == "link":
+        base = f"🔗 <b>Своя сумма</b>\n\n{error_text}"
     else:
         base = f"⭐ <b>Своя сумма</b>\n\n{error_text}"
     if prompt_id:
@@ -233,6 +297,11 @@ async def topup_selected(callback: CallbackQuery) -> None:
             currency="RUB",
             prices=[LabeledPrice(label=f"Пополнение баланса на {credits} ₽", amount=amount * 100)],
         )
+    elif method == "link":
+        if not _has_yookassa_link():
+            await callback.answer("Оплата по ссылке временно недоступна", show_alert=True)
+            return
+        await _send_link_payment(callback.message, callback.from_user.id, callback.message.chat.id, amount)
     else:
         await callback.message.answer_invoice(
             title="Пополнение баланса",
@@ -241,6 +310,29 @@ async def topup_selected(callback: CallbackQuery) -> None:
             currency="XTR",
             prices=[LabeledPrice(label=f"Пополнение баланса на {credits} ₽", amount=amount)],
         )
+
+
+@router.callback_query(F.data.startswith("billing:yk_check:"))
+async def yk_check_payment(callback: CallbackQuery) -> None:
+    payment_id = callback.data.split(":", 2)[2]
+    from services.yookassa_service import confirm_and_credit
+    try:
+        status, balance = await confirm_and_credit(payment_id, bot=callback.bot)
+    except Exception as e:
+        logger.error("yk_check_payment: ошибка проверки payment_id=%s: %s", payment_id, e)
+        await callback.answer("Не удалось проверить оплату. Попробуй ещё раз чуть позже.", show_alert=True)
+        return
+
+    if status in ("paid_now", "already_credited"):
+        await callback.answer("Оплата подтверждена, баланс пополнен ✅", show_alert=True)
+        try:
+            await callback.message.edit_reply_markup(reply_markup=None)
+        except Exception:
+            pass
+    elif status == "not_paid":
+        await callback.answer("Оплата пока не поступила. Если уже оплатил — подожди немного и проверь снова.", show_alert=True)
+    else:
+        await callback.answer("Платёж не найден.", show_alert=True)
 
 
 # ─── Обработка платежей ───────────────────────────────────────────────────────

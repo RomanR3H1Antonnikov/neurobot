@@ -215,6 +215,39 @@ async def delete_pending_job(corr_id: str) -> None:
     await db.commit()
 
 
+# ─── Платежи ЮKassa (прямой API, оплата по ссылке) ──────────────────────────
+
+async def save_yookassa_payment(payment_id: str, telegram_id: int, chat_id: int, amount: int) -> None:
+    db = await get_db()
+    await db.execute(
+        "INSERT INTO yookassa_payments (payment_id, telegram_id, chat_id, amount) VALUES (?, ?, ?, ?)",
+        (payment_id, telegram_id, chat_id, amount),
+    )
+    await db.commit()
+
+
+async def get_yookassa_payment(payment_id: str) -> Optional[Row]:
+    db = await get_db()
+    async with db.execute(
+        "SELECT * FROM yookassa_payments WHERE payment_id = ?", (payment_id,)
+    ) as cur:
+        return await cur.fetchone()
+
+
+async def mark_yookassa_payment_succeeded(payment_id: str) -> bool:
+    """Атомарно помечает платёж оплаченным. True — если это сделал именно этот вызов
+    (значит, зачислять кредиты нужно именно сейчас); False — платёж уже был обработан
+    (вебхук и ручная проверка могли сработать одновременно)."""
+    db = await get_db()
+    async with db.execute(
+        "UPDATE yookassa_payments SET status = 'succeeded' WHERE payment_id = ? AND status != 'succeeded' RETURNING payment_id",
+        (payment_id,),
+    ) as cur:
+        row = await cur.fetchone()
+    await db.commit()
+    return row is not None
+
+
 async def check_and_increment_rate_limit(user_id: int, task_type: str, limit: int) -> bool:
     """Проверяет лимит и инкрементирует счётчик. False = лимит превышен."""
     db = await get_db()
