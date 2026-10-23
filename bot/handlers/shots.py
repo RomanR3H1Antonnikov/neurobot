@@ -23,6 +23,7 @@ _DURATION_PRESETS = [2, 3, 5, 8, 10]
 
 class ShotStates(StatesGroup):
     prompt = State()
+    delete_number = State()
 
 
 def _max_shots(data: dict) -> int:
@@ -52,8 +53,8 @@ def _menu_text(data: dict) -> str:
     else:
         lines.append("Раздели видео на отдельные сцены — у каждой свой текст и длительность.\n")
     lines.append(
-        "Видео соберётся именно из этих сцен по порядку. Основной текст в карточке "
-        "остаётся как общее описание — он отправляется вместе со сценами."
+        "Видео соберётся именно из этих сцен по порядку. Общее описание в карточке "
+        "при этом не используется — у каждой сцены свой текст."
     )
     return "\n".join(lines)
 
@@ -64,7 +65,9 @@ def _menu_kb(data: dict) -> InlineKeyboardMarkup:
     if len(shots) < _max_shots(data) and _remaining(data) > 0:
         b.row(InlineKeyboardButton(text="➕ Добавить сцену", callback_data="shots:new"))
     if shots:
-        b.row(InlineKeyboardButton(text="🗑 Удалить последний", callback_data="shots:del_last"))
+        b.row(InlineKeyboardButton(text="🗑 Удалить последнюю", callback_data="shots:del_last"))
+        if len(shots) > 1:
+            b.row(InlineKeyboardButton(text="🗑 Удалить сцену №…", callback_data="shots:del_pick"))
     b.row(InlineKeyboardButton(text="◀️ Назад", callback_data="shots:back"))
     return b.as_markup()
 
@@ -210,3 +213,50 @@ async def delete_last(callback: CallbackQuery, state: FSMContext) -> None:
     await state.update_data(shots=shots, duration=new_duration)
     await _show_menu(callback.bot, callback.message.chat.id, state)
     await callback.answer("Сцена удалена" if had else "")
+
+
+@router.callback_query(F.data == "shots:del_pick")
+async def delete_pick_start(callback: CallbackQuery, state: FSMContext) -> None:
+    data = await state.get_data()
+    shots = data.get("shots") or []
+    if len(shots) < 2:
+        await callback.answer()
+        return
+    await state.update_data(_sref_msg_id=callback.message.message_id)
+    await state.set_state(ShotStates.delete_number)
+    await callback.message.edit_text(
+        f"🗑 <b>Какую сцену удалить?</b> Введи номер от 1 до {len(shots)}.",
+        parse_mode="HTML",
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="◀️ Отмена", callback_data="shots:menu")],
+        ]),
+    )
+    await callback.answer()
+
+
+@router.message(ShotStates.delete_number, F.text, ~F.text.in_(MENU_BUTTONS))
+async def delete_pick_number(message: Message, state: FSMContext) -> None:
+    text = (message.text or "").strip()
+    try:
+        await message.delete()
+    except Exception:
+        pass
+    data = await state.get_data()
+    shots = list(data.get("shots") or [])
+    if not text.isdigit() or not (1 <= int(text) <= len(shots)):
+        asyncio.create_task(_toast(message, f"⚠️ Введи число от 1 до {len(shots)}."))
+        return
+    idx = int(text) - 1
+    shots.pop(idx)
+    new_duration = _total_duration(shots) if shots else data.get("model_min_duration", 5)
+    await state.update_data(shots=shots, duration=new_duration)
+    await _show_menu(message.bot, message.chat.id, state)
+
+
+@router.message(ShotStates.delete_number, ~F.text.in_(MENU_BUTTONS))
+async def delete_pick_wrong_input(message: Message) -> None:
+    try:
+        await message.delete()
+    except Exception:
+        pass
+    asyncio.create_task(_toast(message, "⚠️ Здесь нужно прислать число."))

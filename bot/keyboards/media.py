@@ -680,6 +680,7 @@ def video_confirm_kb(
     max_shots: int = 0,
     shot_count: int = 0,
     duration_locked_by_video_ref: bool = False,
+    hide_prompt_button: bool = False,
 ) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     if shot_count:
@@ -781,11 +782,15 @@ def video_confirm_kb(
     if show_audio_toggle:
         audio_toggle_text = "🔊 Звуковое сопровождение: вкл" if audio_enabled else "🔇 Звуковое сопровождение: выкл"
         builder.row(InlineKeyboardButton(text=audio_toggle_text, callback_data="media:toggle_audio"))
-    edit_text = "✏️ Изменить описание" if has_prompt else "✏️ Ввести описание"
-    builder.row(
-        InlineKeyboardButton(text=edit_text, callback_data="media:edit_prompt"),
-        InlineKeyboardButton(text="◀️ Назад", callback_data="media:back:model"),
-    )
+    if hide_prompt_button:
+        # Сцены заменяют общее описание — отдельная кнопка его ввода не нужна
+        builder.row(InlineKeyboardButton(text="◀️ Назад", callback_data="media:back:model"))
+    else:
+        edit_text = "✏️ Изменить описание" if has_prompt else "✏️ Ввести описание"
+        builder.row(
+            InlineKeyboardButton(text=edit_text, callback_data="media:edit_prompt"),
+            InlineKeyboardButton(text="◀️ Назад", callback_data="media:back:model"),
+        )
     start_text = f"🚀 Начать генерацию — {cost_credits} ₽" if cost_credits else "🚀 Начать генерацию"
     builder.row(InlineKeyboardButton(text=start_text, callback_data="media:start"))
     return builder.as_markup()

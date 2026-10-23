@@ -203,8 +203,11 @@ def _kling3_request(
 ) -> dict:
     """Kling 3.0 (kling-3.0/video) по документации KIE: mode вместо resolution (std=720p, pro=1080p),
     sound вместо audio, обязательное multi_shots; aspect_ratio — только 16:9 / 9:16 / 1:1.
-    Кадры («Кадры» в боте) — отдельное поле multi_prompt (список {prompt, duration}), multi_shots
-    при этом остаётся false: подтверждено реальным примером запроса из документации KIE."""
+    Кадры («Несколько сцен» в боте) — отдельное поле multi_prompt (список {prompt, duration}),
+    multi_shots при этом остаётся false: подтверждено реальным примером запроса из документации KIE.
+    При сценах общий prompt не отправляем — в самом аггрегаторе KIE поле prompt отсутствует,
+    когда включён режим multi shots (подтверждено клиентом 22.10.2026); раньше отправляли оба
+    поля, из-за чего KIE, судя по всему, использовал общий prompt и молча игнорировал сцены."""
     ratio = aspect_ratio if aspect_ratio in ("16:9", "9:16", "1:1") else "16:9"
     input_data: dict = {
         "prompt": prompt,
@@ -223,6 +226,7 @@ def _kling3_request(
     if shots:
         total = sum(s.get("duration", 0) for s in shots)
         input_data["duration"] = str(total)
+        input_data.pop("prompt", None)
         input_data["multi_prompt"] = [
             {"prompt": s["prompt"], "duration": s["duration"]} for s in shots
         ]

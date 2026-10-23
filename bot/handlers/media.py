@@ -689,6 +689,9 @@ def _confirm_card_text(data: dict) -> str:
                 "поэтому необязательно прописывать @video1, если хочешь указать на него.</i>"
             )
 
+    if media_type == "video" and data.get("shots"):
+        # Сцены заменяют общее описание — у каждой свой текст, отдельную строку не дублируем
+        return "\n".join(lines)
     if media_type == "audio":
         prompt_label = "Текст для озвучки" if data.get("audio_type", "voice") == "voice" else "Описание музыки"
     else:
@@ -785,6 +788,7 @@ def _confirm_kb(data: dict):
             cost_credits=cost,
             max_shots=data.get("model_max_shots", 0),
             shot_count=len(data.get("shots") or []),
+            hide_prompt_button=bool(data.get("shots")),
         )
     elif media_type == "audio":
         if data.get("has_music_settings"):
@@ -5651,12 +5655,12 @@ async def start_generation(callback: CallbackQuery, state: FSMContext) -> None:
     tg_user = callback.from_user
     media_type = data["media_type"]
     prompt = (data.get("prompt") or "").strip()
+    _shots = data.get("shots") or []
 
-    if not prompt:
+    if not prompt and not _shots:
         await callback.answer("Сначала введи описание ✏️", show_alert=True)
         return
 
-    _shots = data.get("shots") or []
     if _shots:
         _min_total = data.get("model_min_duration", 3)
         _total = sum(s.get("duration", 0) for s in _shots)
