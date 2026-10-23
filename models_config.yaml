@@ -177,7 +177,9 @@ tasks:
         enabled: false
 
       - id: flux-2-pro
-        label: "Flux 2 Pro"
+        label: "2 Pro"
+        group: flux-ai
+        group_label: "Flux AI"
         description: >-
           Flux 2 отличается высокой детализацией и реалистичностью изображений, хорошо передаёт
           сложные текстуры и освещение. Модель точно следует описаниям, включая нестандартные
@@ -198,7 +200,9 @@ tasks:
             model_id: black-forest-labs/flux.2-pro
 
       - id: flux-3-klein
-        label: "Flux 3 Klein"
+        label: "3 Klein"
+        group: flux-ai
+        group_label: "Flux AI"
         description: >-
           Flux 3 Klein — новая модель генерации изображений от Black Forest Labs. Точно следует
           описанию, поддерживает широкий набор соотношений сторон и разрешение до 4K.
@@ -1101,7 +1105,9 @@ tasks:
         enabled: false
 
       - id: flux-2-pro-edit
-        label: "Flux 2 Pro"
+        label: "2 Pro"
+        group: flux-ai-edit
+        group_label: "Flux AI"
         description: >-
           Flux 2 Pro — высокая детализация и реалистичность при редактировании изображений.
           Точно следует инструкции, хорошо работает с текстурами, освещением и сложными
@@ -1120,7 +1126,9 @@ tasks:
             model_id: black-forest-labs/flux.2-pro
 
       - id: flux-3-klein-edit
-        label: "Flux 3 Klein"
+        label: "3 Klein"
+        group: flux-ai-edit
+        group_label: "Flux AI"
         description: >-
           Flux 3 Klein — редактирование изображений от Black Forest Labs: точечные правки
           (цвет, объекты, фон) с сохранением остальной композиции. Принимает до 10 фото-ориентиров.
