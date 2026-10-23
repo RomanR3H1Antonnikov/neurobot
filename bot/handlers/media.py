@@ -3464,6 +3464,11 @@ async def receive_reference_video(message: Message, state: FSMContext, album: li
         max_refs = data.get("model_max_video_refs", 0)
         max_dur = data.get("model_max_duration") or 999
         new_dur = message.video.duration or 0
+        _limit_err = _ref_video_limit_error(data, new_dur)
+        if _limit_err:
+            await message.delete()
+            await _update_sref_status(message.bot, message.chat.id, state, _limit_err, back_to_frames_kb())
+            return
         _dur_note = (
             "\n\n⏱ Итоговая длительность видео будет равна длительности этого ориентира."
             if data.get("model_video_ref_sets_duration") else ""
@@ -3695,17 +3700,24 @@ async def receive_reference_document(message: Message, state: FSMContext) -> Non
             max_refs = data.get("model_max_video_refs", 0)
             await message.delete()
             if len(video_refs) < max_refs:
-                video_refs.append(message.document.file_id)
                 # Документ не несёт .duration (в отличие от видео-сообщения) — узнаём её,
-                # скачав файл и прогнав через ffprobe (нужна для моделей с video_ref_sets_duration)
-                if data.get("model_video_ref_sets_duration"):
+                # скачав файл и прогнав через ffprobe (нужна для моделей с video_ref_sets_duration
+                # и для проверки лимитов модели на длительность референса)
+                _probed = None
+                if data.get("model_video_ref_sets_duration") or data.get("model_input_video_min") or data.get("model_input_video_max"):
                     try:
                         _, _vbytes = await _load_tg_file(message.bot, message.document.file_id)
                         _probed = await media_service._video_duration_seconds(_vbytes)
                     except Exception:
                         _probed = None
-                    if _probed:
-                        durations.append(math.ceil(_probed))
+                    if _probed is not None:
+                        _limit_err = _ref_video_limit_error(data, _probed)
+                        if _limit_err:
+                            await _update_sref_status(message.bot, message.chat.id, state, _limit_err, back_to_frames_kb())
+                            return
+                video_refs.append(message.document.file_id)
+                if _probed:
+                    durations.append(math.ceil(_probed))
             await state.update_data(video_style_reference_file_ids=video_refs, video_ref_durations=durations)
             _dur_note = (
                 "\n\n⏱ Итоговая длительность видео будет равна длительности этого ориентира."
