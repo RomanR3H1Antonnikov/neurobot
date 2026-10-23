@@ -96,6 +96,11 @@ async def _create_tables(db: aiosqlite.Connection) -> None:
             PRIMARY KEY (chat_id, user_id, destiny)
         );
 
+        CREATE TABLE IF NOT EXISTS settings (
+            key   TEXT PRIMARY KEY,
+            value TEXT NOT NULL
+        );
+
         CREATE TABLE IF NOT EXISTS yookassa_payments (
             payment_id  TEXT PRIMARY KEY,
             telegram_id INTEGER NOT NULL,

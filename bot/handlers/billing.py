@@ -13,7 +13,7 @@ from bot.keyboards.billing import (
 )
 from bot.utils import cleanup_tracked_messages, safe_delete
 from config import config, reload_models
-from db.queries import get_or_create_user, add_credits, save_yookassa_payment
+from db.queries import get_or_create_user, add_credits, save_yookassa_payment, get_setting, set_setting
 
 
 class BillingStates(StatesGroup):
@@ -432,3 +432,22 @@ async def cmd_reload(message: Message) -> None:
         await message.answer("✅ Конфигурация моделей перезагружена из models_config.yaml")
     except Exception as e:
         await message.answer(f"❌ Ошибка при загрузке конфига: {e}")
+
+
+@router.message(Command("maintenance"))
+async def cmd_maintenance(message: Message) -> None:
+    """Включает/выключает режим техработ: все, кроме админов, видят уведомление
+    вместо обычной работы бота (см. bot/middlewares/maintenance.py)."""
+    if message.from_user.id not in config.admin_ids:
+        return
+
+    parts = message.text.split()
+    if len(parts) < 2 or parts[1].lower() not in ("on", "off"):
+        current = await get_setting("maintenance_mode")
+        status = "включён 🔧" if current == "1" else "выключен ✅"
+        await message.answer(f"Режим техработ сейчас: {status}\n\nИспользование: /maintenance on|off")
+        return
+
+    turn_on = parts[1].lower() == "on"
+    await set_setting("maintenance_mode", "1" if turn_on else "0")
+    await message.answer(f"✅ Режим техработ {'включён 🔧' if turn_on else 'выключен'}.")

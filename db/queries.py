@@ -215,6 +215,24 @@ async def delete_pending_job(corr_id: str) -> None:
     await db.commit()
 
 
+# ─── Настройки (key-value) ────────────────────────────────────────────────────
+
+async def get_setting(key: str) -> Optional[str]:
+    db = await get_db()
+    async with db.execute("SELECT value FROM settings WHERE key = ?", (key,)) as cur:
+        row = await cur.fetchone()
+    return row["value"] if row else None
+
+
+async def set_setting(key: str, value: str) -> None:
+    db = await get_db()
+    await db.execute(
+        "INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+        (key, value),
+    )
+    await db.commit()
+
+
 # ─── Платежи ЮKassa (прямой API, оплата по ссылке) ──────────────────────────
 
 async def save_yookassa_payment(payment_id: str, telegram_id: int, chat_id: int, amount: int) -> None:

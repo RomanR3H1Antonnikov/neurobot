@@ -10,6 +10,7 @@ from config import config
 from db.database import get_db, close_db
 from db.fsm_storage import SQLiteFSMStorage
 from bot.middlewares.user_middleware import UserMiddleware
+from bot.middlewares.maintenance import MaintenanceMiddleware
 from bot.middlewares.cleanup import CallbackCleanupMiddleware
 from bot.middlewares.album import AlbumMiddleware
 from bot.handlers import start, media, characters, shots, chat, documents, billing, mygenerations, fallback
@@ -49,6 +50,7 @@ async def main() -> None:
     )
     dp = Dispatcher(storage=SQLiteFSMStorage(config.db_path))
 
+    dp.update.middleware(MaintenanceMiddleware())
     dp.update.middleware(UserMiddleware())
     dp.callback_query.middleware(CallbackCleanupMiddleware())
     dp.message.middleware(AlbumMiddleware())
