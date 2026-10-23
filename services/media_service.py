@@ -104,11 +104,14 @@ _DURATION_TRIM_TOLERANCE = 0.5  # секунд — не трогаем, если
 
 
 async def _ensure_requested_duration(video_bytes: bytes, requested_seconds: int) -> bytes:
-    """Если модель вернула видео заметно длиннее запрошенного (например, Kling 3.0 Omni
-    с video-референсом без доп. фото — KIE в этом режиме игнорирует переданную duration
-    и берёт длительность из самого референса) — обрезает результат до запрошенной
-    длительности, чтобы пользователь получил ровно ту длительность, за которую заплатил
-    в боте. Это НЕ меняет, сколько агрегатор уже списал за фактическую (большую)
+    """Страховка на случай, если модель вернула видео заметно длиннее запрошенного
+    (не предсказанное отличие в поведении провайдера) — обрезает результат до запрошенной
+    длительности, чтобы пользователь получил ровно ту длительность, за которую заплатил.
+
+    Не вызывается для моделей с video_ref_sets_duration (например, Kling 3.0 Omni
+    с video-референсом): там бо́льшая длительность — ожидаемое поведение KIE (длительность
+    берётся из референса), а не сбой, и duration уже равен длительности референса (см.
+    generate_video()). Это НЕ меняет, сколько агрегатор уже списал за фактическую
     длительность на своей стороне — только то, что получает пользователь."""
     actual = await _video_duration_seconds(video_bytes)
     if actual is None or actual <= requested_seconds + _DURATION_TRIM_TOLERANCE:
@@ -307,11 +310,14 @@ async def generate_video(
                 logger.warning("[FALLBACK] video %s → %s: %s", model_slug, eff_cfg.get("provider"), e)
     if result is None:
         raise last_err
-    result = GenerationResult(
-        data=await _ensure_requested_duration(result.data, duration),
-        mime_type=result.mime_type,
-        filename=result.filename,
-    )
+    if not (has_video_ref and model_cfg.get("video_ref_sets_duration")):
+        # Для моделей, где длительность берётся из видео-референса (video_ref_sets_duration),
+        # duration — это и есть ожидаемая длительность референса, обрезать тут нечего.
+        result = GenerationResult(
+            data=await _ensure_requested_duration(result.data, duration),
+            mime_type=result.mime_type,
+            filename=result.filename,
+        )
     if not audio:
         result = GenerationResult(
             data=await _strip_audio(result.data),

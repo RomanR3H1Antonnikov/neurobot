@@ -679,6 +679,7 @@ def video_confirm_kb(
     cost_credits: int | None = None,
     max_shots: int = 0,
     shot_count: int = 0,
+    duration_locked_by_video_ref: bool = False,
 ) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     if shot_count:
@@ -686,6 +687,12 @@ def video_confirm_kb(
         builder.row(InlineKeyboardButton(
             text=f"⏱ Длительность: {duration} сек (по сценам)",
             callback_data="shots:menu",
+        ))
+    elif duration_locked_by_video_ref:
+        # KIE берёт длительность из видео-референса — выбор пользователем не имеет смысла
+        builder.row(InlineKeyboardButton(
+            text=f"⏱ Длительность: {duration} сек (по референсу)",
+            callback_data="media:dur_locked_info",
         ))
     else:
         builder.row(InlineKeyboardButton(

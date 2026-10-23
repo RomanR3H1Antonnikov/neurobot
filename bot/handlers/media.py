@@ -344,6 +344,17 @@ def _edit_duration(data: dict) -> int:
     return data.get("duration", 5)
 
 
+def _video_gen_duration(data: dict) -> int:
+    """Длительность для цены/запроса при генерации видео: у моделей с video_ref_sets_duration
+    (KIE берёт длительность из видео-референса, а не из параметра запроса) — длительность
+    референса (округлённая вверх, если известна), иначе выбранная пользователем."""
+    if data.get("model_video_ref_sets_duration") and data.get("video_style_reference_file_ids"):
+        durs = data.get("video_ref_durations") or []
+        if durs:
+            return max(1, math.ceil(max(durs)))
+    return data.get("duration", 5)
+
+
 def _ref_video_limit_error(data: dict, duration: int | float | None) -> str | None:
     """Проверка длительности исходного видео по лимитам выбранной модели (models_config.yaml).
 
@@ -496,7 +507,7 @@ def _confirm_card_text(data: dict) -> str:
         if data.get("model_mj_advanced") and _mj_advanced_count(data):
             lines.append(f"<b>Доп. настройки MJ:</b> {_mj_advanced_count(data)} изменено ✅")
     elif media_type == "video":
-        lines.append(f"<b>Длительность:</b> {data.get('duration', 5)} сек")
+        lines.append(f"<b>Длительность:</b> {_video_gen_duration(data)} сек")
         _shots = data.get("shots") or []
         if _shots:
             lines.append(f"<b>Сцены:</b> {len(_shots)}/{data.get('model_max_shots', 0)} ✅")
@@ -696,7 +707,7 @@ def _get_generation_cost(data: dict) -> int | None:
                 return None
             _dur = _edit_duration(data)
         else:
-            _dur = data.get("duration")
+            _dur = _video_gen_duration(data) if data.get("media_type") == "video" else data.get("duration")
         return media_service.get_cost(model_cfg, data.get("resolution"), _dur, has_video_ref=has_video_ref, has_audio=has_audio)
     except Exception:
         return None
@@ -730,9 +741,11 @@ def _confirm_kb(data: dict):
         _show_constructor = bool(_max_extra > 0 or data.get("model_characters"))
         _show_frames = bool(_show_animate or _show_constructor)
         _frames_mode = data.get("video_frames_mode")
+        _dur_locked = bool(data.get("model_video_ref_sets_duration") and data.get("video_style_reference_file_ids"))
         return video_confirm_kb(
-            data.get("duration", 5),
+            _video_gen_duration(data),
             has_prompt=has_prompt,
+            duration_locked_by_video_ref=_dur_locked,
             duration_options=data.get("model_duration_options"),
             has_first_frame=bool(data.get("video_first_frame_file_id")),
             has_last_frame=bool(data.get("video_last_frame_file_id")),
@@ -1500,6 +1513,7 @@ async def select_model(callback: CallbackQuery, state: FSMContext) -> None:
         "model_wan_audio": model_cfg.get("wan_audio_setting", False),
         "model_audio_accompaniment": model_cfg.get("audio_accompaniment", False),
         "model_duration_from_input": model_cfg.get("duration_from_input", False),
+        "model_video_ref_sets_duration": model_cfg.get("video_ref_sets_duration", False),
         "model_characters": model_cfg.get("characters"),
         "model_max_shots": model_cfg.get("max_shots", 0),
         "shots": None,
@@ -1858,6 +1872,7 @@ async def back_to_model(callback: CallbackQuery, state: FSMContext) -> None:
         style_reference_file_ids=None, adding_style_ref=None, adding_video_extra_frame=None,
         audio_reference_file_ids=None, audio_reference_file_names=None, adding_audio_ref=None, model_max_audio_refs=None,
         video_style_reference_file_ids=None, video_ref_durations=None, adding_video_ref=None, model_max_video_refs=None,
+        model_video_ref_sets_duration=None,
         model_has_first_frame=None, model_has_last_frame=None,
         managing_style_ref=None, managing_style_ref_index=None,
         managing_video_ref=None, managing_video_ref_index=None,
@@ -3449,6 +3464,10 @@ async def receive_reference_video(message: Message, state: FSMContext, album: li
         max_refs = data.get("model_max_video_refs", 0)
         max_dur = data.get("model_max_duration") or 999
         new_dur = message.video.duration or 0
+        _dur_note = (
+            "\n\n⏱ Итоговая длительность видео будет равна длительности этого ориентира."
+            if data.get("model_video_ref_sets_duration") else ""
+        )
         # Замена конкретного видео
         if data.get("managing_video_ref") == "replace_video":
             idx = data.get("managing_video_ref_index", 0)
@@ -3477,7 +3496,7 @@ async def receive_reference_video(message: Message, state: FSMContext, album: li
             await message.delete()
             await _update_sref_status(
                 message.bot, message.chat.id, state,
-                f"✅ Видео #{idx + 1} заменено. Всего: {len(video_refs)}/{max_refs}. Отправь ещё или нажми «Назад».",
+                f"✅ Видео #{idx + 1} заменено. Всего: {len(video_refs)}/{max_refs}. Отправь ещё или нажми «Назад».{_dur_note}",
                 back_to_frames_kb(),
             )
             return
@@ -3499,7 +3518,7 @@ async def receive_reference_video(message: Message, state: FSMContext, album: li
         await state.update_data(video_style_reference_file_ids=video_refs, video_ref_durations=durations)
         await _update_sref_status(
             message.bot, message.chat.id, state,
-            f"✅ Видео добавлено! Всего: {len(video_refs)}/{max_refs}. Отправь ещё или нажми «Назад».",
+            f"✅ Видео добавлено! Всего: {len(video_refs)}/{max_refs}. Отправь ещё или нажми «Назад».{_dur_note}",
             back_to_frames_kb(),
         )
         return
@@ -3672,14 +3691,29 @@ async def receive_reference_document(message: Message, state: FSMContext) -> Non
         # Видео-документ при добавлении видео-ориентира — обрабатываем как видео
         if data.get("adding_video_ref"):
             video_refs = list(data.get("video_style_reference_file_ids") or [])
+            durations = list(data.get("video_ref_durations") or [])
             max_refs = data.get("model_max_video_refs", 0)
             await message.delete()
             if len(video_refs) < max_refs:
                 video_refs.append(message.document.file_id)
-            await state.update_data(video_style_reference_file_ids=video_refs)
+                # Документ не несёт .duration (в отличие от видео-сообщения) — узнаём её,
+                # скачав файл и прогнав через ffprobe (нужна для моделей с video_ref_sets_duration)
+                if data.get("model_video_ref_sets_duration"):
+                    try:
+                        _, _vbytes = await _load_tg_file(message.bot, message.document.file_id)
+                        _probed = await media_service._video_duration_seconds(_vbytes)
+                    except Exception:
+                        _probed = None
+                    if _probed:
+                        durations.append(math.ceil(_probed))
+            await state.update_data(video_style_reference_file_ids=video_refs, video_ref_durations=durations)
+            _dur_note = (
+                "\n\n⏱ Итоговая длительность видео будет равна длительности этого ориентира."
+                if data.get("model_video_ref_sets_duration") else ""
+            )
             await _update_sref_status(
                 message.bot, message.chat.id, state,
-                f"✅ Видео добавлено! Всего: {len(video_refs)}/{max_refs}. Отправь ещё или нажми «Назад».",
+                f"✅ Видео добавлено! Всего: {len(video_refs)}/{max_refs}. Отправь ещё или нажми «Назад».{_dur_note}",
                 back_to_frames_kb(),
             )
             return
@@ -4809,6 +4843,15 @@ async def set_duration(callback: CallbackQuery, state: FSMContext) -> None:
     await callback.answer()
 
 
+@router.callback_query(MediaStates.confirm, F.data == "media:dur_locked_info")
+async def dur_locked_info(callback: CallbackQuery) -> None:
+    await callback.answer(
+        "При загруженном видео-ориентире длительность итогового видео равна "
+        "длительности самого ориентира — выбрать её нельзя.",
+        show_alert=True,
+    )
+
+
 @router.callback_query(MediaStates.confirm, F.data == "media:pick_duration")
 async def pick_duration(callback: CallbackQuery, state: FSMContext) -> None:
     data = await state.get_data()
@@ -5381,13 +5424,14 @@ async def _run_generation(send_msg: Message, tg_user, state: FSMContext, data: d
         _characters = await build_character_payload(send_msg.bot, data)
         _shots = data.get("shots") or None
         _audio_flag = data.get("video_audio_enabled", True)
+        _gen_duration = _video_gen_duration(data)
         logger.info(
             "[VIDEO_GEN] user=%s model=%s audio=%s resolution=%s duration=%s",
             tg_user.id, model_slug, _audio_flag,
-            data.get("resolution"), data.get("duration", 5),
+            data.get("resolution"), _gen_duration,
         )
         result = await media_service.generate_video(
-            tg_user.id, tg_user.username, prompt, data.get("duration", 5), model_slug,
+            tg_user.id, tg_user.username, prompt, _gen_duration, model_slug,
             first_frame_url=first_frame_url,
             last_frame_url=last_frame_url,
             style_reference_urls=style_reference_urls,

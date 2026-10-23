@@ -833,6 +833,11 @@ tasks:
         max_audio_refs: 1
         max_video_refs: 1
         constructor_includes_video: true
+        # KIE игнорирует duration при видео-референсе без доп. фото и берёт длительность
+        # из самого референса (см. providers/kie.py _kling_omni_request) — выбор
+        # длительности в UI скрываем, цену/запрос считаем по длительности референса.
+        # Подтверждено клиентом 23.10.2026 — решили смириться с этим на стороне KIE.
+        video_ref_sets_duration: true
         cost_usd: 0.07
         enabled: true
 
