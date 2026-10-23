@@ -147,13 +147,16 @@ tasks:
         mj_advanced_params: true
         cost_credits: 12
         cost_usd: 0.04
-        enabled: true
+        enabled: false  # убрана из списка по просьбе клиента 21.10.2026 — оставлена только V8.1
 
       - id: midjourney-v8
         label: "V8.1"
         group: midjourney
         group_label: "Midjourney"
-        description: ""
+        description: >-
+          Midjourney 8.1 предназначена для генерации высококачественных изображений по текстовым
+          описаниям: иллюстраций, концепт-арта, дизайнов, визуальных идей и стилизованных картинок
+          для творчества, рекламы, игр и медиа.
         variant_description: ""
         aspect_ratios: ["1:1", "5:4", "3:2", "7:4", "16:9", "2:1", "9:16", "1:2", "2:3"]
         resolutions: ["1K"]
@@ -1199,13 +1202,16 @@ tasks:
         mj_advanced_params: true
         cost_credits: 12
         cost_usd: 0.04
-        enabled: true
+        enabled: false  # убрана из списка по просьбе клиента 21.10.2026 — оставлена только V8.1
 
       - id: midjourney-edit-v8
         label: "V8.1"
         group: midjourney-edit
         group_label: "Midjourney"
-        description: ""
+        description: >-
+          Midjourney 8.1 предназначена для генерации высококачественных изображений по текстовым
+          описаниям: иллюстраций, концепт-арта, дизайнов, визуальных идей и стилизованных картинок
+          для творчества, рекламы, игр и медиа.
         variant_description: ""
         aspect_ratios: ["1:1", "5:4", "3:2", "7:4", "16:9", "2:1", "9:16", "1:2", "2:3"]
         model_id: midjourney/8.1
