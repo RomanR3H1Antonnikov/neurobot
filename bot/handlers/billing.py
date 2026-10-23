@@ -8,7 +8,8 @@ from aiogram.fsm.state import State, StatesGroup
 from bot.keyboards.main_menu import BTN_BALANCE, main_menu_kb
 from bot.keyboards.billing import (
     payment_method_kb, stars_packages_kb, rub_packages_kb, link_packages_kb, quick_topup_kb,
-    yookassa_link_kb, cancel_custom_kb, TOPUP_PACKAGES_STARS, TOPUP_PACKAGES_RUB, MIN_RUB, MAX_RUB, MIN_STARS,
+    yookassa_link_kb, cancel_custom_kb, TOPUP_PACKAGES_STARS, TOPUP_PACKAGES_RUB,
+    MIN_RUB, MAX_RUB, MIN_STARS, MIN_LINK,
 )
 from bot.utils import cleanup_tracked_messages, safe_delete
 from config import config, reload_models
@@ -128,7 +129,7 @@ async def custom_amount_start(callback: CallbackQuery, state: FSMContext) -> Non
             f"Минимум — <b>{MIN_RUB} ₽</b> (ограничение Telegram)."
         )
     elif method == "link":
-        text = f"🔗 <b>Своя сумма</b>\n\nВведи сумму пополнения в рублях.\nМинимум — <b>{MIN_RUB} ₽</b>."
+        text = f"🔗 <b>Своя сумма</b>\n\nВведи сумму пополнения в рублях.\nМинимум — <b>{MIN_LINK} ₽</b>."
     else:
         text = "⭐ <b>Своя сумма</b>\n\nВведи количество Telegram Stars для оплаты:"
     await callback.message.edit_text(text, parse_mode="HTML", reply_markup=cancel_custom_kb(method))
@@ -200,9 +201,9 @@ async def custom_amount_input(message: Message, state: FSMContext) -> None:
             logger.error("answer_invoice RUB failed: value=%s err=%s", value, e)
             await message.answer("Не удалось выставить счёт. Попробуй другую сумму или обратись в поддержку.")
     elif method == "link":
-        if value < MIN_RUB:
+        if value < MIN_LINK:
             await _reprompt(message.bot, message.chat.id, prompt_id, method,
-                            f"Минимум — <b>{MIN_RUB} ₽</b>. Введи другую сумму:")
+                            f"Минимум — <b>{MIN_LINK} ₽</b>. Введи другую сумму:")
             return
         if value > MAX_RUB:
             await _reprompt(message.bot, message.chat.id, prompt_id, method,

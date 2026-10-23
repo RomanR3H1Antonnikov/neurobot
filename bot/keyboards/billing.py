@@ -4,6 +4,7 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 MIN_RUB = 75  # Telegram enforces min 7500 kopecks (75 RUB) for fiat currencies
 MAX_RUB = 100_000
 MIN_STARS = 1
+MIN_LINK = 10  # прямой API ЮKassa не завязан на окно Telegram — лимит Telegram (75 ₽) тут не действует
 
 # Пакеты пополнения Stars (кредиты → Stars к оплате). Курс строго 1 ⭐ = 1 ₽ баланса.
 TOPUP_PACKAGES_STARS = [
@@ -21,6 +22,7 @@ TOPUP_PACKAGES_RUB = [
 
 # Пакеты пополнения по прямой ссылке ЮKassa (карта, СБП и др. — выбирает сам пользователь на странице оплаты)
 TOPUP_PACKAGES_LINK = [
+    (10,   10),
     (100,  100),
     (300,  300),
     (1000, 1000),
