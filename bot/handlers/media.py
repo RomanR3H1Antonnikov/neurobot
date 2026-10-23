@@ -142,6 +142,21 @@ def _motion_video_error(video) -> str | None:
     return _motion_size_error(getattr(video, "width", None), getattr(video, "height", None), "Видео")
 
 
+def _frames_menu_characters_only(data: dict) -> bool:
+    """True, если 'Конструктор видео' для текущей модели показал бы только кнопку персонажей —
+    нет ни доп. фото-ориентиров, ни видео-ориентиров (например, Kling 3.0 без Omni). В этом
+    случае промежуточный экран не нужен: сразу открываем персонажей / сразу возвращаемся
+    к карточке генерации, минуя пустую прослойку."""
+    if not data.get("model_characters"):
+        return False
+    if data.get("model_max_style_refs", 0) > 0:
+        return False
+    constructor_video = data.get("model_constructor_video", False)
+    if constructor_video and data.get("model_max_video_refs", 0) > 0:
+        return False
+    return True
+
+
 async def _back_to_frames_menu(bot, chat_id: int, state: FSMContext) -> None:
     """После добавления кадра редактирует hint-сообщение обратно в меню кадров."""
     await state.set_state(MediaStates.confirm)
@@ -2733,6 +2748,15 @@ async def toggle_frames(callback: CallbackQuery, state: FSMContext) -> None:
 
     await state.update_data(video_frames_mode="constructor", _sref_msg_id=callback.message.message_id)
     data = await state.get_data()
+
+    if _frames_menu_characters_only(data):
+        # Для этой модели «Конструктор видео» показал бы только кнопку персонажей —
+        # пропускаем прослойку и сразу открываем их (Kling 3.0 без Omni и т.п.)
+        from bot.handlers.characters import _show_menu as _char_show_menu
+        await _char_show_menu(callback.bot, callback.message.chat.id, state)
+        await callback.answer()
+        return
+
     max_extra_refs = data.get("model_max_style_refs", 0)
     extra_ref_count = len(data.get("style_reference_file_ids") or [])
     constructor_video = data.get("model_constructor_video", False)

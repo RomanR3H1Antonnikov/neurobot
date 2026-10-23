@@ -233,8 +233,14 @@ async def open_menu(callback: CallbackQuery, state: FSMContext) -> None:
 
 @router.callback_query(F.data == "char:back")
 async def back_to_constructor(callback: CallbackQuery, state: FSMContext) -> None:
-    from bot.handlers.media import _back_to_frames_menu
+    from bot.handlers.media import _back_to_frames_menu, _frames_menu_characters_only, back_to_confirm
+    data = await state.get_data()
     await state.update_data(_char_draft=None, _char_menu_active=None, _replacing_idx=None)
+    if _frames_menu_characters_only(data):
+        # «Конструктор видео» для этой модели показал бы только кнопку персонажей —
+        # мы и попали сюда напрямую с карточки, возвращаемся туда же, минуя пустую прослойку
+        await back_to_confirm(callback, state)
+        return
     await _back_to_frames_menu(callback.bot, callback.message.chat.id, state)
     await callback.answer()
 
