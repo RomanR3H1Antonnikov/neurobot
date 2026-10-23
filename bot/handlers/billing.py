@@ -5,7 +5,7 @@ from aiogram.types import Message, CallbackQuery, PreCheckoutQuery, LabeledPrice
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 
-from bot.keyboards.main_menu import BTN_BALANCE, main_menu_kb
+from bot.keyboards.main_menu import BTN_BALANCE, MENU_BUTTONS, main_menu_kb
 from bot.keyboards.billing import (
     payment_method_kb, stars_packages_kb, rub_packages_kb, link_packages_kb, quick_topup_kb,
     yookassa_link_kb, cancel_custom_kb, TOPUP_PACKAGES_STARS, TOPUP_PACKAGES_RUB,
@@ -160,7 +160,7 @@ async def custom_amount_cancel(callback: CallbackQuery, state: FSMContext) -> No
         )
 
 
-@router.message(BillingStates.awaiting_custom_amount)
+@router.message(BillingStates.awaiting_custom_amount, ~F.text.in_(MENU_BUTTONS))
 async def custom_amount_input(message: Message, state: FSMContext) -> None:
     data = await state.get_data()
     method = data.get("custom_method", "rub")
