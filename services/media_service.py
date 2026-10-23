@@ -72,14 +72,15 @@ def get_cost(
     """Возвращает стоимость генерации.
 
     Приоритет:
-      1. cost_by_resolution_with_video[resolution|default]       (если есть видео-референс)
-      2. cost_per_second_by_resolution_no_video × duration       (если нет видео-референса)
-      3. cost_by_duration_resolution[resolution|default][dur]    (дискретная таблица)
-      4. cost_per_second_by_resolution_no_audio × duration       (если без звука)
-      5. cost_per_second_by_resolution × duration
-      6. cost_per_second × duration
-      7. cost_by_resolution[resolution]
-      8. cost_credits (фиксированная)
+      1. cost_by_resolution_with_video[resolution|default]        (если есть видео-референс, фикс. цена)
+      2. cost_per_second_by_resolution_with_video × duration      (если есть видео-референс)
+      3. cost_per_second_by_resolution_no_video × duration        (если нет видео-референса)
+      4. cost_by_duration_resolution[resolution|default][dur]     (дискретная таблица)
+      5. cost_per_second_by_resolution_no_audio × duration        (если без звука)
+      6. cost_per_second_by_resolution × duration
+      7. cost_per_second × duration
+      8. cost_by_resolution[resolution]
+      9. cost_credits (фиксированная)
     """
     # 1. Фиксированная цена за генерацию при наличии видео-референса
     if has_video_ref:
@@ -91,39 +92,45 @@ def get_cost(
             if cost is not None:
                 return int(cost)
 
+        # 2. Per-second по разрешению при наличии видео-референса
+        if duration:
+            per_sec_video = model_cfg.get("cost_per_second_by_resolution_with_video")
+            if per_sec_video and resolution and resolution in per_sec_video:
+                return max(1, round(per_sec_video[resolution] * duration))
+
     if duration:
         if not has_video_ref:
-            # 2. Per-second по разрешению (без видео-референса)
+            # 3. Per-second по разрешению (без видео-референса)
             no_video = model_cfg.get("cost_per_second_by_resolution_no_video")
             if no_video and resolution and resolution in no_video:
                 return max(1, round(no_video[resolution] * duration))
-            # 3. Дискретная таблица по длительности и разрешению
+            # 4. Дискретная таблица по длительности и разрешению
             dur_res = model_cfg.get("cost_by_duration_resolution")
             if dur_res:
                 dur_map = (dur_res.get(resolution) if resolution else None) or dur_res.get("default")
                 if dur_map and str(duration) in dur_map:
                     return int(dur_map[str(duration)])
 
-        # 4. Per-second по разрешению без звука
+        # 5. Per-second по разрешению без звука
         if not has_audio:
             no_audio = model_cfg.get("cost_per_second_by_resolution_no_audio")
             if no_audio and resolution and resolution in no_audio:
                 return max(1, round(no_audio[resolution] * duration))
 
-        # 5. Per-second по разрешению
+        # 6. Per-second по разрешению
         by_dur_res = model_cfg.get("cost_per_second_by_resolution")
         if by_dur_res and resolution and resolution in by_dur_res:
             return max(1, round(by_dur_res[resolution] * duration))
-        # 6. Flat per-second
+        # 7. Flat per-second
         per_sec = model_cfg.get("cost_per_second")
         if per_sec:
             return max(1, round(per_sec * duration))
 
-    # 7. Фиксированная цена по разрешению
+    # 8. Фиксированная цена по разрешению
     by_res = model_cfg.get("cost_by_resolution")
     if by_res and resolution and resolution in by_res:
         return by_res[resolution]
-    # 8. Fallback
+    # 9. Fallback
     return model_cfg["cost_credits"]
 
 

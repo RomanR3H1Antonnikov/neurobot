@@ -825,8 +825,10 @@ tasks:
         model_id: kling-3.0-omni/video
         provider: kie
         cost_credits: 9
-        cost_per_second_by_resolution: {"720p": 12.0, "1080p": 13.0, "4K": 36.0}
-        cost_per_second_by_resolution_no_audio: {"720p": 9.0, "1080p": 12.0}
+        cost_per_second_by_resolution: {"720p": 12.0, "1080p": 13.0, "4K": 35.0}
+        cost_per_second_by_resolution_no_audio: {"720p": 9.0, "1080p": 12.0, "4K": 35.0}
+        # С видео-референсом — своя сетка цен (клиент прислал 22.10.2026)
+        cost_per_second_by_resolution_with_video: {"720p": 11.0, "1080p": 15.0, "4K": 35.0}
         audio_default: false
         max_audio_refs: 1
         max_video_refs: 1
