@@ -54,6 +54,72 @@ async def _strip_audio(video_bytes: bytes) -> bytes:
             os.unlink(out_path)
 
 
+async def _video_duration_seconds(video_bytes: bytes) -> float | None:
+    """Длительность видео в секундах (ffprobe) или None при ошибке."""
+    with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as inp:
+        inp.write(video_bytes)
+        inp_path = inp.name
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            "ffprobe", "-v", "error", "-show_entries", "format=duration",
+            "-of", "default=noprint_wrappers=1:nokey=1", inp_path,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.DEVNULL,
+        )
+        stdout, _ = await proc.communicate()
+        if proc.returncode != 0:
+            return None
+        return float(stdout.decode().strip())
+    except Exception:
+        return None
+    finally:
+        os.unlink(inp_path)
+
+
+async def _trim_video(video_bytes: bytes, target_seconds: float) -> bytes:
+    """Обрезает видео до target_seconds без перекодирования (-c copy)."""
+    with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as inp:
+        inp.write(video_bytes)
+        inp_path = inp.name
+    out_path = inp_path + "_trimmed.mp4"
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            "ffmpeg", "-y", "-i", inp_path, "-t", str(target_seconds), "-c", "copy", out_path,
+            stdout=asyncio.subprocess.DEVNULL,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        _, stderr = await proc.communicate()
+        if proc.returncode != 0:
+            logger.error("ffmpeg trim_video failed: %s", stderr.decode()[:300])
+            return video_bytes
+        with open(out_path, "rb") as f:
+            return f.read()
+    finally:
+        os.unlink(inp_path)
+        if os.path.exists(out_path):
+            os.unlink(out_path)
+
+
+_DURATION_TRIM_TOLERANCE = 0.5  # секунд — не трогаем, если разница в пределах обычного округления кодека
+
+
+async def _ensure_requested_duration(video_bytes: bytes, requested_seconds: int) -> bytes:
+    """Если модель вернула видео заметно длиннее запрошенного (например, Kling 3.0 Omni
+    с video-референсом без доп. фото — KIE в этом режиме игнорирует переданную duration
+    и берёт длительность из самого референса) — обрезает результат до запрошенной
+    длительности, чтобы пользователь получил ровно ту длительность, за которую заплатил
+    в боте. Это НЕ меняет, сколько агрегатор уже списал за фактическую (большую)
+    длительность на своей стороне — только то, что получает пользователь."""
+    actual = await _video_duration_seconds(video_bytes)
+    if actual is None or actual <= requested_seconds + _DURATION_TRIM_TOLERANCE:
+        return video_bytes
+    logger.warning(
+        "[DURATION_MISMATCH] запрошено %sс, получено %.2fс — обрезаю результат до запрошенной длительности",
+        requested_seconds, actual,
+    )
+    return await _trim_video(video_bytes, requested_seconds)
+
+
 class InsufficientCreditsError(Exception):
     pass
 
@@ -241,6 +307,11 @@ async def generate_video(
                 logger.warning("[FALLBACK] video %s → %s: %s", model_slug, eff_cfg.get("provider"), e)
     if result is None:
         raise last_err
+    result = GenerationResult(
+        data=await _ensure_requested_duration(result.data, duration),
+        mime_type=result.mime_type,
+        filename=result.filename,
+    )
     if not audio:
         result = GenerationResult(
             data=await _strip_audio(result.data),
