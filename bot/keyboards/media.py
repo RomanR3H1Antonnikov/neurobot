@@ -838,7 +838,9 @@ def video_frames_menu_kb(
                 InlineKeyboardButton(text=last_text, callback_data="media:add_last_frame"),
                 InlineKeyboardButton(text="🗑", callback_data="media:delete_last_frame"),
             )
-            builder.row(InlineKeyboardButton(text="🔄 Заменить видео", callback_data="media:add_last_frame"))
+            # Последний слот — видео только в Motion Control, иначе это тоже фото
+            last_replace_text = "🔄 Заменить видео" if motion_control else "🔄 Заменить фото"
+            builder.row(InlineKeyboardButton(text=last_replace_text, callback_data="media:add_last_frame"))
         else:
             builder.row(InlineKeyboardButton(text=last_text, callback_data="media:add_last_frame"))
     if not motion_control and max_extra_refs > 0:
