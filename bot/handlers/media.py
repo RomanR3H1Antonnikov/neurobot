@@ -3330,7 +3330,12 @@ async def _handle_video_edit_mixed_album(
 @_serialize_per_chat
 async def receive_reference_photo(message: Message, state: FSMContext, album: list | None = None) -> None:
     data = await state.get_data()
-    if data.get("media_type") == "video_edit" and not data.get("adding_style_ref"):
+    # В конструкторе видео-редактирования доп. фото-ориентиры идут через "adding_video_extra_frame"
+    # (та же кнопка "Фото", что и в генерации), не только через "adding_style_ref". adding_video_frame
+    # сюда не входит: в video_edit нет ветки для него, так что фото должно отклоняться, а не
+    # попадать в fallback и подменять собой основное видео.
+    _in_video_edit_sub_flow = bool(data.get("adding_style_ref") or data.get("adding_video_extra_frame"))
+    if data.get("media_type") == "video_edit" and not _in_video_edit_sub_flow:
         if await _handle_video_edit_mixed_album(message, state, data, album):
             return
     # Фильтр типа: ожидается не фото
@@ -3342,7 +3347,7 @@ async def receive_reference_photo(message: Message, state: FSMContext, album: li
         await message.delete()
         asyncio.create_task(_toast(message, "⚠️ Здесь нужно прислать аудиофайл 🎵, а не фото."))
         return
-    if data.get("media_type") == "video_edit" and not data.get("adding_style_ref"):
+    if data.get("media_type") == "video_edit" and not _in_video_edit_sub_flow:
         sent = await message.answer("Для редактирования видео пришли видеофайл, а не фото.", reply_markup=back_to_model_kb())
         await _track_msg(state, sent.message_id)
         return
@@ -3785,6 +3790,72 @@ async def receive_reference_document(message: Message, state: FSMContext) -> Non
             await _track_msg(state, sent.message_id)
             return
         await message.delete()
+        # Фото-документ в под-экране (доп. кадры / ориентир / первый-последний кадр) — не
+        # основной референс; та же маршрутизация, что и для сжатого фото в receive_reference_photo
+        if data.get("adding_video_extra_frame"):
+            srefs = list(data.get("style_reference_file_ids") or [])
+            max_refs = data.get("model_max_style_refs", 0)
+            if data.get("managing_style_ref") == "replace_photo":
+                idx = data.get("managing_style_ref_index", 0)
+                if 0 <= idx < len(srefs):
+                    srefs[idx] = message.document.file_id
+                await state.update_data(
+                    style_reference_file_ids=srefs,
+                    managing_style_ref=None, managing_style_ref_index=None,
+                )
+                await _update_sref_status(
+                    message.bot, message.chat.id, state,
+                    f"✅ Фото #{idx + 1} заменено. Кадров: {len(srefs)}/{max_refs}. Отправь ещё или нажми «Назад».",
+                    back_to_frames_kb(),
+                )
+                return
+            if len(srefs) < max_refs:
+                srefs.append(message.document.file_id)
+            await state.update_data(style_reference_file_ids=srefs)
+            await _update_sref_status(
+                message.bot, message.chat.id, state,
+                f"✅ Добавлено! Кадров: {len(srefs)}/{max_refs}. Отправь ещё или нажми «Назад».",
+                back_to_frames_kb(),
+            )
+            return
+        if data.get("adding_style_ref"):
+            srefs = list(data.get("style_reference_file_ids") or [])
+            max_refs = data.get("model_max_style_refs", 14)
+            if data.get("managing_style_ref") == "replace_photo":
+                idx = data.get("managing_style_ref_index", 0)
+                if 0 <= idx < len(srefs):
+                    srefs[idx] = message.document.file_id
+                await state.update_data(
+                    style_reference_file_ids=srefs,
+                    managing_style_ref=None, managing_style_ref_index=None,
+                )
+                await _update_sref_status(
+                    message.bot, message.chat.id, state,
+                    f"✅ Фото #{idx + 1} заменено. Всего: {len(srefs)}/{max_refs}",
+                    style_ref_collecting_kb(len(srefs), max_refs),
+                )
+                return
+            if len(srefs) < max_refs:
+                srefs.append(message.document.file_id)
+            await state.update_data(style_reference_file_ids=srefs)
+            await _update_sref_status(
+                message.bot, message.chat.id, state,
+                f"✅ Добавлено! Всего ориентиров: {len(srefs)}/{max_refs}",
+                style_ref_collecting_kb(len(srefs), max_refs),
+            )
+            return
+        if data.get("media_type") == "video" and data.get("adding_video_frame"):
+            frame_slot = data.get("adding_video_frame", "first")
+            key = "video_first_frame_file_id" if frame_slot == "first" else "video_last_frame_file_id"
+            await state.update_data(**{
+                key: message.document.file_id,
+                "adding_video_frame": None, "adding_frame_from_confirm": None,
+            })
+            if data.get("adding_frame_from_confirm"):
+                await _update_confirm_card(message, state)
+            else:
+                await _back_to_frames_menu(message.bot, message.chat.id, state)
+            return
         await state.update_data(reference_file_id=message.document.file_id, reference_type="photo")
         await _show_confirm_after_reference(message, state)
     else:
