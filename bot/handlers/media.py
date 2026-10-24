@@ -168,6 +168,14 @@ async def _back_to_frames_menu(bot, chat_id: int, state: FSMContext) -> None:
         _characters_kind = data.get("model_characters")
         if _characters_kind == "pixverse":
             _ref_hint = "Создай ориентир для генерации."
+        elif constructor_video and data.get("media_type") == "video_edit":
+            # В редактировании исходное видео уже занимает @video1 — добавленный
+            # сюда видео-ориентир единственный и всегда @video2
+            _ref_hint = (
+                "Добавь ориентиры для генерации. Чтобы указать на ориентиры при генерации:\n"
+                "@image(порядковый номер), если это фото. Например @image1.\n"
+                "@video2 (поскольку можно загрузить только один видео-ориентир), если это видео."
+            )
         elif constructor_video:
             _ref_hint = (
                 "Добавь ориентиры для генерации. Чтобы указать на ориентиры при генерации:\n"
@@ -2768,6 +2776,14 @@ async def toggle_frames(callback: CallbackQuery, state: FSMContext) -> None:
     _characters_kind = data.get("model_characters")
     if _characters_kind == "pixverse":
         _ref_hint = "Создай ориентир для генерации."
+    elif constructor_video and data.get("media_type") == "video_edit":
+        # В редактировании исходное видео уже занимает @video1 — добавленный
+        # сюда видео-ориентир единственный и всегда @video2
+        _ref_hint = (
+            "Добавь ориентиры для генерации. Чтобы указать на ориентиры при генерации:\n"
+            "@image(порядковый номер), если это фото. Например @image1.\n"
+            "@video2 (поскольку можно загрузить только один видео-ориентир), если это видео."
+        )
     elif constructor_video:
         _ref_hint = (
             "Добавь ориентиры для генерации. Чтобы указать на ориентиры при генерации:\n"
