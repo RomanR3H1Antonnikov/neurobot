@@ -1263,17 +1263,17 @@ def edit_confirm_kb(
             builder.row(InlineKeyboardButton(text=f"🖼 Качество: {resolution}", callback_data="media:pick_resolution"))
         if audio_accompaniment:
             if video_edit_audio_mode == "remove":
-                sound_text = "🔇 Звуковое сопровождение: выкл ✅"
+                sound_text = "🔇 Звуковое сопровождение: выкл ❌"
             else:
                 sound_text = "🔊 Звуковое сопровождение ✅"
         elif video_edit_audio_mode == "remove":
-            sound_text = "🔕 Звук: убрать ✅"
+            sound_text = "🔕 Звук: убрать ❌"
         elif video_edit_audio_mode == "replace":
             sound_text = "🔊 Звук: заменить ✅"
         elif video_edit_audio_mode == "origin":
             sound_text = "🎵 Звук: оригинальный ✅"
         elif video_edit_audio_mode == "mute":
-            sound_text = "🔇 Звук: выключен ✅"
+            sound_text = "🔇 Звук: выключен ❌"
         else:
             sound_text = "🔊 Звук"
         builder.row(InlineKeyboardButton(text=sound_text, callback_data="media:edit_sound"))

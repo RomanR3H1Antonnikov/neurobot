@@ -681,12 +681,12 @@ def _confirm_card_text(data: dict) -> str:
                 if _edit_audio_mode == "origin":
                     lines.append("<b>Звук:</b> оригинальный ✅")
                 elif _edit_audio_mode == "mute":
-                    lines.append("<b>Звук:</b> выключен ✅")
+                    lines.append("<b>Звук:</b> выключен ❌")
             elif data.get("model_audio_accompaniment"):
                 if _edit_audio_mode == "remove":
-                    lines.append("<b>Звуковое сопровождение:</b> выкл ✅")
+                    lines.append("<b>Звуковое сопровождение:</b> выкл ❌")
             elif _edit_audio_mode == "remove":
-                lines.append("<b>Звук:</b> убрать ✅")
+                lines.append("<b>Звук:</b> убрать ❌")
             elif _edit_audio_mode == "replace":
                 _edit_audio_name = data.get("video_edit_audio_file_name", "аудиофайл")
                 lines.append(f"<b>Звук:</b> заменить ✅ ({_edit_audio_name})")
