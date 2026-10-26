@@ -4363,9 +4363,8 @@ async def update_prompt_in_confirm(message: Message, state: FSMContext) -> None:
             await _track_msg(state, sent.message_id)
         return
 
-    # Повторное редактирование уже отредактированного фото — только в активном цикле quick_edit
-    # (quick_edit=None после «Назад» — пользователь просто смотрит карточку, не надо автогенерировать)
-    if data.get("generated_file_id") and data.get("media_type") == "photo_edit" and data.get("quick_edit"):
+    # После результата текст сразу запускает новый проход (как у video_edit ниже)
+    if data.get("generated_file_id") and data.get("media_type") == "photo_edit":
         await state.update_data(prompt=message.text)
         await state.set_state(MediaStates.confirm)
         await message.delete()
