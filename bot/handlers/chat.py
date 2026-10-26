@@ -33,6 +33,10 @@ from config import config as _billing_config
 
 def _has_yookassa() -> bool:
     return bool(_billing_config.yookassa_provider_token)
+
+
+def _has_yookassa_link() -> bool:
+    return bool(_billing_config.yookassa_shop_id and _billing_config.yookassa_secret_key)
 from providers.base import ProviderError, TaskType
 from providers.router import get_models_for_task
 from services import chat_service
@@ -204,7 +208,7 @@ async def chat_message(message: Message, state: FSMContext) -> None:
         await state.update_data(pending_retry_type="chat", pending_message=message.text)
         await message.answer(
             f"❌ {e}\n\nПополни баланс — я отвечу на твой вопрос автоматически:",
-            reply_markup=quick_topup_kb(_has_yookassa()),
+            reply_markup=quick_topup_kb(_has_yookassa(), _has_yookassa_link()),
         )
     except RateLimitError as e:
         await thinking.delete()
@@ -243,7 +247,7 @@ async def chat_photo(message: Message, state: FSMContext) -> None:
         await state.update_data(pending_retry_type="chat", pending_message=caption)
         await message.answer(
             f"❌ {e}\n\nПополни баланс — я отвечу на твой вопрос автоматически:",
-            reply_markup=quick_topup_kb(_has_yookassa()),
+            reply_markup=quick_topup_kb(_has_yookassa(), _has_yookassa_link()),
         )
     except RateLimitError as e:
         await thinking.delete()
