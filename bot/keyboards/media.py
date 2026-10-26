@@ -692,7 +692,7 @@ def video_confirm_kb(
     elif duration_locked_by_video_ref:
         # KIE берёт длительность из видео-референса — выбор пользователем не имеет смысла
         builder.row(InlineKeyboardButton(
-            text=f"⏱ Длительность: {duration} сек (по референсу)",
+            text=f"⏱ Длительность: {duration} сек (по ориентиру)",
             callback_data="media:dur_locked_info",
         ))
     else:
