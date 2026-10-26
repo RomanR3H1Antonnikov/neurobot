@@ -1,4 +1,8 @@
+import asyncio
+import json
 import logging
+
+import aiohttp
 
 from providers.base import TaskType, ChatResult, ProviderUnavailableError
 from providers.router import get_provider, get_provider_chain_for_model, get_task_rate_limit
@@ -10,6 +14,15 @@ from db.queries import (
 from services.media_service import InsufficientCreditsError, RateLimitError, _try_provider
 
 logger = logging.getLogger(__name__)
+
+# Сетевые/транспортные сбои агрегатора (обрыв соединения, таймаут, невалидный JSON
+# в ответе) — такая же временная проблема провайдера, как и ProviderUnavailableError,
+# но провайдеры поднимают их напрямую. Без этого они проскакивали мимо фоллбэка на
+# следующего провайдера в чейне ниже и падали пользователю как "непредвиденная
+# ошибка" даже когда баланс и настройки были в порядке (например GPT-5.5 на KIE).
+# Только для чата: цена повторной попытки здесь не в деньгах агрегатора, в отличие
+# от платной медиагенерации (см. media_service._try_provider).
+_TRANSPORT_ERRORS = (aiohttp.ClientError, asyncio.TimeoutError, json.JSONDecodeError)
 
 SYSTEM_PROMPT = (
     "Ты — умный и дружелюбный ИИ-ассистент. "
@@ -70,6 +83,9 @@ async def send_message(
         except ProviderUnavailableError as e:
             last_err = e
             logger.warning("[CHAT_FALLBACK] provider=%s model=%s failed: %s", cfg["provider"], cfg["model_id"], e)
+        except _TRANSPORT_ERRORS as e:
+            last_err = ProviderUnavailableError(f"Сетевая ошибка агрегатора: {e}")
+            logger.warning("[CHAT_FALLBACK] provider=%s model=%s failed (transport): %s", cfg["provider"], cfg["model_id"], e)
     if result is None:
         raise last_err
 

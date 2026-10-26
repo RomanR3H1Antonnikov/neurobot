@@ -4,6 +4,7 @@
 создание сцены — отдельное состояние с текстовым шагом и выбором длительности по кнопкам).
 """
 import asyncio
+import html
 import logging
 
 from aiogram import Router, F
@@ -52,7 +53,7 @@ def _menu_text(data: dict) -> str:
         for i, s in enumerate(shots, 1):
             text = s.get("prompt", "")
             short = text if len(text) <= 60 else text[:57] + "…"
-            lines.append(f"{i}. {short} — {s.get('duration')} сек")
+            lines.append(f"{i}. {html.escape(short)} — {s.get('duration')} сек")
         lines.append("")
     else:
         lines.append("Раздели видео на отдельные сцены — у каждой свой текст и длительность.\n")
@@ -282,12 +283,34 @@ async def _start_edit_shot(bot, chat_id: int, state: FSMContext, idx: int) -> No
     short = current if len(current) <= 200 else current[:197] + "…"
     await _edit(
         bot, chat_id, state,
-        f"✏️ <b>Сцена {n}.</b> Текущий текст: «{short}».\n"
-        f"Отправь новый текст сцены (до {_PROMPT_MAX} символов).",
+        f"✏️ <b>Сцена {n}.</b> Текущий текст: «{html.escape(short)}».\n"
+        f"Отправь новый текст сцены (до {_PROMPT_MAX} символов) — "
+        f"или оставь текст и просто измени длительность.",
         InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="⏱ Оставить текст, изменить время", callback_data="shots:keep_text")],
             [InlineKeyboardButton(text="◀️ Отмена", callback_data="shots:menu")],
         ]),
     )
+
+
+@router.callback_query(ShotStates.prompt, F.data == "shots:keep_text")
+async def keep_text_edit_duration(callback: CallbackQuery, state: FSMContext) -> None:
+    """На экране редактирования сцены — оставить текст как есть и перейти к выбору длительности."""
+    data = await state.get_data()
+    edit_idx = data.get("_shot_edit_idx")
+    shots = data.get("shots") or []
+    if edit_idx is None or not (0 <= edit_idx < len(shots)):
+        await callback.answer()
+        return
+    current = shots[edit_idx].get("prompt", "")
+    await state.update_data(_shot_draft={"prompt": current})
+    remaining = _remaining(data, exclude_idx=edit_idx)
+    await _edit(
+        callback.bot, callback.message.chat.id, state,
+        f"⏱ Сколько секунд длится эта сцена? (осталось {remaining} сек из {data.get('model_max_duration', 15)})",
+        _duration_kb(remaining),
+    )
+    await callback.answer()
 
 
 @router.callback_query(F.data == "shots:edit_pick")
