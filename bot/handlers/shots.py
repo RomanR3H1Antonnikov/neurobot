@@ -24,6 +24,7 @@ _DURATION_PRESETS = [2, 3, 5, 8, 10]
 class ShotStates(StatesGroup):
     prompt = State()
     delete_number = State()
+    edit_number = State()
 
 
 def _max_shots(data: dict) -> int:
@@ -34,9 +35,12 @@ def _total_duration(shots: list[dict]) -> int:
     return sum(s.get("duration", 0) for s in shots)
 
 
-def _remaining(data: dict) -> int:
+def _remaining(data: dict, exclude_idx: int | None = None) -> int:
     max_total = data.get("model_max_duration", 15)
-    return max(0, max_total - _total_duration(data.get("shots") or []))
+    shots = list(data.get("shots") or [])
+    if exclude_idx is not None and 0 <= exclude_idx < len(shots):
+        shots.pop(exclude_idx)
+    return max(0, max_total - _total_duration(shots))
 
 
 def _menu_text(data: dict) -> str:
@@ -65,6 +69,7 @@ def _menu_kb(data: dict) -> InlineKeyboardMarkup:
     if len(shots) < _max_shots(data) and _remaining(data) > 0:
         b.row(InlineKeyboardButton(text="➕ Добавить сцену", callback_data="shots:new"))
     if shots:
+        b.row(InlineKeyboardButton(text="✏️ Изменить сцену №…", callback_data="shots:edit_pick"))
         b.row(InlineKeyboardButton(text="🗑 Удалить последнюю", callback_data="shots:del_last"))
         if len(shots) > 1:
             b.row(InlineKeyboardButton(text="🗑 Удалить сцену №…", callback_data="shots:del_pick"))
@@ -115,7 +120,7 @@ async def open_menu(callback: CallbackQuery, state: FSMContext) -> None:
     if not _max_shots(data):
         await callback.answer("Эта модель не поддерживает сцены", show_alert=True)
         return
-    await state.update_data(_sref_msg_id=callback.message.message_id)
+    await state.update_data(_sref_msg_id=callback.message.message_id, _shot_edit_idx=None)
     await _show_menu(callback.bot, callback.message.chat.id, state)
     await callback.answer()
 
@@ -138,7 +143,7 @@ async def new_shot(callback: CallbackQuery, state: FSMContext) -> None:
     if _remaining(data) <= 0:
         await callback.answer("Длительность сцен уже достигла лимита", show_alert=True)
         return
-    await state.update_data(_sref_msg_id=callback.message.message_id)
+    await state.update_data(_sref_msg_id=callback.message.message_id, _shot_edit_idx=None)
     await state.set_state(ShotStates.prompt)
     n = len(shots) + 1
     await callback.message.edit_text(
@@ -163,7 +168,7 @@ async def enter_shot_prompt(message: Message, state: FSMContext) -> None:
         return
     data = await state.get_data()
     await state.update_data(_shot_draft={"prompt": text})
-    remaining = _remaining(data)
+    remaining = _remaining(data, exclude_idx=data.get("_shot_edit_idx"))
     await _edit(
         message.bot, message.chat.id, state,
         f"⏱ Сколько секунд длится эта сцена? (осталось {remaining} сек из {data.get('model_max_duration', 15)})",
@@ -192,12 +197,16 @@ async def pick_duration(callback: CallbackQuery, state: FSMContext) -> None:
     except (ValueError, IndexError):
         await callback.answer()
         return
-    if duration <= 0 or duration > _remaining(data):
+    edit_idx = data.get("_shot_edit_idx")
+    if duration <= 0 or duration > _remaining(data, exclude_idx=edit_idx):
         await callback.answer("Недопустимая длительность", show_alert=True)
         return
     shots = list(data.get("shots") or [])
-    shots.append({"prompt": draft["prompt"], "duration": duration})
-    await state.update_data(shots=shots, _shot_draft=None, duration=_total_duration(shots))
+    if edit_idx is not None and 0 <= edit_idx < len(shots):
+        shots[edit_idx] = {"prompt": draft["prompt"], "duration": duration}
+    else:
+        shots.append({"prompt": draft["prompt"], "duration": duration})
+    await state.update_data(shots=shots, _shot_draft=None, _shot_edit_idx=None, duration=_total_duration(shots))
     await _show_menu(callback.bot, callback.message.chat.id, state)
     await callback.answer()
 
@@ -255,6 +264,72 @@ async def delete_pick_number(message: Message, state: FSMContext) -> None:
 
 @router.message(ShotStates.delete_number, ~F.text.in_(MENU_BUTTONS))
 async def delete_pick_wrong_input(message: Message) -> None:
+    try:
+        await message.delete()
+    except Exception:
+        pass
+    asyncio.create_task(_toast(message, "⚠️ Здесь нужно прислать число."))
+
+
+async def _start_edit_shot(bot, chat_id: int, state: FSMContext, idx: int) -> None:
+    """Открывает экран ввода нового текста для сцены idx (0-based)."""
+    data = await state.get_data()
+    shots = data.get("shots") or []
+    n = idx + 1
+    current = shots[idx].get("prompt", "") if idx < len(shots) else ""
+    await state.update_data(_shot_edit_idx=idx)
+    await state.set_state(ShotStates.prompt)
+    short = current if len(current) <= 200 else current[:197] + "…"
+    await _edit(
+        bot, chat_id, state,
+        f"✏️ <b>Сцена {n}.</b> Текущий текст: «{short}».\n"
+        f"Отправь новый текст сцены (до {_PROMPT_MAX} символов).",
+        InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="◀️ Отмена", callback_data="shots:menu")],
+        ]),
+    )
+
+
+@router.callback_query(F.data == "shots:edit_pick")
+async def edit_pick_start(callback: CallbackQuery, state: FSMContext) -> None:
+    data = await state.get_data()
+    shots = data.get("shots") or []
+    if not shots:
+        await callback.answer()
+        return
+    await state.update_data(_sref_msg_id=callback.message.message_id)
+    if len(shots) == 1:
+        await _start_edit_shot(callback.bot, callback.message.chat.id, state, 0)
+        await callback.answer()
+        return
+    await state.set_state(ShotStates.edit_number)
+    await callback.message.edit_text(
+        f"✏️ <b>Какую сцену изменить?</b> Введи номер от 1 до {len(shots)}.",
+        parse_mode="HTML",
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="◀️ Отмена", callback_data="shots:menu")],
+        ]),
+    )
+    await callback.answer()
+
+
+@router.message(ShotStates.edit_number, F.text, ~F.text.in_(MENU_BUTTONS))
+async def edit_pick_number(message: Message, state: FSMContext) -> None:
+    text = (message.text or "").strip()
+    try:
+        await message.delete()
+    except Exception:
+        pass
+    data = await state.get_data()
+    shots = data.get("shots") or []
+    if not text.isdigit() or not (1 <= int(text) <= len(shots)):
+        asyncio.create_task(_toast(message, f"⚠️ Введи число от 1 до {len(shots)}."))
+        return
+    await _start_edit_shot(message.bot, message.chat.id, state, int(text) - 1)
+
+
+@router.message(ShotStates.edit_number, ~F.text.in_(MENU_BUTTONS))
+async def edit_pick_wrong_input(message: Message) -> None:
     try:
         await message.delete()
     except Exception:

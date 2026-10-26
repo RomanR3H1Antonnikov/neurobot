@@ -2,9 +2,12 @@
 Оркестрация медиагенерации: лимит → баланс → провайдер → списание → результат.
 """
 import asyncio
+import json
 import logging
 import os
 import tempfile
+
+import aiohttp
 
 from providers.base import TaskType, GenerationResult, ProviderUnavailableError
 from providers.router import get_provider_by_model_id, get_provider_chain_for_model, get_task_rate_limit
@@ -15,18 +18,28 @@ logger = logging.getLogger(__name__)
 _PROVIDER_RETRY = 2        # попыток на каждого провайдера (оригинал + ретрай)
 _PROVIDER_RETRY_DELAY = 3  # секунд между попытками
 
+# Низкоуровневые сетевые/транспортные сбои агрегатора (обрыв соединения, таймаут,
+# невалидный JSON в ответе) — такие же временные проблемы провайдера, как и
+# ProviderUnavailableError, но провайдеры поднимают их напрямую (не оборачивают).
+# Без этого они проскакивали мимо ретраев и мимо фоллбэка на следующего провайдера
+# в чейне (chat_service.py / media_service.py), и падали пользователю как
+# "непредвиденная ошибка" даже когда баланс и настройки были в порядке.
+_TRANSPORT_ERRORS = (aiohttp.ClientError, asyncio.TimeoutError, json.JSONDecodeError)
+
 
 async def _try_provider(fn, *args, **kwargs):
-    """Вызывает fn(*args, **kwargs) до _PROVIDER_RETRY раз при ProviderUnavailableError."""
+    """Вызывает fn(*args, **kwargs) до _PROVIDER_RETRY раз при сбое провайдера."""
     last_err = None
     for attempt in range(_PROVIDER_RETRY):
         try:
             return await fn(*args, **kwargs)
         except ProviderUnavailableError as e:
             last_err = e
-            if attempt < _PROVIDER_RETRY - 1:
-                logger.warning("[RETRY] %s attempt %d: %s", fn.__qualname__, attempt + 1, e)
-                await asyncio.sleep(_PROVIDER_RETRY_DELAY)
+        except _TRANSPORT_ERRORS as e:
+            last_err = ProviderUnavailableError(f"Сетевая ошибка агрегатора: {e}")
+        if attempt < _PROVIDER_RETRY - 1:
+            logger.warning("[RETRY] %s attempt %d: %s", fn.__qualname__, attempt + 1, last_err)
+            await asyncio.sleep(_PROVIDER_RETRY_DELAY)
     raise last_err
 
 
