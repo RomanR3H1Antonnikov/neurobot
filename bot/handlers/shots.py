@@ -74,6 +74,7 @@ def _menu_kb(data: dict) -> InlineKeyboardMarkup:
         b.row(InlineKeyboardButton(text="🗑 Удалить последнюю", callback_data="shots:del_last"))
         if len(shots) > 1:
             b.row(InlineKeyboardButton(text="🗑 Удалить сцену №…", callback_data="shots:del_pick"))
+            b.row(InlineKeyboardButton(text="🗑 Удалить все", callback_data="shots:del_all"))
     b.row(InlineKeyboardButton(text="◀️ Назад", callback_data="shots:back"))
     return b.as_markup()
 
@@ -223,6 +224,16 @@ async def delete_last(callback: CallbackQuery, state: FSMContext) -> None:
     await state.update_data(shots=shots, duration=new_duration)
     await _show_menu(callback.bot, callback.message.chat.id, state)
     await callback.answer("Сцена удалена" if had else "")
+
+
+@router.callback_query(F.data == "shots:del_all")
+async def delete_all(callback: CallbackQuery, state: FSMContext) -> None:
+    data = await state.get_data()
+    had = bool(data.get("shots"))
+    new_duration = data.get("model_min_duration", 5)
+    await state.update_data(shots=[], duration=new_duration)
+    await _show_menu(callback.bot, callback.message.chat.id, state)
+    await callback.answer("Все сцены удалены" if had else "")
 
 
 @router.callback_query(F.data == "shots:del_pick")
