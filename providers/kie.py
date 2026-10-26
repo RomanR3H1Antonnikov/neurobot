@@ -76,7 +76,8 @@ def _image_input(
             "resolution": resolution,
             "output_format": output_format or "png",
             "num_images": 1,
-            "enhance_prompt": True,
+            # Клиент: не нужно, чтобы KIE сам переписывал/расширял промпт (26.10.2026).
+            "enhance_prompt": False,
         }
     if model.startswith("flux-2/"):
         # KIE docs: flux-2 text-to-image принимает только prompt/aspect_ratio/resolution.
