@@ -1170,7 +1170,7 @@ tasks:
         output_formats: ["png", "jpeg", "webp"]
         cost_credits: 2
         cost_by_resolution: {"1K": 2, "2K": 3, "4K": 5}
-        enabled: true
+        enabled: false  # клиент: слишком долго думает в режиме редактирования (24.10.2026)
 
       - id: seedream-5-pro-edit
         label: "Pro"
