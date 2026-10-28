@@ -133,24 +133,32 @@ def guide_audio_voice_back_kb() -> InlineKeyboardMarkup:
     return builder.as_markup()
 
 
-def guide_audio_music_card_kb() -> InlineKeyboardMarkup:
-    """Макет карточки ElevenLabs Music в руководстве (нефункциональный, настройки развёрнуты)."""
+def guide_audio_music_card_kb(show_advanced: bool = False) -> InlineKeyboardMarkup:
+    """Макет карточки ElevenLabs Music в руководстве (нефункциональный, как в реальной генерации —
+    дополнительные настройки свёрнуты по умолчанию)."""
     builder = InlineKeyboardBuilder()
     builder.row(InlineKeyboardButton(text="⏱ Длительность: 30 сек", callback_data="media:guide:param:music_duration"))
-    builder.row(
-        InlineKeyboardButton(text="➕ Позит. стили", callback_data="media:guide:param:music_pos_styles"),
-        InlineKeyboardButton(text="➕ Негат. стили", callback_data="media:guide:param:music_neg_styles"),
-    )
-    builder.row(InlineKeyboardButton(text="📋 Добавить секции", callback_data="media:guide:param:music_sections"))
-    builder.row(
-        InlineKeyboardButton(text="🎹 Инструментал: ❌", callback_data="media:guide:param:music_instrumental"),
-        InlineKeyboardButton(text="⏰ Длит. секций: ❌", callback_data="media:guide:param:music_section_dur"),
-    )
-    builder.row(InlineKeyboardButton(text="📁 Формат: mp3_44100_128", callback_data="media:guide:param:music_format"))
+
+    if show_advanced:
+        builder.row(
+            InlineKeyboardButton(text="➕ Позит. стили", callback_data="media:guide:param:music_pos_styles"),
+            InlineKeyboardButton(text="➕ Негат. стили", callback_data="media:guide:param:music_neg_styles"),
+        )
+        builder.row(InlineKeyboardButton(text="📋 Добавить секции", callback_data="media:guide:param:music_sections"))
+        builder.row(
+            InlineKeyboardButton(text="🎹 Инструментал: ❌", callback_data="media:guide:param:music_instrumental"),
+            InlineKeyboardButton(text="⏰ Длит. секций: ❌", callback_data="media:guide:param:music_section_dur"),
+        )
+        builder.row(InlineKeyboardButton(text="📁 Формат: mp3_44100_128", callback_data="media:guide:param:music_format"))
+
     builder.row(
         InlineKeyboardButton(text="✏️ Ввести описание", callback_data="media:guide:param:music_prompt"),
         InlineKeyboardButton(text="◀️ Назад", callback_data="media:guide:audio_gen"),
     )
+
+    adv_text = "⚙️ Свернуть настройки ▲" if show_advanced else "⚙️ Дополнительные настройки ▼"
+    builder.row(InlineKeyboardButton(text=adv_text, callback_data="media:guide:music_adv"))
+
     builder.row(InlineKeyboardButton(text="🚀 Начать генерацию", callback_data="media:guide:param:start"))
     return builder.as_markup()
 

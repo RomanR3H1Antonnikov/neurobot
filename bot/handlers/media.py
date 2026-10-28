@@ -1319,9 +1319,20 @@ async def guide_audio_voice(callback: CallbackQuery) -> None:
 
 @router.callback_query(MediaStates.select_type, F.data == "media:guide:audio_music")
 async def guide_audio_music(callback: CallbackQuery, state: FSMContext) -> None:
-    await state.update_data(guide_section="audio_music")
+    await state.update_data(guide_section="audio_music", guide_music_advanced=False)
     await callback.message.edit_text(
         _GUIDE_AUDIO_MUSIC_CARD_TEXT, parse_mode="HTML", reply_markup=guide_audio_music_card_kb(),
+    )
+    await callback.answer()
+
+
+@router.callback_query(MediaStates.select_type, F.data == "media:guide:music_adv")
+async def guide_music_advanced_toggle(callback: CallbackQuery, state: FSMContext) -> None:
+    data = await state.get_data()
+    show_advanced = not bool(data.get("guide_music_advanced"))
+    await state.update_data(guide_music_advanced=show_advanced)
+    await callback.message.edit_text(
+        _GUIDE_AUDIO_MUSIC_CARD_TEXT, parse_mode="HTML", reply_markup=guide_audio_music_card_kb(show_advanced),
     )
     await callback.answer()
 
