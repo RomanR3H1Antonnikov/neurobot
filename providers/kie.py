@@ -729,8 +729,11 @@ class KieProvider(OpenAICompatProvider):
 
         if _is_failed(callback_body):
             _ad = callback_body.get("data") or callback_body
+            _fail_msg = (_ad.get("failMsg") or _ad.get("fail_msg") or "").lower()
             logger.error("KIE audio failed: model=%s code=%s msg=%s failMsg=%s",
-                         actual_model, callback_body.get("code"), callback_body.get("msg"), _ad.get("failMsg"))
+                         actual_model, callback_body.get("code"), callback_body.get("msg"), _fail_msg)
+            if any(k in _fail_msg for k in ("validation", "policy", "safety", "content")):
+                raise ProviderContentPolicyError("Запрос не прошёл проверку безопасности KIE")
             raise ProviderUnavailableError("KIE: генерация аудио завершилась с ошибкой")
 
         url = _extract_url(callback_body)
@@ -778,7 +781,10 @@ class KieProvider(OpenAICompatProvider):
                     str(data.get("resultJson", ""))[:200])
 
         if _is_failed(callback_body):
-            logger.error("KIE image failed: model=%s failMsg=%s", actual_model, data.get("failMsg"))
+            _fail_msg = (data.get("failMsg") or data.get("fail_msg") or "").lower()
+            logger.error("KIE image failed: model=%s failMsg=%s", actual_model, _fail_msg)
+            if any(k in _fail_msg for k in ("validation", "policy", "safety", "content")):
+                raise ProviderContentPolicyError("Запрос не прошёл проверку безопасности KIE")
             raise ProviderUnavailableError("KIE: генерация завершилась с ошибкой")
 
         url = _extract_url(callback_body)
@@ -1212,7 +1218,10 @@ class KieProvider(OpenAICompatProvider):
                     str(data.get("resultJson", ""))[:200])
 
         if _is_failed(callback_body):
-            logger.error("KIE edit failed: model=%s failMsg=%s", actual_model, data.get("failMsg"))
+            _fail_msg = (data.get("failMsg") or data.get("fail_msg") or "").lower()
+            logger.error("KIE edit failed: model=%s failMsg=%s", actual_model, _fail_msg)
+            if any(k in _fail_msg for k in ("validation", "policy", "safety", "content")):
+                raise ProviderContentPolicyError("Запрос не прошёл проверку безопасности KIE")
             raise ProviderUnavailableError("KIE: редактирование завершилось с ошибкой")
 
         result_url = _extract_url(callback_body)
