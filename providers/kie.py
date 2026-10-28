@@ -847,9 +847,11 @@ class KieProvider(OpenAICompatProvider):
         }
         if not _wan_with_images and not _pixverse_video_edit and not _minimax_with_frames:
             input_data["aspect_ratio"] = _effective_ratio
-        # wan/3-0-video-prime не принимает поле resolution совсем (ни text, ни video-edit)
+        # wan/3-0-video-prime поддерживает resolution (480p/720p/1080p) даже с фото-референсами —
+        # подавление resolution в _wan_with_images ниже относится только к wan-3-0/wan-2-7
+        # (как и было установлено ранее для reference_video_urls — Prime использует тот же API, что и Wan 3.0)
         # pixverse всегда использует поле quality (не resolution), во всех режимах
-        if (is_kling or is_wan or is_bytedance or is_google or is_grok_video or is_pixverse or is_minimax) and not _wan_with_images and not is_wan_prime:
+        if (is_kling or is_wan or is_bytedance or is_google or is_grok_video or is_pixverse or is_minimax) and (not _wan_with_images or is_wan_prime):
             if is_pixverse:
                 input_data["quality"] = resolution or "720p"
             else:
