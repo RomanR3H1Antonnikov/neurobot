@@ -537,7 +537,7 @@ class KieProvider(OpenAICompatProvider):
                 if resp.status == 400:
                     body = await resp.text()
                     logger.error("KIE createTask HTTP 400: model=%s input=%s body=%s", model, input_data, body[:400])
-                    if "content" in body.lower() or "policy" in body.lower():
+                    if any(k in body.lower() for k in ("content", "policy", "copyright", "safety", "violat")):
                         raise ProviderContentPolicyError("Запрос не прошёл проверку безопасности KIE")
                     raise ProviderUnavailableError(f"Ошибка KIE: {body[:200]}")
                 if resp.status >= 400:
@@ -732,7 +732,7 @@ class KieProvider(OpenAICompatProvider):
             _fail_msg = (_ad.get("failMsg") or _ad.get("fail_msg") or "").lower()
             logger.error("KIE audio failed: model=%s code=%s msg=%s failMsg=%s",
                          actual_model, callback_body.get("code"), callback_body.get("msg"), _fail_msg)
-            if any(k in _fail_msg for k in ("validation", "policy", "safety", "content")):
+            if any(k in _fail_msg for k in ("validation", "policy", "safety", "content", "copyright", "violat")):
                 raise ProviderContentPolicyError("Запрос не прошёл проверку безопасности KIE")
             raise ProviderUnavailableError("KIE: генерация аудио завершилась с ошибкой")
 
@@ -783,7 +783,7 @@ class KieProvider(OpenAICompatProvider):
         if _is_failed(callback_body):
             _fail_msg = (data.get("failMsg") or data.get("fail_msg") or "").lower()
             logger.error("KIE image failed: model=%s failMsg=%s", actual_model, _fail_msg)
-            if any(k in _fail_msg for k in ("validation", "policy", "safety", "content")):
+            if any(k in _fail_msg for k in ("validation", "policy", "safety", "content", "copyright", "violat")):
                 raise ProviderContentPolicyError("Запрос не прошёл проверку безопасности KIE")
             raise ProviderUnavailableError("KIE: генерация завершилась с ошибкой")
 
@@ -1080,7 +1080,7 @@ class KieProvider(OpenAICompatProvider):
             _data = callback_body.get("data", {})
             _fail_msg = (_data.get("failMsg") or _data.get("fail_msg") or "").lower()
             logger.error("KIE video failed: model=%s failMsg=%s", actual_model, _fail_msg)
-            if any(k in _fail_msg for k in ("validation", "policy", "safety", "content")):
+            if any(k in _fail_msg for k in ("validation", "policy", "safety", "content", "copyright", "violat")):
                 raise ProviderContentPolicyError("Изображение не прошло проверку безопасности — попробуйте другое фото")
             if "character" in _fail_msg and ("not" in _fail_msg or "no valid" in _fail_msg or "detect" in _fail_msg):
                 raise ProviderContentPolicyError("Персонаж не распознан. Пришлите новое видео")
@@ -1220,7 +1220,7 @@ class KieProvider(OpenAICompatProvider):
         if _is_failed(callback_body):
             _fail_msg = (data.get("failMsg") or data.get("fail_msg") or "").lower()
             logger.error("KIE edit failed: model=%s failMsg=%s", actual_model, _fail_msg)
-            if any(k in _fail_msg for k in ("validation", "policy", "safety", "content")):
+            if any(k in _fail_msg for k in ("validation", "policy", "safety", "content", "copyright", "violat")):
                 raise ProviderContentPolicyError("Запрос не прошёл проверку безопасности KIE")
             raise ProviderUnavailableError("KIE: редактирование завершилось с ошибкой")
 
