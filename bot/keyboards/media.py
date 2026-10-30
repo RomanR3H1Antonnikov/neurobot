@@ -961,8 +961,8 @@ def voice_picker_kb(voices: list[dict], current_id: str) -> InlineKeyboardMarkup
     return builder.as_markup()
 
 
-_VOICE_STABILITY_PRESETS = [0.3, 0.5, 0.8]
-_STABILITY_LABELS = {0.3: "Экспрессивный", 0.5: "Стандарт", 0.8: "Стабильный"}
+_VOICE_STABILITY_PRESETS = [0.0, 0.5, 1.0]
+_STABILITY_LABELS = {0.0: "Экспрессивный", 0.5: "Стандарт", 1.0: "Стабильный"}
 
 _VOICE_LANGUAGES = [
     ("auto", "🌐 Авто"),

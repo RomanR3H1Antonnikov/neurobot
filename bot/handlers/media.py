@@ -595,7 +595,7 @@ def _confirm_card_text(data: dict) -> str:
         if data.get("selected_voice_label"):
             lines.append(f"<b>Голос:</b> {data['selected_voice_label']}")
         if data.get("has_voice_settings"):
-            _stab_map = {0.3: "Экспрессивный", 0.5: "Стандарт", 0.8: "Стабильный"}
+            _stab_map = {0.0: "Экспрессивный", 0.5: "Стандарт", 1.0: "Стабильный"}
             stab = data.get("voice_stability", 0.5)
             stab_label = _stab_map.get(stab, f"{stab:.1f}")
             lang = data.get("voice_language", "auto")
@@ -604,7 +604,7 @@ def _confirm_card_text(data: dict) -> str:
             lang_label = _lang_map.get(lang, lang)
             diag = "ВКЛ" if data.get("voice_dialogue_mode") else "ВЫКЛ"
             lines.append(f"<b>Стиль:</b> {stab_label}  |  <b>Язык:</b> {lang_label}  |  <b>Диалог:</b> {diag}")
-        if data.get("has_music_settings") or data.get("has_lyria_settings"):
+        if data.get("has_music_settings") and data.get("model_slug") != "lyria-3-pro":
             lines.append(f"<b>Длительность:</b> {data.get('music_duration', 30)} сек")
             if data.get("music_show_advanced"):
                 pos_styles = data.get("music_positive_styles") or []
@@ -819,7 +819,7 @@ def _confirm_kb(data: dict):
             has_prompt=has_prompt, cost_credits=cost, voice_label=voice_label,
             style_ref_count=style_ref_count,
             max_style_refs=data.get("model_max_style_refs", 0),
-            has_duration=bool(data.get("has_lyria_settings")),
+            has_duration=False,
             duration=data.get("music_duration", 30),
         )
     elif media_type in ("photo_edit", "video_edit"):
@@ -1661,8 +1661,8 @@ async def select_model(callback: CallbackQuery, state: FSMContext) -> None:
             update["voice_stability"] = 0.5
             update["voice_language"] = "auto"
             update["voice_dialogue_mode"] = False
-            update["selected_voice_id_2"] = voices[0]["id"]
-            update["selected_voice_label_2"] = voices[0]["label"]
+            update["selected_voice_id_2"] = voices[min(1, len(voices) - 1)]["id"]
+            update["selected_voice_label_2"] = voices[min(1, len(voices) - 1)]["label"]
 
     await state.update_data(**update)
     data = await state.get_data()
@@ -5078,6 +5078,10 @@ async def toggle_music_advanced(callback: CallbackQuery, state: FSMContext) -> N
 
 @router.callback_query(MediaStates.confirm, F.data == "media:music_duration")
 async def enter_music_duration(callback: CallbackQuery, state: FSMContext) -> None:
+    data = await state.get_data()
+    if data.get("model_slug") == "lyria-3-pro":
+        await callback.answer("Длительность Lyria 3 Pro определяет сама модель.", show_alert=True)
+        return
     await state.update_data(entering_music_duration=True)
     await callback.message.edit_text(
         "⏱ Введи длительность трека в секундах (5–600):",
@@ -5339,7 +5343,7 @@ async def toggle_voice_dialogue(callback: CallbackQuery, state: FSMContext) -> N
 
 @router.callback_query(MediaStates.confirm, F.data == "media:cycle_voice_stability")
 async def cycle_voice_stability(callback: CallbackQuery, state: FSMContext) -> None:
-    presets = [0.3, 0.5, 0.8]
+    presets = [0.0, 0.5, 1.0]
     data = await state.get_data()
     current = data.get("voice_stability", 0.5)
     try:
@@ -5669,7 +5673,6 @@ async def _run_generation(send_msg: Message, tg_user, state: FSMContext, data: d
         elif data.get("has_lyria_settings"):
             music_params = {
                 "_provider_model": "lyria-3-pro",
-                "music_duration": data.get("music_duration", 30),
             }
         # Фото-ориентир (например, для Lyria) — передаём через music_params
         if style_reference_urls:

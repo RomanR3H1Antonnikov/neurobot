@@ -724,6 +724,14 @@ class KieProvider(OpenAICompatProvider):
             dialogue_mode = bool(music_params.get("voice_dialogue_mode"))
             voice_id_2 = music_params.get("voice_id_2") or voice_id
 
+        supported_voices = ("EkK5I93UQWFDigLMpZcX", "Z3R5wn05IrDiVCyEkUrK", "NNl6r8mD7vthiJatiJt1")
+        # Normalize settings from older cards to the KIE v3 supported values.
+        if voice_id not in supported_voices:
+            voice_id = supported_voices[0]
+        if voice_id_2 not in supported_voices:
+            voice_id_2 = supported_voices[1]
+        stability = min((0.0, 0.5, 1.0), key=lambda value: abs(value - float(stability)))
+
         if dialogue_mode:
             # Каждая непустая строка — отдельная реплика, голоса чередуются
             raw_lines = [l.strip() for l in prompt.splitlines() if l.strip()]
@@ -881,6 +889,10 @@ class KieProvider(OpenAICompatProvider):
                 input_data["quality"] = resolution or "720p"
             else:
                 input_data["resolution"] = resolution or "720p"
+
+        if is_wan3 or is_wan_prime:
+            # Wan 3.0 enums are case-sensitive, including reference-video mode.
+            input_data["resolution"] = (resolution or "720p").upper()
 
         # ── Первый / последний кадр ──────────────────────────────────────────
         if is_bytedance:
