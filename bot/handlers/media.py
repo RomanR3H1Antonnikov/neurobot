@@ -1995,6 +1995,13 @@ async def menu_to_media(callback: CallbackQuery, state: FSMContext) -> None:
 async def generate_again(callback: CallbackQuery, state: FSMContext) -> None:
     """Возврат к карточке той же модели с очищенным промптом и ориентирами."""
     data = await state.get_data()
+    source = data.get("_video_source_generation") or {}
+    if source.get("message_id") == callback.message.message_id:
+        # The source video's button must restore generation, not the edit picker.
+        restored = {**source["data"], "_tracked_msg_ids": data.get("_tracked_msg_ids")}
+        restored.pop("_video_source_generation", None)
+        await state.set_data(restored)
+        data = restored
 
     if not data.get("model_slug") or not data.get("media_type"):
         # Сессия устарела — возвращаем в выбор типа медиа
@@ -2218,10 +2225,15 @@ async def edit_generated_video(callback: CallbackQuery, state: FSMContext) -> No
         return
 
     # Сохраняем file_id видео для автоподстановки в select_model, сбрасываем контекст предыдущей генерации
+    source = data.get("_video_source_generation")
+    if data.get("media_type") == "video" and data.get("model_slug"):
+        snapshot = {k: v for k, v in data.items() if k != "_video_source_generation"}
+        source = {"message_id": callback.message.message_id, "data": snapshot}
     await state.set_data({
         "_tracked_msg_ids": data.get("_tracked_msg_ids"),
         "media_type": "video_edit",
         "_autofill_video_file_id": video_fid,
+        "_video_source_generation": source,
     })
     await state.set_state(MediaStates.select_model)
 
