@@ -62,6 +62,11 @@ def _image_input(
     output_format: str | None = None,
 ) -> dict:
     """Формирует поле input для createTask в зависимости от семейства модели."""
+    if model.startswith("seedream/5-flash-"):
+        return {
+            "prompt": prompt, "aspect_ratio": _kie_ratio(aspect_ratio),
+            "size": resolution, "output_format": output_format or "png", "nsfw_checker": True,
+        }
     if model.startswith("seedream/"):
         return {
             "prompt": prompt,
@@ -614,13 +619,27 @@ class KieProvider(OpenAICompatProvider):
             raise ProviderUnavailableError("KIE: пустой ответ модели")
         return ChatResult(text=text)
 
-    async def create_omni_character(self, name: str, description: str, image_urls: list[str]) -> str:
+    async def create_omni_voice(self, name: str, description: str) -> str:
+        """Register a voice preset; KIE documents this endpoint as free."""
+        async with self._session(timeout=90) as session:
+            async with session.post(
+                "https://api.kie.ai/api/v1/omni/audio/create",
+                json={"audio_id": "achernar", "name": name,
+                      "voice_description": description, "example_dialogue": "Привет! Это мой голос."},
+            ) as resp:
+                data = await resp.json(content_type=None)
+        audio_id = (data.get("data") or {}).get("audioId")
+        if data.get("code") != 200 or not audio_id:
+            raise ProviderUnavailableError("Не удалось настроить голос персонажа Gemini")
+        return audio_id
+
+    async def create_omni_character(self, name: str, description: str, image_urls: list[str], audio_ids: list[str] | None = None) -> str:
         """Gemini Omni: создаёт персонажа у KIE и возвращает characterId (бесплатно, синхронно).
         image_urls: [портрет] или [портрет, фото в полный рост]."""
         async with self._session(timeout=90) as session:
             async with session.post(
                 "https://api.kie.ai/api/v1/omni/character/create",
-                json={"descriptions": description, "image_urls": image_urls[:2], "character_name": name},
+                json={"descriptions": description, "image_urls": image_urls[:2], "character_name": name, **({"audio_ids": audio_ids[:1]} if audio_ids else {})},
             ) as resp:
                 data = await resp.json(content_type=None)
         if data.get("code") != 200 or not (data.get("data") or {}).get("characterId"):
@@ -1151,6 +1170,16 @@ class KieProvider(OpenAICompatProvider):
                 "input_urls": [image_url] + _srefs,
                 "aspect_ratio": aspect_ratio or "auto",
                 "resolution": resolution or "1K",
+            }
+        elif actual_model == "seedream/5-flash-image-to-image":
+            if not image_url:
+                raise ProviderInputError("Добавь фото для редактирования")
+            if len(_srefs) > 9:
+                raise ProviderInputError("Seedream 5 Flash принимает до 9 ориентиров и одно основное фото")
+            input_data = {
+                "prompt": prompt, "image_urls": [image_url] + _srefs,
+                "aspect_ratio": aspect_ratio or "1:1", "size": resolution or "1K",
+                "output_format": output_format or "png", "nsfw_checker": True,
             }
         elif actual_model.startswith("seedream/") and "image-to-image" in actual_model:
             if not image_url:

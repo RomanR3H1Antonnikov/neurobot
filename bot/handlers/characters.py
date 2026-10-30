@@ -45,6 +45,7 @@ class CharacterStates(StatesGroup):
     desc = State()
     photos = State()
     voice = State()
+    gemini_voice = State()
     # PixVerse: фото → тип (Subject / Background) → имя
     ref_photo = State()
     ref_type = State()
@@ -93,7 +94,7 @@ def _menu_text(data: dict) -> str:
     if chars:
         for i, c in enumerate(chars, 1):
             tail = f" — <code>@{c['tag']}</code>" if _is_kling(kind) else ""
-            lines.append(f"{i}. {c['name']}{tail}" + (" 🎙" if c.get("voice_file_id") else ""))
+            lines.append(f"{i}. {c['name']}{tail}" + (" 🎙" if c.get("voice_file_id") or c.get("voice_audio_id") else ""))
         lines.append("")
     else:
         lines.append(f"Создай до {MAX_CHARACTERS} персонажей: внешность сохранится в видео.\n")
@@ -105,6 +106,8 @@ def _menu_text(data: dict) -> str:
                      "например: «<code>Аня идёт по улице</code>».")
     if kind == "kling3":
         lines.append("\nНажми на персонажа, чтобы добавить или заменить ориентир его голоса (5–30 секунд).")
+    if kind == "gemini":
+        lines.append("\nНажми на персонажа, чтобы настроить голос по текстовому описанию.")
     return "\n".join(lines)
 
 
@@ -270,7 +273,7 @@ async def manage_character(callback: CallbackQuery, state: FSMContext) -> None:
     await callback.message.edit_text(
         f"👤 <b>{char['name']}</b>\n\nЧто сделать с этим {label}ем?",
         parse_mode="HTML",
-        reply_markup=_manage_kb(idx, data.get("model_characters") == "kling3", bool(char.get("voice_file_id"))),
+        reply_markup=_manage_kb(idx, data.get("model_characters") in ("kling3", "gemini"), bool(char.get("voice_file_id") or char.get("voice_audio_id"))),
     )
     await callback.answer()
 
@@ -279,10 +282,21 @@ async def manage_character(callback: CallbackQuery, state: FSMContext) -> None:
 async def add_character_voice(callback: CallbackQuery, state: FSMContext) -> None:
     data = await state.get_data()
     idx = int(callback.data.rsplit(":", 1)[1])
-    if data.get("model_characters") != "kling3" or not 0 <= idx < len(data.get("characters") or []):
+    if data.get("model_characters") not in ("kling3", "gemini") or not 0 <= idx < len(data.get("characters") or []):
         await callback.answer("Персонаж недоступен", show_alert=True)
         return
     await state.update_data(_char_voice_idx=idx, _sref_msg_id=callback.message.message_id)
+    if data.get("model_characters") == "gemini":
+        await state.set_state(CharacterStates.gemini_voice)
+        await callback.message.edit_text(
+            "🎙 Опиши голос персонажа: тембр, манеру речи и настроение. "
+            "Например: спокойный низкий мужской голос, чёткая речь. "
+            "Gemini использует голосовой пресет; загрузка образца аудио здесь не требуется.",
+            reply_markup=InlineKeyboardMarkup(inline_keyboard=[[
+                InlineKeyboardButton(text="◀️ Назад", callback_data=f"char:manage:{idx}")]]),
+        )
+        await callback.answer()
+        return
     await state.set_state(CharacterStates.voice)
     await callback.message.edit_text(
         "🎙 Отправь аудиофайл или голосовое сообщение длительностью от 5 до 30 секунд. "
@@ -298,11 +312,57 @@ async def delete_character_voice(callback: CallbackQuery, state: FSMContext) -> 
     data = await state.get_data()
     idx = int(callback.data.rsplit(":", 1)[1])
     chars = list(data.get("characters") or [])
+    if data.get("model_characters") == "gemini" and 0 <= idx < len(chars):
+        try:
+            chars[idx] = await _gemini_character_with_voice(callback.bot, chars[idx], None)
+        except Exception:
+            logger.exception("Gemini character voice removal failed")
+            await callback.answer("Не удалось удалить голос. Попробуй позже.", show_alert=True)
+            return
+        await state.update_data(characters=chars)
     if data.get("model_characters") == "kling3" and 0 <= idx < len(chars):
         chars[idx] = {k: v for k, v in chars[idx].items() if k not in ("voice_file_id", "voice_duration")}
         await state.update_data(characters=chars)
     await _show_menu(callback.bot, callback.message.chat.id, state)
     await callback.answer()
+
+
+async def _gemini_character_with_voice(bot, character: dict, description: str | None) -> dict:
+    from providers.router import _registry
+    from bot.handlers.media import _tg_file_url
+    provider = _registry.get("kie")
+    if provider is None:
+        raise ProviderError("Провайдер недоступен")
+    audio_id = await provider.create_omni_voice(character["name"], description) if description else None
+    urls = [await _tg_file_url(bot, fid) for fid in character["file_ids"]]
+    if not all(urls):
+        raise ProviderError("Не удалось загрузить фото персонажа")
+    character_id = await provider.create_omni_character(
+        character["name"], character["description"], urls, audio_ids=[audio_id] if audio_id else None,
+    )
+    return {**character, "character_id": character_id, "voice_audio_id": audio_id, "voice_description": description}
+
+
+@router.message(CharacterStates.gemini_voice, ~F.text.in_(MENU_BUTTONS))
+async def receive_gemini_voice(message: Message, state: FSMContext) -> None:
+    data = await state.get_data()
+    idx = data.get("_char_voice_idx")
+    chars = list(data.get("characters") or [])
+    description = (message.text or "").strip()
+    if not description or len(description) > 500:
+        await message.answer("Опиши голос текстом до 500 символов.")
+        return
+    if data.get("model_characters") != "gemini" or not isinstance(idx, int) or not 0 <= idx < len(chars):
+        await _show_menu(message.bot, message.chat.id, state)
+        return
+    try:
+        chars[idx] = await _gemini_character_with_voice(message.bot, chars[idx], description)
+    except Exception:
+        logger.exception("Gemini character voice setup failed")
+        await message.answer("Не удалось настроить голос. Попробуй позже; прежний персонаж сохранён.")
+        return
+    await state.update_data(characters=chars, _char_voice_idx=None)
+    await _show_menu(message.bot, message.chat.id, state)
 
 
 @router.message(CharacterStates.voice, ~F.text.in_(MENU_BUTTONS))

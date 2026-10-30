@@ -257,22 +257,21 @@ tasks:
         cost_usd: 0.01
         enabled: true
 
-      - id: seedream-5-lite
-        label: "Lite"
-        group: seedream-5
-        group_label: "Seedream 5.0"
-        description: ""
+      - id: seedream-5-flash
+        label: "Seedream 5 Flash"
+        description: "Seedream 5 Flash — быстрая генерация и редактирование изображений."
         variant_description: >-
           Универсальная версия — идеальна для старта, поиска концепций и простых
           визуалов.
         aspect_ratios: ["1:1", "4:3", "3:4", "16:9", "9:16", "3:2", "2:3", "21:9"]
-        model_id: seedream/5-lite-text-to-image
+        model_id: seedream/5-flash-text-to-image
         provider: kie
-        max_style_refs: 14
-        resolutions: ["2K", "3K", "4K"]
+        max_style_refs: 0
+        resolutions: ["1K", "1.5K", "2K"]
+        output_formats: ["png", "jpeg"]
         cost_credits: 4
         cost_usd: 0.01
-        enabled: false  # Disabled at client request, 2026-10-27.
+        enabled: true
 
       - id: midjourney-v7
         label: "V7"
@@ -1193,22 +1192,21 @@ tasks:
         cost_usd: 0.01
         enabled: true
 
-      - id: seedream-5-lite-edit
-        label: "Lite"
-        group: seedream-5-edit
-        group_label: "Seedream 5.0"
-        description: ""
+      - id: seedream-5-flash-edit
+        label: "Seedream 5 Flash"
+        description: "Seedream 5 Flash — быстрая генерация и редактирование изображений."
         variant_description: >-
           Универсальная версия — идеальна для старта, поиска концепций и простых
           визуалов.
         aspect_ratios: ["1:1", "4:3", "3:4", "16:9", "9:16", "3:2", "2:3", "21:9"]
-        model_id: seedream/5-lite-image-to-image
+        model_id: seedream/5-flash-image-to-image
         provider: kie
-        max_style_refs: 10
-        resolutions: ["2K", "3K", "4K"]
+        max_style_refs: 9
+        resolutions: ["1K", "1.5K", "2K"]
+        output_formats: ["png", "jpeg"]
         cost_credits: 4
         cost_usd: 0.01
-        enabled: false  # Disabled at client request, 2026-10-27.
+        enabled: true
 
       - id: midjourney-edit-v7
         label: "V7"
