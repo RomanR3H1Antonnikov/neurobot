@@ -511,6 +511,14 @@ def _confirm_card_text(data: dict) -> str:
 
     lines = []
     variant_desc = data.get("model_variant_description", "")
+    if data.get("model_slug") in {
+        "flux-2-pro", "flux-2-pro-edit", "seedream-5-pro", "seedream-5-pro-edit",
+    }:
+        warning = (
+            "Flux 2 Pro и Seedream 5 Pro зачастую не генерируют и не редактируют изображения "
+            "с известными личностями, это связано с внутренними правилами этих моделей."
+        )
+        variant_desc = warning + ("\n\n" + variant_desc if variant_desc else "")
     if variant_desc:
         # Для варианта из группы — компактное описание именно этого варианта
         lines.append(f"<b>Модель:</b> {model_label}\n<blockquote expandable>{variant_desc}</blockquote>")
