@@ -90,9 +90,7 @@ tasks:
         enabled: true
 
       - id: seedream-5-pro
-        label: "Pro"
-        group: seedream-5
-        group_label: "Seedream 5.0"
+        label: "Seedream 5 Pro"
         description: >-
           Seedream 5.0 отличается высокой детализацией и реалистичностью изображений, уверенно
           прорабатывает сложные композиции и текстуры. Модель точно следует описаниям, поддерживает
@@ -126,7 +124,7 @@ tasks:
         resolutions: ["2K", "3K", "4K"]
         cost_credits: 4
         cost_usd: 0.01
-        enabled: true
+        enabled: false  # Disabled at client request, 2026-10-27.
 
       - id: midjourney-v7
         label: "V7"
@@ -1174,9 +1172,7 @@ tasks:
         enabled: false  # клиент: слишком долго думает в режиме редактирования (24.10.2026)
 
       - id: seedream-5-pro-edit
-        label: "Pro"
-        group: seedream-5-edit
-        group_label: "Seedream 5.0"
+        label: "Seedream 5 Pro"
         description: >-
           Seedream 5.0 отличается высокой детализацией и реалистичностью изображений, уверенно
           прорабатывает сложные композиции и текстуры. Модель точно следует описаниям, включая
@@ -1210,7 +1206,7 @@ tasks:
         resolutions: ["2K", "3K", "4K"]
         cost_credits: 4
         cost_usd: 0.01
-        enabled: true
+        enabled: false  # Disabled at client request, 2026-10-27.
 
       - id: midjourney-edit-v7
         label: "V7"

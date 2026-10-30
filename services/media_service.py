@@ -6,7 +6,7 @@ import logging
 import os
 import tempfile
 
-from providers.base import TaskType, GenerationResult, ProviderUnavailableError
+from providers.base import TaskType, GenerationResult, ProviderUnavailableError, ProviderContentPolicyError
 from providers.router import get_provider_by_model_id, get_provider_chain_for_model, get_task_rate_limit
 from db.queries import get_or_create_user, deduct_credits, check_and_increment_rate_limit
 
@@ -257,7 +257,8 @@ async def generate_image(
                 mj_params=mj_params, output_format=output_format,
             )
             break
-        except ProviderUnavailableError as e:
+        except (ProviderUnavailableError, ProviderContentPolicyError) as e:
+            # Try configured reserves before reporting a moderation rejection.
             last_err = e
             if len(chain) > 1:
                 logger.warning("[FALLBACK] image %s → %s: %s", model_slug, eff_cfg.get("provider"), e)
@@ -312,7 +313,8 @@ async def generate_video(
                 **({"shots": shots} if shots else {}),
             )
             break
-        except ProviderUnavailableError as e:
+        except (ProviderUnavailableError, ProviderContentPolicyError) as e:
+            # Try configured reserves before reporting a moderation rejection.
             last_err = e
             if len(chain) > 1:
                 logger.warning("[FALLBACK] video %s → %s: %s", model_slug, eff_cfg.get("provider"), e)
@@ -355,7 +357,8 @@ async def generate_audio(
                 prompt, audio_type=audio_type, model=eff_cfg["model_id"], music_params=music_params,
             )
             break
-        except ProviderUnavailableError as e:
+        except (ProviderUnavailableError, ProviderContentPolicyError) as e:
+            # Try configured reserves before reporting a moderation rejection.
             last_err = e
             if len(chain) > 1:
                 logger.warning("[FALLBACK] audio %s → %s: %s", model_slug, eff_cfg.get("provider"), e)
@@ -393,7 +396,8 @@ async def edit_image(
                 mj_params=mj_params, output_format=output_format,
             )
             break
-        except ProviderUnavailableError as e:
+        except (ProviderUnavailableError, ProviderContentPolicyError) as e:
+            # Try configured reserves before reporting a moderation rejection.
             last_err = e
             if len(chain) > 1:
                 logger.warning("[FALLBACK] image_edit %s → %s: %s", model_slug, eff_cfg.get("provider"), e)
@@ -443,7 +447,8 @@ async def edit_video(
                 video_reference_urls=video_reference_urls,
             )
             break
-        except ProviderUnavailableError as e:
+        except (ProviderUnavailableError, ProviderContentPolicyError) as e:
+            # Try configured reserves before reporting a moderation rejection.
             last_err = e
             if len(chain) > 1:
                 logger.warning("[FALLBACK] video_edit %s → %s: %s", model_slug, eff_cfg.get("provider"), e)
