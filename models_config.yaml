@@ -1056,7 +1056,7 @@ tasks:
         max_style_refs: 3
         cost_credits: 8
         cost_usd: 0.03
-        enabled: true
+        enabled: false  # Disabled at client request: use Grok Image 2.0 for editing.
 
       - id: gpt-image-2-edit
         label: "GPT Image 2"

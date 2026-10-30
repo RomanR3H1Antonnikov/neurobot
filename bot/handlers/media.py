@@ -2106,6 +2106,10 @@ def _find_edit_model(gen_model_id: str, gen_slug: str = "") -> dict | None:
     3. Первая доступная edit-модель как запасной вариант.
     """
     edit_models = get_models_for_task(TaskType.IMAGE_EDIT)
+    # RouterAI Grok Pro generates only; edit its results with Grok 2.0 on KIE.
+    if gen_slug == "grok-image-pro" or gen_model_id == "x-ai/grok-imagine-image-quality":
+        return next((m for m in edit_models
+                     if m.get("id") == "grok-image-2-0-edit" and m.get("provider") == "kie"), None)
     by_id = next((m for m in edit_models if m.get("model_id") == gen_model_id), None)
     if by_id:
         return by_id
