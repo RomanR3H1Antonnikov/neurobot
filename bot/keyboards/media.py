@@ -333,7 +333,12 @@ def media_info_kb(expanded: bool = False) -> InlineKeyboardMarkup:
 # Подменю раздела: генерация с нуля или редактирование загруженного пользователем файла
 MEDIA_SECTIONS = {
     "photo": {
-        "title": "🖼 <b>Фото</b>\n\nВыбери действие:",
+        "title": (
+            "🖼 <b>Фото</b>\n\n"
+            "<blockquote expandable>Flux 2 Pro и Seedream 5 Pro зачастую не генерируют и не редактируют "
+            "изображения с известными личностями, это связано с внутренними правилами этих моделей.</blockquote>"
+            "\n\nВыбери действие:"
+        ),
         "gen": ("🎨 Генерация фото", "media:type:image"),
         "edit": ("✏️ Редактировать ваше фото", "media:type:photo_edit"),
     },

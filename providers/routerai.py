@@ -7,9 +7,10 @@ Grok Image — генерация через /images/generations, редакти
 import asyncio
 import base64
 import logging
+import json
 import aiohttp
 from providers.openai_compat import OpenAICompatProvider
-from providers.base import GenerationResult, ProviderUnavailableError
+from providers.base import GenerationResult, ProviderError, ProviderUnavailableError, ProviderContentPolicyError
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +26,29 @@ class RouteraiProvider(OpenAICompatProvider):
     provider_id = "routerai"
     base_url = _BASE_URL
     chat_model = "gpt-4o-mini"
+
+    async def _handle_response(self, response: aiohttp.ClientResponse) -> dict:
+        # RouterAI can return an error envelope with HTTP 200.
+        raw = await response.text()
+        try:
+            payload = json.loads(raw)
+        except (ValueError, TypeError):
+            payload = None
+        has_error = isinstance(payload, dict) and (
+            payload.get("error") or payload.get("status") in ("failed", "error", "rejected")
+            or (payload.get("code") is not None and str(payload["code"]) not in ("0", "200"))
+            or (not payload.get("data") and (payload.get("message") or payload.get("msg")))
+        )
+        if response.status >= 400 or has_error:
+            detail = raw.lower()
+            if any(word in detail for word in (
+                "content_policy", "content policy", "content policies", "safety",
+                "moderation", "flagged", "violating", "nsfw", "copyright",
+            )):
+                raise ProviderContentPolicyError("Запрос не прошёл проверку безопасности RouterAI")
+            if response.status < 400:
+                raise ProviderError("RouterAI вернул ошибку вместо результата")
+        return await super()._handle_response(response)
 
     async def generate_image(
         self, prompt: str, aspect_ratio: str = "1:1", resolution: str = "1K",
@@ -54,7 +78,11 @@ class RouteraiProvider(OpenAICompatProvider):
             async with self._session() as session:
                 async with session.post(f"{self.base_url}/images/generations", json=body) as resp:
                     data = await self._handle_response(resp)
-            image_bytes = base64.b64decode(data["data"][0]["b64_json"])
+            items = data.get("data") if isinstance(data, dict) else None
+            if not isinstance(items, list) or not items or not isinstance(items[0], dict) or not items[0].get("b64_json"):
+                # An uncertain response must not resubmit a potentially paid job.
+                raise ProviderError("RouterAI не вернул изображение")
+            image_bytes = base64.b64decode(items[0]["b64_json"])
             mime = "image/jpeg" if actual_model.startswith("black-forest-labs/") else "image/png"
             return GenerationResult(data=image_bytes, mime_type=mime, filename="image.jpeg" if mime == "image/jpeg" else "image.png")
 
