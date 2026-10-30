@@ -44,6 +44,7 @@ class CharacterStates(StatesGroup):
     name = State()
     desc = State()
     photos = State()
+    voice = State()
     # PixVerse: фото → тип (Subject / Background) → имя
     ref_photo = State()
     ref_type = State()
@@ -92,7 +93,7 @@ def _menu_text(data: dict) -> str:
     if chars:
         for i, c in enumerate(chars, 1):
             tail = f" — <code>@{c['tag']}</code>" if _is_kling(kind) else ""
-            lines.append(f"{i}. {c['name']}{tail}")
+            lines.append(f"{i}. {c['name']}{tail}" + (" 🎙" if c.get("voice_file_id") else ""))
         lines.append("")
     else:
         lines.append(f"Создай до {MAX_CHARACTERS} персонажей: внешность сохранится в видео.\n")
@@ -102,6 +103,8 @@ def _menu_text(data: dict) -> str:
     else:
         lines.append("Чтобы персонаж попал в видео, упомяни его в описании по имени, "
                      "например: «<code>Аня идёт по улице</code>».")
+    if kind == "kling3":
+        lines.append("\nНажми на персонажа, чтобы добавить или заменить ориентир его голоса (5–30 секунд).")
     return "\n".join(lines)
 
 
@@ -118,12 +121,16 @@ def _menu_kb(data: dict) -> InlineKeyboardMarkup:
     return b.as_markup()
 
 
-def _manage_kb(idx: int) -> InlineKeyboardMarkup:
+def _manage_kb(idx: int, voice_supported: bool = False, has_voice: bool = False) -> InlineKeyboardMarkup:
     b = InlineKeyboardBuilder()
     b.row(
         InlineKeyboardButton(text="🗑 Удалить", callback_data=f"char:del:{idx}"),
         InlineKeyboardButton(text="🔄 Заменить", callback_data=f"char:replace:{idx}"),
     )
+    if voice_supported:
+        b.row(InlineKeyboardButton(text="🎙 Заменить голос" if has_voice else "🎙 Добавить голос", callback_data=f"char:voice:{idx}"))
+        if has_voice:
+            b.row(InlineKeyboardButton(text="🗑 Удалить голос", callback_data=f"char:voice_del:{idx}"))
     b.row(InlineKeyboardButton(text="◀️ Назад", callback_data="char:menu"))
     return b.as_markup()
 
@@ -256,13 +263,67 @@ async def manage_character(callback: CallbackQuery, state: FSMContext) -> None:
     except (ValueError, IndexError):
         await callback.answer()
         return
+    from bot.handlers.media import MediaStates
+    await state.set_state(MediaStates.confirm)
+    await state.update_data(_char_voice_idx=None)
     label = "ориентир" if _is_pixverse(data.get("model_characters")) else "персонаж"
     await callback.message.edit_text(
         f"👤 <b>{char['name']}</b>\n\nЧто сделать с этим {label}ем?",
         parse_mode="HTML",
-        reply_markup=_manage_kb(idx),
+        reply_markup=_manage_kb(idx, data.get("model_characters") == "kling3", bool(char.get("voice_file_id"))),
     )
     await callback.answer()
+
+
+@router.callback_query(F.data.startswith("char:voice:"))
+async def add_character_voice(callback: CallbackQuery, state: FSMContext) -> None:
+    data = await state.get_data()
+    idx = int(callback.data.rsplit(":", 1)[1])
+    if data.get("model_characters") != "kling3" or not 0 <= idx < len(data.get("characters") or []):
+        await callback.answer("Персонаж недоступен", show_alert=True)
+        return
+    await state.update_data(_char_voice_idx=idx, _sref_msg_id=callback.message.message_id)
+    await state.set_state(CharacterStates.voice)
+    await callback.message.edit_text(
+        "🎙 Отправь аудиофайл или голосовое сообщение длительностью от 5 до 30 секунд. "
+        "Это необязательный ориентир голоса персонажа. Для его использования включи звук в настройках видео.",
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=[[
+            InlineKeyboardButton(text="◀️ Назад", callback_data=f"char:manage:{idx}")]]),
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith("char:voice_del:"))
+async def delete_character_voice(callback: CallbackQuery, state: FSMContext) -> None:
+    data = await state.get_data()
+    idx = int(callback.data.rsplit(":", 1)[1])
+    chars = list(data.get("characters") or [])
+    if data.get("model_characters") == "kling3" and 0 <= idx < len(chars):
+        chars[idx] = {k: v for k, v in chars[idx].items() if k not in ("voice_file_id", "voice_duration")}
+        await state.update_data(characters=chars)
+    await _show_menu(callback.bot, callback.message.chat.id, state)
+    await callback.answer()
+
+
+@router.message(CharacterStates.voice, ~F.text.in_(MENU_BUTTONS))
+async def receive_character_voice(message: Message, state: FSMContext) -> None:
+    data = await state.get_data()
+    idx = data.get("_char_voice_idx")
+    chars = list(data.get("characters") or [])
+    audio = message.audio or message.voice
+    if audio is None or not 5 <= audio.duration <= 30:
+        await message.answer("Отправь аудиофайл или голосовое сообщение длительностью от 5 до 30 секунд.")
+        return
+    if data.get("model_characters") != "kling3" or not isinstance(idx, int) or not 0 <= idx < len(chars):
+        await _show_menu(message.bot, message.chat.id, state)
+        return
+    chars[idx] = {**chars[idx], "voice_file_id": audio.file_id, "voice_duration": audio.duration}
+    await state.update_data(characters=chars, _char_voice_idx=None)
+    try:
+        await message.delete()
+    except Exception:
+        pass
+    await _show_menu(message.bot, message.chat.id, state)
 
 
 @router.callback_query(F.data.startswith("char:del:"))
@@ -645,6 +706,8 @@ def characters_start_error(data: dict, prompt: str) -> str | None:
         if data.get("video_first_frame_file_id") or data.get("video_last_frame_file_id"):
             return "Ориентиры нельзя сочетать с началом/концом видео — убери кадры или ориентиры."
         return None
+    if kind == "kling3" and any(c.get("voice_file_id") for c in chars) and not data.get("video_audio_enabled", True):
+        return "Для голоса персонажа включи звук в настройках видео или удали голосовой ориентир."
     if _is_kling(kind):
         missing = [c["tag"] for c in chars if f"@{c['tag']}".lower() not in low]
         if missing:
@@ -681,5 +744,11 @@ async def build_character_payload(bot, data: dict) -> list[dict] | None:
     payload = []
     for c in chars:
         urls = [u for u in [await _tg_file_url(bot, fid) for fid in c["file_ids"]] if u]
-        payload.append({"name": c["tag"], "description": c["description"], "element_input_urls": urls})
+        element = {"name": c["tag"], "description": c["description"], "element_input_urls": urls}
+        if kind == "kling3" and c.get("voice_file_id"):
+            voice_url = await _tg_file_url(bot, c["voice_file_id"])
+            if not voice_url:
+                raise ProviderError("Не удалось загрузить голос персонажа")
+            element["element_input_audio_urls"] = [voice_url]
+        payload.append(element)
     return payload
