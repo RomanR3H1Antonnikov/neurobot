@@ -18,6 +18,7 @@ tasks:
   image_generation:
     rate_limit_per_hour: 20
     models:
+
       - id: nano-banana-2
         label: "2"
         group: nano-banana-ai
@@ -87,6 +88,153 @@ tasks:
         cost_credits: 4
         cost_by_resolution: {"1K": 4, "2K": 5, "4K": 6.5}
         cost_usd: 0.01
+        enabled: true
+
+      - id: gpt-image-2
+        label: "GPT Image 2"
+        description: >-
+          GPT Image 2 отличается высокой детализацией и реалистичностью изображений, уверенно
+          работает со сложными описаниями и стилями. Модель точно соблюдает композицию, освещение
+          и текстуры, хорошо понимает контекст и семантику запроса. Сильная сторона — гибкость
+          в генерации разных форматов: от иллюстраций до фотореалистичных сцен.
+        aspect_ratios: ["1:1", "4:3", "3:4", "3:2", "2:3", "5:4", "4:5", "16:9", "9:16", "21:9"]
+        model_id: gpt-image-2-text-to-image
+        provider: kie
+        max_style_refs: 16
+        resolutions: ["1K", "2K", "4K"]
+        cost_credits: 5
+        cost_by_resolution: {"1K": 5, "2K": 7, "4K": 10}
+        cost_usd: 0.04
+        enabled: false  # скрыто по просьбе клиента: цены те же, 2.5 качественнее
+
+      - id: gpt-image-2-5-flare
+        label: "Flare"
+        group: gpt-image-2-5
+        group_label: "GPT Image 2.5 AI"
+        description: >-
+          GPT Image 2.5 AI — новое поколение моделей OpenAI для генерации и редактирования
+          изображений. Высокая детализация, точное следование промпту, поддержка широкого набора
+          соотношений сторон и разрешений до 4K.
+        variant_description: >-
+          Flare — быстрая генерация: задержка снижена примерно на 50% по сравнению с Image 2.0
+          при сохранении высокого качества деталей.
+        aspect_ratios: ["1:1", "4:3", "3:4", "3:2", "2:3", "5:4", "4:5", "16:9", "9:16", "21:9"]
+        model_id: gpt-image-2-5-flare-text-to-image
+        provider: kie
+        max_style_refs: 16
+        resolutions: ["1K", "2K", "4K"]
+        cost_credits: 5
+        cost_by_resolution: {"1K": 5, "2K": 7, "4K": 10}
+        cost_usd: 0.04
+        enabled: true
+
+      - id: gpt-image-2-5-sunburst
+        label: "Sunburst"
+        group: gpt-image-2-5
+        group_label: "GPT Image 2.5 AI"
+        description: ""
+        variant_description: >-
+          Sunburst — максимальный контроль над деталями: лучше сохраняет объекты, персонажей,
+          композицию и текст при последовательных правках.
+        aspect_ratios: ["1:1", "4:3", "3:4", "3:2", "2:3", "5:4", "4:5", "16:9", "9:16", "21:9"]
+        model_id: gpt-image-2-5-sunburst-text-to-image
+        provider: kie
+        max_style_refs: 16
+        resolutions: ["1K", "2K", "4K"]
+        cost_credits: 5
+        cost_by_resolution: {"1K": 5, "2K": 7, "4K": 10}
+        cost_usd: 0.04
+        enabled: true
+
+  # ─── Генерация видео ─────────────────────────────────────────────────────────
+      - id: grok-image-2-0
+        label: "Image 2.0"
+        group: grok-image-ai
+        group_label: "Grok Image AI"
+        description: >-
+          Grok Image AI — модели от xAI для генерации фотореалистичных изображений:
+          дизайна, маркетинга, создания контента. Акцент на итеративной доработке —
+          результат можно последовательно улучшать, не теряя удачные элементы.
+        variant_description: "Grok Image 2.0 — быстрая генерация, поддерживает фото-ориентиры (до 3 шт.)."
+        aspect_ratios: ["1:1", "2:3", "3:2", "16:9", "9:16"]
+        model_id: grok-imagine-image-2-0/text-to-image
+        provider: kie
+        max_style_refs: 3
+        resolutions: ["1K", "2K"]
+        cost_credits: 4
+        cost_usd: 0.03
+        enabled: true
+
+      - id: grok-image-pro
+        label: "Image Pro"
+        group: grok-image-ai
+        group_label: "Grok Image AI"
+        description: ""
+        variant_description: >-
+          Grok Image Pro — высокая детализация и точное следование сложным промптам,
+          поддерживает фото-ориентиры по стилю (до 3 шт.).
+        aspect_ratios: ["1:1", "2:3", "3:2", "16:9", "9:16"]
+        resolutions: ["1K"]
+        model_id: x-ai/grok-imagine-image-quality
+        provider: routerai
+        max_style_refs: 3
+        cost_credits: 8
+        cost_usd: 0.03
+        enabled: true
+
+      - id: flux-2-flex
+        label: "Flux 2 Flex"
+        description: ""
+        aspect_ratios: ["1:1", "9:16", "16:9", "3:4", "4:3"]
+        model_id: flux-2/flex-text-to-image
+        provider: kie
+        cost_credits: 1
+        cost_usd: 0.005
+        enabled: false
+
+      - id: flux-2-pro
+        label: "2 Pro"
+        group: flux-ai
+        group_label: "Flux AI"
+        description: >-
+          FLUX — это современная ИИ-модель для генерации изображений по текстовому описанию. Она
+          создаёт детализированные, реалистичные и стилизованные картинки, хорошо понимает сложные
+          промпты и часто используется как альтернатива Midjourney и Stable Diffusion. Разработана
+          компанией Black Forest Labs.
+        variant_description: >-
+          Flux 2 Pro — продвинутая ИИ-модель для генерации и редактирования изображений от Black
+          Forest Labs. Она ориентирована на профессиональное использование: лучше понимает сложные
+          промпты, точнее передаёт детали, стиль, композицию и текст на изображениях. Подходит для
+          рекламы, дизайна, концепт-арта, визуалов для брендов и креативных проектов.
+        aspect_ratios: ["1:1", "9:16", "16:9", "3:4", "4:3"]
+        model_id: flux-2/pro-text-to-image
+        provider: kie
+        max_style_refs: 8
+        resolutions: ["1K", "2K"]
+        cost_credits: 4
+        cost_by_resolution: {"1K": 4, "2K": 6}
+        cost_usd: 0.01
+        enabled: true
+        fallbacks:
+          - provider: routerai
+            model_id: black-forest-labs/flux.2-pro
+
+      - id: flux-3-klein
+        label: "3 Klein"
+        group: flux-ai
+        group_label: "Flux AI"
+        description: ""
+        variant_description: >-
+          Лёгкая, быстрая и экономичная модель для генерации изображений/контента, ориентированная
+          на скорость и доступность, а не на максимальную детализацию.
+        aspect_ratios: ["1:1", "4:3", "3:4", "3:2", "2:3", "16:9", "9:16", "21:9", "9:21"]
+        model_id: flux-3/klein-text-to-image
+        provider: kie
+        max_style_refs: 0
+        resolutions: ["1K", "2K", "4K"]
+        output_formats: ["png", "jpeg", "webp"]
+        cost_credits: 2
+        cost_by_resolution: {"1K": 2, "2K": 3, "4K": 5}
         enabled: true
 
       - id: seedream-5-pro
@@ -170,153 +318,6 @@ tasks:
         cost_usd: 0.04
         enabled: true
 
-      - id: flux-2-flex
-        label: "Flux 2 Flex"
-        description: ""
-        aspect_ratios: ["1:1", "9:16", "16:9", "3:4", "4:3"]
-        model_id: flux-2/flex-text-to-image
-        provider: kie
-        cost_credits: 1
-        cost_usd: 0.005
-        enabled: false
-
-      - id: flux-2-pro
-        label: "2 Pro"
-        group: flux-ai
-        group_label: "Flux AI"
-        description: >-
-          FLUX — это современная ИИ-модель для генерации изображений по текстовому описанию. Она
-          создаёт детализированные, реалистичные и стилизованные картинки, хорошо понимает сложные
-          промпты и часто используется как альтернатива Midjourney и Stable Diffusion. Разработана
-          компанией Black Forest Labs.
-        variant_description: >-
-          Flux 2 Pro — продвинутая ИИ-модель для генерации и редактирования изображений от Black
-          Forest Labs. Она ориентирована на профессиональное использование: лучше понимает сложные
-          промпты, точнее передаёт детали, стиль, композицию и текст на изображениях. Подходит для
-          рекламы, дизайна, концепт-арта, визуалов для брендов и креативных проектов.
-        aspect_ratios: ["1:1", "9:16", "16:9", "3:4", "4:3"]
-        model_id: flux-2/pro-text-to-image
-        provider: kie
-        max_style_refs: 8
-        resolutions: ["1K", "2K"]
-        cost_credits: 4
-        cost_by_resolution: {"1K": 4, "2K": 6}
-        cost_usd: 0.01
-        enabled: true
-        fallbacks:
-          - provider: routerai
-            model_id: black-forest-labs/flux.2-pro
-
-      - id: flux-3-klein
-        label: "3 Klein"
-        group: flux-ai
-        group_label: "Flux AI"
-        description: ""
-        variant_description: >-
-          Лёгкая, быстрая и экономичная модель для генерации изображений/контента, ориентированная
-          на скорость и доступность, а не на максимальную детализацию.
-        aspect_ratios: ["1:1", "4:3", "3:4", "3:2", "2:3", "16:9", "9:16", "21:9", "9:21"]
-        model_id: flux-3/klein-text-to-image
-        provider: kie
-        max_style_refs: 0
-        resolutions: ["1K", "2K", "4K"]
-        output_formats: ["png", "jpeg", "webp"]
-        cost_credits: 2
-        cost_by_resolution: {"1K": 2, "2K": 3, "4K": 5}
-        enabled: true
-
-      - id: grok-image-2-0
-        label: "Image 2.0"
-        group: grok-image-ai
-        group_label: "Grok Image AI"
-        description: >-
-          Grok Image AI — модели от xAI для генерации фотореалистичных изображений:
-          дизайна, маркетинга, создания контента. Акцент на итеративной доработке —
-          результат можно последовательно улучшать, не теряя удачные элементы.
-        variant_description: "Grok Image 2.0 — быстрая генерация, поддерживает фото-ориентиры (до 3 шт.)."
-        aspect_ratios: ["1:1", "2:3", "3:2", "16:9", "9:16"]
-        model_id: grok-imagine-image-2-0/text-to-image
-        provider: kie
-        max_style_refs: 3
-        resolutions: ["1K", "2K"]
-        cost_credits: 4
-        cost_usd: 0.03
-        enabled: true
-
-      - id: grok-image-pro
-        label: "Image Pro"
-        group: grok-image-ai
-        group_label: "Grok Image AI"
-        description: ""
-        variant_description: >-
-          Grok Image Pro — высокая детализация и точное следование сложным промптам,
-          поддерживает фото-ориентиры по стилю (до 3 шт.).
-        aspect_ratios: ["1:1", "2:3", "3:2", "16:9", "9:16"]
-        resolutions: ["1K"]
-        model_id: x-ai/grok-imagine-image-quality
-        provider: routerai
-        max_style_refs: 3
-        cost_credits: 8
-        cost_usd: 0.03
-        enabled: true
-
-      - id: gpt-image-2
-        label: "GPT Image 2"
-        description: >-
-          GPT Image 2 отличается высокой детализацией и реалистичностью изображений, уверенно
-          работает со сложными описаниями и стилями. Модель точно соблюдает композицию, освещение
-          и текстуры, хорошо понимает контекст и семантику запроса. Сильная сторона — гибкость
-          в генерации разных форматов: от иллюстраций до фотореалистичных сцен.
-        aspect_ratios: ["1:1", "4:3", "3:4", "3:2", "2:3", "5:4", "4:5", "16:9", "9:16", "21:9"]
-        model_id: gpt-image-2-text-to-image
-        provider: kie
-        max_style_refs: 16
-        resolutions: ["1K", "2K", "4K"]
-        cost_credits: 5
-        cost_by_resolution: {"1K": 5, "2K": 7, "4K": 10}
-        cost_usd: 0.04
-        enabled: false  # скрыто по просьбе клиента: цены те же, 2.5 качественнее
-
-      - id: gpt-image-2-5-flare
-        label: "Flare"
-        group: gpt-image-2-5
-        group_label: "GPT Image 2.5 AI"
-        description: >-
-          GPT Image 2.5 AI — новое поколение моделей OpenAI для генерации и редактирования
-          изображений. Высокая детализация, точное следование промпту, поддержка широкого набора
-          соотношений сторон и разрешений до 4K.
-        variant_description: >-
-          Flare — быстрая генерация: задержка снижена примерно на 50% по сравнению с Image 2.0
-          при сохранении высокого качества деталей.
-        aspect_ratios: ["1:1", "4:3", "3:4", "3:2", "2:3", "5:4", "4:5", "16:9", "9:16", "21:9"]
-        model_id: gpt-image-2-5-flare-text-to-image
-        provider: kie
-        max_style_refs: 16
-        resolutions: ["1K", "2K", "4K"]
-        cost_credits: 5
-        cost_by_resolution: {"1K": 5, "2K": 7, "4K": 10}
-        cost_usd: 0.04
-        enabled: true
-
-      - id: gpt-image-2-5-sunburst
-        label: "Sunburst"
-        group: gpt-image-2-5
-        group_label: "GPT Image 2.5 AI"
-        description: ""
-        variant_description: >-
-          Sunburst — максимальный контроль над деталями: лучше сохраняет объекты, персонажей,
-          композицию и текст при последовательных правках.
-        aspect_ratios: ["1:1", "4:3", "3:4", "3:2", "2:3", "5:4", "4:5", "16:9", "9:16", "21:9"]
-        model_id: gpt-image-2-5-sunburst-text-to-image
-        provider: kie
-        max_style_refs: 16
-        resolutions: ["1K", "2K", "4K"]
-        cost_credits: 5
-        cost_by_resolution: {"1K": 5, "2K": 7, "4K": 10}
-        cost_usd: 0.04
-        enabled: true
-
-  # ─── Генерация видео ─────────────────────────────────────────────────────────
   video_generation:
     rate_limit_per_hour: 20
     models:
@@ -957,6 +958,7 @@ tasks:
   image_edit:
     rate_limit_per_hour: 20
     models:
+
       - id: nano-banana-2-edit
         label: "2"
         group: nano-banana-ai-edit
@@ -1025,39 +1027,6 @@ tasks:
         cost_usd: 0.01
         enabled: true
 
-      - id: grok-image-2-0-edit
-        label: "Image 2.0"
-        group: grok-image-ai-edit
-        group_label: "Grok Image AI"
-        description: >-
-          Grok Image AI — модели от xAI для редактирования фотореалистичных изображений:
-          замена фона, изменение объектов, стилизация. Акцент на итеративном процессе —
-          картинку можно последовательно улучшать, не теряя удачные элементы.
-        variant_description: "Grok Image 2.0 — редактирование с поддержкой до 3 фото-ориентиров."
-        aspect_ratios: ["1:1", "2:3", "3:2", "16:9", "9:16"]
-        model_id: grok-imagine-image-2-0/image-edit
-        provider: kie
-        max_style_refs: 3
-        cost_credits: 4
-        cost_usd: 0.03
-        enabled: true
-
-      - id: grok-image-pro-edit
-        label: "Image Pro"
-        group: grok-image-ai-edit
-        group_label: "Grok Image AI"
-        description: ""
-        variant_description: >-
-          Grok Image Pro — редактирование с поддержкой фото-ориентиров (до 3 шт.),
-          точное следование инструкциям.
-        aspect_ratios: ["1:1", "2:3", "3:2", "16:9", "9:16"]
-        model_id: grok-imagine-image-pro/image-edit
-        provider: kie
-        max_style_refs: 3
-        cost_credits: 8
-        cost_usd: 0.03
-        enabled: false  # Disabled at client request: use Grok Image 2.0 for editing.
-
       - id: gpt-image-2-edit
         label: "GPT Image 2"
         description: >-
@@ -1113,6 +1082,39 @@ tasks:
         cost_by_resolution: {"1K": 5, "2K": 7, "4K": 10}
         cost_usd: 0.04
         enabled: true
+
+      - id: grok-image-2-0-edit
+        label: "Image 2.0"
+        group: grok-image-ai-edit
+        group_label: "Grok Image AI"
+        description: >-
+          Grok Image AI — модели от xAI для редактирования фотореалистичных изображений:
+          замена фона, изменение объектов, стилизация. Акцент на итеративном процессе —
+          картинку можно последовательно улучшать, не теряя удачные элементы.
+        variant_description: "Grok Image 2.0 — редактирование с поддержкой до 3 фото-ориентиров."
+        aspect_ratios: ["1:1", "2:3", "3:2", "16:9", "9:16"]
+        model_id: grok-imagine-image-2-0/image-edit
+        provider: kie
+        max_style_refs: 3
+        cost_credits: 4
+        cost_usd: 0.03
+        enabled: true
+
+      - id: grok-image-pro-edit
+        label: "Image Pro"
+        group: grok-image-ai-edit
+        group_label: "Grok Image AI"
+        description: ""
+        variant_description: >-
+          Grok Image Pro — редактирование с поддержкой фото-ориентиров (до 3 шт.),
+          точное следование инструкциям.
+        aspect_ratios: ["1:1", "2:3", "3:2", "16:9", "9:16"]
+        model_id: grok-imagine-image-pro/image-edit
+        provider: kie
+        max_style_refs: 3
+        cost_credits: 8
+        cost_usd: 0.03
+        enabled: false  # Disabled at client request: use Grok Image 2.0 for editing.
 
       - id: flux-2-flex-edit
         label: "Flux 2 Flex"
@@ -1249,6 +1251,7 @@ tasks:
         enabled: true
 
   # ─── Редактирование видео ────────────────────────────────────────────────────
+
   video_edit:
     rate_limit_per_hour: 20
     models:

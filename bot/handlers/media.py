@@ -295,6 +295,11 @@ class GenerationCancelledError(Exception):
 
 async def _start_tracked(user_id: int, send_msg: Message, tg_user, state: FSMContext, data: dict) -> None:
     """Запускает _run_generation как Task, чтобы пользователь мог отменить нажатием кнопки."""
+    existing = _active_tasks.get(user_id)
+    if existing is not None and not existing.done():
+        logger.warning("Ignored concurrent media generation for user_id=%s", user_id)
+        await asyncio.shield(existing)
+        return
     task = asyncio.create_task(_run_generation(send_msg, tg_user, state, data))
     _active_tasks[user_id] = task
     _task_start_times[user_id] = time.monotonic()
@@ -5766,7 +5771,27 @@ async def _run_generation(send_msg: Message, tg_user, state: FSMContext, data: d
         await state.update_data(generated_file_id=sent.video.file_id, reference_file_id=sent.video.file_id)
 
 
+_generation_start_users: set[int] = set()
+
+
+def _single_generation_start(handler):
+    @functools.wraps(handler)
+    async def guarded(callback, state):
+        user_id = callback.from_user.id
+        if user_id in _generation_start_users or user_id in _active_tasks:
+            await callback.answer("Генерация уже выполняется, подожди немного.")
+            return
+        # Claim before the first await: two fast clicks cannot both enter.
+        _generation_start_users.add(user_id)
+        try:
+            return await handler(callback, state)
+        finally:
+            _generation_start_users.discard(user_id)
+    return guarded
+
+
 @router.callback_query(MediaStates.confirm, F.data == "media:start")
+@_single_generation_start
 async def start_generation(callback: CallbackQuery, state: FSMContext) -> None:
     data = await state.get_data()
     tg_user = callback.from_user

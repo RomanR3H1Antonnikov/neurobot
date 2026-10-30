@@ -9,7 +9,7 @@ import uuid
 import aiohttp
 from contextvars import ContextVar
 from providers.openai_compat import OpenAICompatProvider
-from providers.base import GenerationResult, ChatResult, ProviderUnavailableError, ProviderContentPolicyError, ProviderInputError
+from providers.base import GenerationResult, ChatResult, ProviderError, ProviderUnavailableError, ProviderContentPolicyError, ProviderInputError
 from services.kie_webhook import register_pending, unregister_pending
 
 # Устанавливается в _run_generation перед вызовом generate_*; читается в _create_job
@@ -646,7 +646,7 @@ class KieProvider(OpenAICompatProvider):
         try:
             result = await asyncio.wait_for(fut, timeout=_JOB_TIMEOUT)
         except asyncio.TimeoutError:
-            raise ProviderUnavailableError("KIE: истекло время ожидания результата")
+            raise ProviderError("KIE: истекло время ожидания результата")
         finally:
             unregister_pending(corr_id)
         return result
@@ -723,7 +723,7 @@ class KieProvider(OpenAICompatProvider):
             await self._create_job(actual_model, input_data, corr_id)
             callback_body = await asyncio.wait_for(fut, timeout=_JOB_TIMEOUT_AUDIO)
         except asyncio.TimeoutError:
-            raise ProviderUnavailableError("KIE: истекло время ожидания аудио")
+            raise ProviderError("KIE: истекло время ожидания аудио")
         finally:
             unregister_pending(corr_id)
 
@@ -771,7 +771,7 @@ class KieProvider(OpenAICompatProvider):
 
             callback_body = await asyncio.wait_for(fut, timeout=_JOB_TIMEOUT)
         except asyncio.TimeoutError:
-            raise ProviderUnavailableError("KIE: истекло время ожидания изображения")
+            raise ProviderError("KIE: истекло время ожидания изображения")
         finally:
             unregister_pending(corr_id)
 
@@ -1072,7 +1072,7 @@ class KieProvider(OpenAICompatProvider):
 
             callback_body = await asyncio.wait_for(fut, timeout=_JOB_TIMEOUT)
         except asyncio.TimeoutError:
-            raise ProviderUnavailableError("KIE: истекло время ожидания видео")
+            raise ProviderError("KIE: истекло время ожидания видео")
         finally:
             unregister_pending(corr_id)
 
@@ -1208,7 +1208,7 @@ class KieProvider(OpenAICompatProvider):
             await self._create_job(actual_model, input_data, corr_id)
             callback_body = await asyncio.wait_for(fut, timeout=_JOB_TIMEOUT)
         except asyncio.TimeoutError:
-            raise ProviderUnavailableError("KIE: истекло время ожидания редактирования")
+            raise ProviderError("KIE: истекло время ожидания редактирования")
         finally:
             unregister_pending(corr_id)
 

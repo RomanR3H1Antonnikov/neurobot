@@ -44,8 +44,10 @@ def unregister_pending(corr_id: str) -> None:
 def resolve_pending(corr_id: str, body: dict) -> bool:
     """Резолвит Future если существует. Возвращает True если Future найден."""
     fut = _pending.get(corr_id)
-    if fut and not fut.done():
-        fut.set_result(body)
+    if fut is not None:
+        if not fut.done():
+            fut.set_result(body)
+        # A repeated callback must not deliver the same active job as orphaned.
         return True
     return False
 
