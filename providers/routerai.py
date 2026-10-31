@@ -40,6 +40,10 @@ class RouteraiProvider(OpenAICompatProvider):
             or (not payload.get("data") and (payload.get("message") or payload.get("msg")))
         )
         if response.status >= 400 or has_error:
+            # Log structural diagnostics only; never prompts or base64 image data.
+            logger.warning("RouterAI response error: HTTP=%s code=%s keys=%s", response.status,
+                           payload.get("code") if isinstance(payload, dict) else None,
+                           list(payload) if isinstance(payload, dict) else [])
             detail = raw.lower()
             if any(word in detail for word in (
                 "content_policy", "content policy", "content policies", "safety",
@@ -73,10 +77,18 @@ class RouteraiProvider(OpenAICompatProvider):
                 "n": 1,
                 "extra_body": extra_body,
             }
+            endpoint = "images/generations"
             if actual_model.startswith("x-ai/"):
-                body["size"] = self._compute_size(aspect_ratio, resolution)
+                # RouterAI's raw HTTP API expects flat fields, not SDK extra_body.
+                endpoint = "images"
+                body = {
+                    "model": actual_model, "prompt": prompt, "n": 1,
+                    "aspect_ratio": aspect_ratio or "1:1", "size": resolution or "1K",
+                }
+                if style_reference_urls:
+                    body["input_references"] = extra_body["input_references"]
             async with self._session() as session:
-                async with session.post(f"{self.base_url}/images/generations", json=body) as resp:
+                async with session.post(f"{self.base_url}/{endpoint}", json=body) as resp:
                     data = await self._handle_response(resp)
             items = data.get("data") if isinstance(data, dict) else None
             if not isinstance(items, list) or not items or not isinstance(items[0], dict) or not items[0].get("b64_json"):
@@ -110,12 +122,26 @@ class RouteraiProvider(OpenAICompatProvider):
             "resolution": resolution or "720p",
             "audio": audio,
         }
-        if first_frame_url:
-            payload["first_frame_url"] = first_frame_url
-        if last_frame_url:
-            payload["last_frame_url"] = last_frame_url
-        if style_reference_urls:
-            payload["image_urls"] = list(style_reference_urls)
+        if actual_model == "alibaba/happyhorse-1.1":
+            # HappyHorse takes frame_images/input_references, not KIE-style URLs.
+            payload.pop("audio", None)
+            if first_frame_url:
+                payload["frame_images"] = [{
+                    "type": "image_url", "image_url": {"url": first_frame_url},
+                    "frame_type": "first_frame",
+                }]
+            if style_reference_urls:
+                payload["input_references"] = [
+                    {"type": "image_url", "image_url": {"url": url}}
+                    for url in style_reference_urls
+                ]
+        else:
+            if first_frame_url:
+                payload["first_frame_url"] = first_frame_url
+            if last_frame_url:
+                payload["last_frame_url"] = last_frame_url
+            if style_reference_urls:
+                payload["image_urls"] = list(style_reference_urls)
 
         logger.info(
             "RouteAI video payload: model=%s first_frame=%s last_frame=%s image_urls_count=%d",
